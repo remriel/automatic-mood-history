@@ -29,7 +29,7 @@
 - An earlier test fixture contained a real-looking backfill date and derived mood values. It has been replaced with synthetic data.
 - A fresh 1.1.1 launch logged `Plugin failure: automatic-mood-history Error: Folder already exists.` The failure came from support-folder creation during `onload`. Version 1.1.2 moves setup after Obsidian's layout-ready event, checks adapter state, and accepts only confirmed existing folders after a creation race.
 - The release workflow validates that the pushed tag equals the manifest version and attaches `main.js`, `manifest.json`, and `styles.css`.
-- The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; commit `5b3829bd2fd5f041f99294cb894e9327033d87fd` is pushed to `main`.
+- The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; startup fix commit `929d5cb0b9f787b71ce902bb3877cf5cafffcf41` is on `main` and tagged `1.1.2`.
 
 ## Failed approaches not to repeat
 
@@ -48,11 +48,11 @@
 
 ## Known limitations and unresolved items
 
-- The 1.1.2 build is installed locally. A fresh Obsidian launch saved runtime version `1.1.2` with status `loaded`; the diagnostic stderr contained no plugin failure or support-folder error.
+- Release `1.1.2` is published and installed locally. A fresh Obsidian launch saved runtime version `1.1.2` with status `loaded`; the diagnostic stderr contained no plugin failure or support-folder error. Downloaded release assets match both the tested build and installed files by SHA-256.
 - The new dark theme has not yet been inspected in the live Obsidian app.
-- CI run `37053044933` passed for the 1.1.1 installation-documentation update. Release workflow `37050813967` passed for release `1.1.1`; the 1.1.2 push and release are pending.
+- CI run `37054881647` passed on the 1.1.2 fix. Release workflow `37054950493` passed for release `1.1.2`.
 - The Groq service and configured model can change independently of this plugin; local analysis remains available.
 
 ## RESUME HERE
 
-The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.1` remains published. Version 1.1.2 fixes the captured `Folder already exists.` startup failure by deferring support-folder setup until layout-ready and verifying existing folders through the adapter when the file cache lags. The full local test suite passed, and a fresh Obsidian launch persisted runtime version `1.1.2`, status `loaded`, with no matching startup errors. Push main, confirm CI, tag `1.1.2`, and confirm its release assets. Do not add vault records or personal settings to this public repository.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.2` is published and installed. The captured `Folder already exists.` failure was fixed by deferring support-folder setup until layout-ready and checking adapter state when Obsidian's file cache lags. Local tests, GitHub CI, the release workflow, asset hashes, and a fresh Obsidian startup passed. The live dark-theme appearance has not been visually inspected. Do not add vault records or personal settings to this public repository.
