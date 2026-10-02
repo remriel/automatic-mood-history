@@ -34,6 +34,8 @@ Module._load = function patched(request, parent, isMain) {
       TFile,
       requestUrl: async (request) => {
         calls += 1;
+        const payload = JSON.parse(request.body);
+        assert(payload.messages[1].content.includes("Markdown notes created on this date"));
         if (calls < 3) {
           return {
             status: 400,
@@ -41,7 +43,7 @@ Module._load = function patched(request, parent, isMain) {
             text: "Failed to validate JSON"
           };
         }
-        assert.strictEqual(request.response_format, undefined);
+        assert.strictEqual(payload.response_format, undefined);
         return {
           status: 200,
           json: { choices: [{ message: { content: `Analysis follows:\n${JSON.stringify(valid)}` } }] },

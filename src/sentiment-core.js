@@ -280,7 +280,7 @@ function validateAnalysis(input) {
       ? input.valence
       : moodToValence(moodScore),
     emotions: emotions.length ? emotions : [moodScore < 3 ? "sad" : moodScore > 3 ? "hopeful" : "confused"],
-    summary: String(input.summary || "Sentiment inferred from the dated note.").slice(0, 500),
+    summary: String(input.summary || "Sentiment inferred from the notes created that day.").slice(0, 500),
     drivers: (input.drivers || []).map(String).filter(Boolean).slice(0, 4),
     confidence: ["low", "medium", "high"].includes(input.confidence) ? input.confidence : "low",
     confidenceReason: String(input.confidenceReason || "Limited or mixed evidence in the source text.").slice(0, 500)
@@ -355,6 +355,7 @@ function buildEntryMarkdown(record) {
     'type: "automatic-mood-entry"',
     "automatic_mood_history: true",
     `date: ${escapeYaml(record.date)}`,
+    `date_basis: ${escapeYaml(record.dateBasis || "legacy-note-date")}`,
     `status: ${escapeYaml(record.status)}`,
     `analysis_source: ${escapeYaml(record.analysisSource)}`,
     `confidence: ${escapeYaml(record.confidence || "none")}`,

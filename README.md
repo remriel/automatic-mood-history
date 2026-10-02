@@ -1,12 +1,12 @@
 # Automatic Mood History
 
-Automatic sentiment history for dated notes in [Obsidian](https://obsidian.md/).
+Automatic sentiment history for notes in [Obsidian](https://obsidian.md/).
 
-The plugin watches dated Markdown notes, consolidates notes that share a date, and renders a native Obsidian dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local analysis is the default. Groq analysis is optional and must be enabled explicitly.
+The plugin groups every Markdown note by the local calendar date of its Obsidian creation timestamp, consolidates notes created that day across all folders, and renders a native dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local analysis is the default. Groq analysis is optional and must be enabled explicitly.
 
 ## Features
 
-- Optional automatic analysis after a dated note changes
+- Optional automatic analysis after any note changes
 - One consolidated result per calendar date
 - Optional Groq structured-output analysis with a validated three-stage JSON fallback
 - Local deterministic analysis that works without a network connection or API key
@@ -19,11 +19,11 @@ The plugin watches dated Markdown notes, consolidates notes that share a date, a
 
 ## Privacy
 
-This plugin can transmit the text of dated notes to Groq for analysis **only after you enable Groq analysis in the plugin settings**.
+This plugin can transmit cleaned text from all Markdown notes created on a selected day to Groq for analysis **only after you enable Groq analysis in the plugin settings**.
 
 - The API key is read only from the `GROQ_API_KEY` environment variable.
 - The API key is never written to the vault or plugin data.
-- Groq receives the calendar date, cleaned consolidated note text, scoring instructions, and response schema.
+- Groq receives the local creation date, cleaned text consolidated across that day's notes, scoring instructions, and response schema.
 - Filenames and vault paths remain local and are not included in the Groq prompt.
 - Generated records include the analyzer used: `groq`, `local-fallback`, `reviewed-backfill` (legacy records), or `none`.
 - If enabled Groq analysis cannot be reached, that run falls back to local word-pattern scoring and is marked low confidence.
@@ -68,17 +68,13 @@ The key value is not stored by the plugin. The environment-variable name is fixe
 Use the command palette:
 
 - **Automatic Mood History: Open mood history dashboard**
-- **Automatic Mood History: Analyze changed daily notes**
-- **Automatic Mood History: Reanalyze all daily notes with Groq**
-- **Automatic Mood History: Analyze the active dated note**
+- **Automatic Mood History: Analyze changed notes**
+- **Automatic Mood History: Reanalyze all notes with Groq**
+- **Automatic Mood History: Analyze the active note**
 
-The plugin looks in the configured **Daily notes folder** (`Daily` by default). It recognizes dates from:
+Every Markdown note is assigned to the local calendar day of `TFile.stat.ctime`, Obsidian's file creation timestamp. Folder, filename, frontmatter dates, and aliases do not change the assigned day. Notes without a valid creation timestamp are skipped. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
 
-- filenames beginning with `YYYY-MM-DD` inside that folder;
-- a `date` property on a note marked `type: daily` or stored in the configured folder;
-- an exact `YYYY-MM-DD` alias on a moved note, if **Analyze dated notes outside this folder** is enabled.
-
-The default analysis mode is local, automatic note watching is off, startup backfill is off, and notes outside the configured folder are excluded. Review the folder and opt-in settings before running **Analyze changed daily notes**.
+Local analysis is the default. Automatic note watching and startup analysis are off for new installs. Enabling Groq can send the cleaned text from every note in an analyzed creation-date group to Groq; review the opt-in settings before running a full scan.
 
 Generated files are stored under `Mood History/` by default:
 

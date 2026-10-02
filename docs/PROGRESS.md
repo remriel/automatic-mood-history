@@ -1,38 +1,36 @@
 # Project Progress
 
-## Current objective — fix the Obsidian startup load failure and publish the patch
+## Current objective — group all notes by creation timestamp and release the update
 
-**Progress: 100%**
+**Progress: 80%**
 
-- [x] Capture the actual Obsidian startup error: `Folder already exists.`
-- [x] Trace the failure to eager support-folder setup during plugin `onload`.
-- [x] Defer generated-folder setup until layout-ready and add adapter checks plus a race-safe recovery path.
-- [x] Add a regression test that reproduces a duplicate-folder creation race and verifies history is preserved.
-- [x] Run the full local test suite and inspect the patch.
-- [x] Install version `1.1.2` without replacing `data.json` and verify a fresh Obsidian startup.
-- [x] Push the fix and confirm main CI.
-- [x] Tag `1.1.2`, confirm release assets, and compare their hashes with the installed build.
+- [x] Replace Daily-folder, filename, and frontmatter date discovery with all-vault Markdown grouping by Obsidian creation timestamp.
+- [x] Exclude generated history and trash notes; keep created-date grouping stable when notes are renamed.
+- [x] Preserve previous records with a visible legacy date basis.
+- [x] Remove obsolete Daily-folder settings and update dashboard, methodology, privacy, and README text.
+- [x] Add tests for all folders, timestamp dates overriding titles/frontmatter, exclusions, note grouping, and legacy record preservation.
+- [x] Pass the full local test suite and bundle build.
+- [x] Install `1.2.0` without replacing `data.json`; verify a fresh Obsidian launch, timestamp-grouped scan, and legacy-record preservation.
+- [ ] Push to GitHub, confirm CI, tag `1.2.0`, and verify release assets.
 
 ## Current implementation state
 
-The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.2` is published at `https://github.com/remriel/automatic-mood-history/releases/tag/1.1.2`. Tag `1.1.2` points to startup fix commit `929d5cb0b9f787b71ce902bb3877cf5cafffcf41`. The local Obsidian runtime reports version `1.1.2` as `loaded` after a fresh launch.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.2` remains published. Version `1.2.0` passes local tests and a fresh Obsidian scan, but is not pushed or released yet. Existing legacy records are kept and marked as prior-scope history.
 
 ## Current blockers
 
-No blocker remains for the startup fix or release. A live screenshot of dark-mode rendering was not captured.
+No code or real-vault blocker remains. GitHub CI and release publication are pending.
 
 ## Verification performed
 
-- A fresh launch of 1.1.1 logged `Plugin failure: automatic-mood-history Error: Folder already exists.` The previous saved `loaded` marker was stale and did not verify that launch.
-- The 1.1.2 startup fix defers support-file setup until layout-ready and verifies cached and on-disk folder state before creating directories.
-- `npm test` passed: bundle build, syntax checks, core tests, bundle-load test, folder-race startup regression test, and Groq fallback tests.
-- GitHub CI run `37054881647` and release workflow run `37054950493` passed.
-- The published release contains `main.js`, `manifest.json`, and `styles.css`. Downloaded assets match source and installed files by SHA-256.
-- A fresh Obsidian launch wrote runtime version `1.1.2` and status `loaded`; startup stderr had no plugin failure or support-folder error.
-- Existing history remained intact. The install copied only `main.js`, `manifest.json`, and `styles.css`; the prior plugin code is backed up outside the public repository.
+- Official Obsidian API declarations define `TFile.stat.ctime` as a millisecond creation timestamp.
+- The new timestamp regression test confirms that folder, filename, and frontmatter dates do not override `ctime`; notes from multiple folders are combined, while generated output, trash, non-Markdown files, and timestamp-less notes are skipped.
+- The regression test verifies that unchanged legacy analysis is relabeled without rewriting its generated entry or discarding its result.
+- `npm test` passed: bundle build, syntax checks, core tests, bundle-load test, startup regression, timestamp grouping, and Groq fallback.
+- A fresh Obsidian launch reports runtime version `1.2.0 / loaded`; the live scan grouped all Markdown notes from the Obsidian API by `ctime`, retained prior records as legacy, and reported no plugin errors.
 
 ## Exact next steps
 
-1. For a future issue, reproduce it with Obsidian startup logs before changing code.
-2. For a future release, build and test from `src/`, then publish matching manifest and tag versions.
-3. Visually inspect dark mode in Obsidian when screenshot automation is available.
+1. Push the tested code and confirm main CI.
+2. Tag `1.2.0` and confirm all three release assets match source and installed files.
+3. Update the private project handoff with the release results.

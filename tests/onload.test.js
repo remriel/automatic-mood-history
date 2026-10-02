@@ -42,8 +42,17 @@ let layoutReadyCallback;
 const createFolderCalls = [];
 let saveCalls = 0;
 const existingRecord = { date: "2099-01-02", status: "insufficient", sourceHash: "synthetic" };
-instance.manifest = { version: "1.1.2" };
-instance.loadData = async () => ({ settings: {}, records: { "2099-01-02": existingRecord } });
+instance.manifest = { version: "1.2.0" };
+instance.loadData = async () => ({
+  settings: {
+    dailyFolder: "Daily",
+    includeOutsideDailyFolder: true,
+    autoAnalyze: true,
+    analyzeOnStartup: true,
+    enableGroq: true
+  },
+  records: { "2099-01-02": existingRecord }
+});
 instance.saveData = async (data) => { saved = data; saveCalls += 1; };
 instance.addRibbonIcon = () => {};
 instance.addCommand = () => {};
@@ -91,8 +100,14 @@ instance.onload().then(() => {
   assert(saved);
   assert.strictEqual(saveCalls, 1, "plugin data is saved before vault folder setup");
   assert.strictEqual(saved.runtime.lastLoadStatus, "loaded");
-  assert.strictEqual(saved.runtime.version, "1.1.2");
+  assert.strictEqual(saved.runtime.version, "1.2.0");
   assert.strictEqual(saved.records["2099-01-02"], existingRecord, "existing history is preserved");
+  assert.strictEqual(existingRecord.dateBasis, "legacy-note-date");
+  assert.strictEqual(saved.settings.dailyFolder, undefined, "obsolete Daily-folder setting is removed");
+  assert.strictEqual(saved.settings.includeOutsideDailyFolder, undefined, "obsolete folder-scope setting is removed");
+  assert.strictEqual(saved.settings.autoAnalyze, true, "automatic note analysis preference is preserved");
+  assert.strictEqual(saved.settings.analyzeOnStartup, true, "startup scan preference is preserved");
+  assert.strictEqual(saved.settings.enableGroq, true, "Groq opt-in is preserved");
   assert.deepStrictEqual(createFolderCalls, [], "vault folders are not touched before layout is ready");
   return layoutReadyCallback();
 }).then(() => {

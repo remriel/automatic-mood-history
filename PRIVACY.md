@@ -10,12 +10,12 @@ Local mode uses deterministic word-pattern scoring inside Obsidian. No note text
 
 Groq mode is disabled by default. When a user explicitly enables it, the plugin sends the following to `https://api.groq.com/openai/v1/chat/completions`:
 
-- calendar date;
-- cleaned, consolidated text from the dated notes being analyzed, up to the configured character limit;
+- local creation date;
+- cleaned, consolidated text from all Markdown notes created on that day, across folders, up to the configured character limit;
 - scoring instructions;
 - a JSON response schema.
 
-The plugin does not include vault paths or filenames in the prompt. It reads the API key from `GROQ_API_KEY` in the Obsidian process environment and does not persist the key.
+Notes are grouped by Obsidian's `TFile.stat.ctime` creation timestamp. The plugin excludes its generated `Mood History/` files and `.trash/` notes. It does not include vault paths or filenames in the prompt. It reads the API key from `GROQ_API_KEY` in the Obsidian process environment and does not persist the key.
 
 Groq controls its own processing and retention. Review [Groq's data-handling documentation](https://console.groq.com/docs/your-data) before enabling remote analysis.
 

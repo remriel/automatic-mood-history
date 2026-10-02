@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 — 2026-10-02
+
+- Group every Markdown note by the local calendar day of Obsidian's file-creation timestamp, across all folders and filenames.
+- Reanalyze changed notes within their creation-date group and exclude generated history and trash files.
+- Preserve records from previous filename/frontmatter date grouping and label them as legacy.
+- Remove the obsolete Daily-folder scope settings and explain timestamp grouping in the dashboard and methodology.
+
 ## 1.1.2 — 2026-10-02
 
 - Prevent startup load failures when Obsidian has not indexed existing output folders yet.

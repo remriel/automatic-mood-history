@@ -40,6 +40,7 @@ assert.deepStrictEqual(validated.emotions, ["angry"]);
 
 const markdown = core.buildEntryMarkdown({
   date: "2030-03-14",
+  dateBasis: "created-at-local-date",
   status: "complete",
   analysisSource: "reviewed-backfill",
   model: "synthetic-test-v1",
@@ -57,6 +58,7 @@ const markdown = core.buildEntryMarkdown({
   analyzedAt: "2030-03-14T12:00:00Z"
 });
 assert(markdown.includes('analysis_source: "reviewed-backfill"'));
+assert(markdown.includes('date_basis: "created-at-local-date"'));
 assert(markdown.includes("[[Daily/2030-03-14]]"));
 
 console.log("automatic-mood-history core tests passed");

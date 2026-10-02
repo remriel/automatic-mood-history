@@ -282,7 +282,7 @@ function validateAnalysis(input) {
       ? input.valence
       : moodToValence(moodScore),
     emotions: emotions.length ? emotions : [moodScore < 3 ? "sad" : moodScore > 3 ? "hopeful" : "confused"],
-    summary: String(input.summary || "Sentiment inferred from the dated note.").slice(0, 500),
+    summary: String(input.summary || "Sentiment inferred from the notes created that day.").slice(0, 500),
     drivers: (input.drivers || []).map(String).filter(Boolean).slice(0, 4),
     confidence: ["low", "medium", "high"].includes(input.confidence) ? input.confidence : "low",
     confidenceReason: String(input.confidenceReason || "Limited or mixed evidence in the source text.").slice(0, 500)
@@ -357,6 +357,7 @@ function buildEntryMarkdown(record) {
     'type: "automatic-mood-entry"',
     "automatic_mood_history: true",
     `date: ${escapeYaml(record.date)}`,
+    `date_basis: ${escapeYaml(record.dateBasis || "legacy-note-date")}`,
     `status: ${escapeYaml(record.status)}`,
     `analysis_source: ${escapeYaml(record.analysisSource)}`,
     `confidence: ${escapeYaml(record.confidence || "none")}`,
@@ -433,10 +434,10 @@ const {
 
 
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
+const CREATED_DATE_BASIS = "created-at-local-date";
+const LEGACY_DATE_BASIS = "legacy-note-date";
 
 const DEFAULT_SETTINGS = {
-  dailyFolder: "Daily",
-  includeOutsideDailyFolder: false,
   enableGroq: false,
   model: "openai/gpt-oss-20b",
   outputFolder: "Mood History",
@@ -454,9 +455,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // Version 1.1.0 let synced vault data choose any process variable. Keep
     // reading only the one documented provider key after upgrading.
     this.settings.apiKeyEnvironmentVariable = GROQ_API_KEY_ENV;
+    delete this.settings.dailyFolder;
+    delete this.settings.includeOutsideDailyFolder;
     this.records = loaded.records || {};
     for (const record of Object.values(this.records)) {
       if (record?.analysisSource === "assistant-backfill") record.analysisSource = "reviewed-backfill";
+      if (record && !record.dateBasis) record.dateBasis = LEGACY_DATE_BASIS;
     }
     this.runtime = loaded.runtime || {};
     this.runtime.lastLoadedAt = new Date().toISOString();
@@ -478,22 +482,22 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     });
     this.addCommand({
       id: "analyze-changed-daily-notes",
-      name: "Analyze changed daily notes",
+      name: "Analyze changed notes",
       callback: () => this.analyzeAll({ force: false, forceGroq: false })
     });
     this.addCommand({
       id: "reanalyze-all-with-groq",
-      name: "Reanalyze all daily notes with Groq",
+      name: "Reanalyze all notes with Groq",
       callback: () => this.retryAllWithGroq()
     });
     this.addCommand({
       id: "analyze-active-note",
-      name: "Analyze the active dated note",
+      name: "Analyze the active note",
       callback: async () => {
         const file = this.app.workspace.getActiveFile();
-        const date = file ? this.getDateForFile(file) : null;
+        const date = file ? this.getCreationDateForFile(file) : null;
         if (!date) {
-          new Notice("Automatic Mood History: the active note has no recognizable date.");
+          new Notice("Automatic Mood History: the active note has no creation timestamp.");
           return;
         }
         await this.analyzeDate(date, { force: true, forceGroq: false });
@@ -546,20 +550,17 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.registerEvent(this.app.vault.on("modify", (file) => this.handleSourceEvent(file)));
     this.registerEvent(this.app.vault.on("delete", (file) => this.handleSourceEvent(file)));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
-      this.handleSourceEvent(file);
-      const oldDate = this.dateFromPath(oldPath);
-      if (oldDate) this.scheduleDate(oldDate);
+      if (!this.settings.autoAnalyze || !(file instanceof TFile)) return;
+      const affectedDates = new Set([
+        this.getCreationDateForFile(file, oldPath),
+        this.getCreationDateForFile(file)
+      ].filter(Boolean));
+      for (const date of affectedDates) this.scheduleDate(date);
     }));
   }
 
   get outputFolder() {
     return this.settings.outputFolder.replace(/^\/+|\/+$/g, "");
-  }
-
-  isInDailyFolder(path) {
-    const folder = String(this.settings.dailyFolder || "Daily").replace(/^\/+|\/+$/g, "");
-    const normalizedPath = String(path || "").replace(/^\/+/, "");
-    return folder ? normalizedPath.startsWith(folder + "/") : !normalizedPath.includes("/");
   }
 
   get dashboardPath() {
@@ -570,35 +571,21 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return `${this.outputFolder}/Entries`;
   }
 
-  dateFromPath(path) {
-    const filename = String(path || "").split("/").pop() || "";
-    const match = filename.match(/^(\d{4}-\d{2}-\d{2})(?:\b|\s|\.|-)/);
-    return match && this.isValidDate(match[1]) ? match[1] : null;
-  }
-
-  isValidDate(value) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return false;
-    const date = new Date(`${value}T12:00:00`);
-    return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
-  }
-
-  getDateForFile(file) {
+  getCreationDateForFile(file, path = file?.path) {
     if (!(file instanceof TFile) || file.extension.toLowerCase() !== "md") return null;
-    if (file.path.startsWith(`${this.outputFolder}/`) || file.path.startsWith(".trash/")) return null;
-    const pathDate = this.dateFromPath(file.path);
-    const insideDailyFolder = this.isInDailyFolder(file.path);
-    const includeOutside = this.settings.includeOutsideDailyFolder;
-    if (pathDate && (insideDailyFolder || includeOutside)) return pathDate;
-    const cache = this.app.metadataCache.getFileCache(file);
-    const frontmatter = cache?.frontmatter || {};
-    const frontmatterDate = typeof frontmatter.date === "string" ? frontmatter.date.slice(0, 10) : "";
-    if (this.isValidDate(frontmatterDate) && (insideDailyFolder || (includeOutside && frontmatter.type === "daily"))) {
-      return frontmatterDate;
-    }
-    if (!includeOutside) return null;
-    const aliases = Array.isArray(frontmatter.aliases) ? frontmatter.aliases : [frontmatter.aliases].filter(Boolean);
-    const aliasDate = aliases.find((value) => this.isValidDate(String(value)));
-    return aliasDate ? String(aliasDate) : null;
+    const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    const outputFolder = this.outputFolder;
+    if ((outputFolder && (normalizedPath === outputFolder || normalizedPath.startsWith(`${outputFolder}/`))) ||
+      normalizedPath === ".trash" || normalizedPath.startsWith(".trash/")) return null;
+
+    const timestamp = file.stat?.ctime;
+    if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
+    const createdAt = new Date(timestamp);
+    if (Number.isNaN(createdAt.valueOf())) return null;
+    const year = createdAt.getFullYear();
+    const month = String(createdAt.getMonth() + 1).padStart(2, "0");
+    const day = String(createdAt.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 
   topicForFile(file) {
@@ -609,13 +596,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   getAllDates() {
     return Array.from(new Set(
-      this.app.vault.getMarkdownFiles().map((file) => this.getDateForFile(file)).filter(Boolean)
+      this.app.vault.getMarkdownFiles().map((file) => this.getCreationDateForFile(file)).filter(Boolean)
     )).sort();
   }
 
   filesForDate(date) {
     return this.app.vault.getMarkdownFiles()
-      .filter((file) => this.getDateForFile(file) === date)
+      .filter((file) => this.getCreationDateForFile(file) === date)
       .sort((a, b) => a.path.localeCompare(b.path));
   }
 
@@ -643,7 +630,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   handleSourceEvent(file) {
     if (!this.settings.autoAnalyze || !(file instanceof TFile)) return;
-    const date = this.getDateForFile(file);
+    const date = this.getCreationDateForFile(file);
     if (date) this.scheduleDate(date);
   }
 
@@ -689,8 +676,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   groqPrompt(date, text) {
     return [
-      `Date: ${date}`,
-      "Analyze the emotional state expressed by the journal author in the text below.",
+      `Local creation date: ${date}`,
+      "Analyze the emotional state expressed across the Markdown notes created on this date.",
       "Distinguish the author's emotions from emotions attributed to other people, quoted material, abstract analysis, hypotheticals, and negated feelings.",
       "Do not diagnose mental illness. Score only evidence present in the writing.",
       "Mood: 1 severe distress/strongly negative, 2 negative, 3 mixed or neutral, 4 positive, 5 strongly positive.",
@@ -784,7 +771,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async analyzeDate(date, options = {}) {
     const gathered = await this.gatherDate(date);
     const previous = this.records[date];
-    if (!options.force && previous?.contentHash === gathered.contentHash) return false;
+    if (!options.force && previous?.contentHash === gathered.contentHash) {
+      if (previous.dateBasis === CREATED_DATE_BASIS) return false;
+      previous.dateBasis = CREATED_DATE_BASIS;
+      await this.savePluginData();
+      this.refreshRenderers();
+      return true;
+    }
 
     let record;
     if (gathered.analysisText.length < this.settings.minimumCharacters) {
@@ -802,7 +795,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         summary: "Not enough written text to infer a mood reliably.",
         drivers: [],
         confidence: "none",
-        confidenceReason: "The dated source was empty or contained only non-text material."
+        confidenceReason: "Notes created on this date were empty or contained only non-text material."
       };
     } else {
       let analysis;
@@ -843,6 +836,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
 
     Object.assign(record, {
+      dateBasis: CREATED_DATE_BASIS,
       contentHash: gathered.contentHash,
       sourcePaths: gathered.sourcePaths,
       analyzedAt: new Date().toISOString()
@@ -856,14 +850,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async analyzeAll(options = {}) {
     const dates = this.getAllDates();
-    new Notice(`Automatic Mood History: checking ${dates.length} dated entries…`);
+    new Notice(`Automatic Mood History: checking ${dates.length} creation-date groups…`);
     let changed = 0;
     for (const date of dates) {
       if (await this.analyzeDate(date, options)) changed += 1;
     }
     await this.ensureSupportFiles();
     const suffix = this.lastGroqError ? " Groq was unavailable; affected entries use the labeled local fallback." : "";
-    new Notice(`Automatic Mood History: ${changed} entries updated.${suffix}`, 9000);
+    new Notice(`Automatic Mood History: ${changed} creation-date groups updated.${suffix}`, 9000);
   }
 
   async retryAllWithGroq() {
@@ -959,9 +953,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async ensureSupportFiles() {
     await this.ensureFolder(this.outputFolder);
     await this.ensureFolder(this.entriesFolder);
-    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard automatically analyzes dated notes. Scores are text inferences, not diagnoses. Open a source note before treating a score as definitive.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## All entries\n\n![[${this.outputFolder}/Mood History.base]]\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all daily notes with Groq** to retry Groq or refresh every date.\n`;
+    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups every Markdown note by the local calendar day of its Obsidian creation timestamp, regardless of folder or filename. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## All entries\n\n![[${this.outputFolder}/Mood History.base]]\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
-    const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates all dated Markdown sources for one calendar day, removes duplicate paragraphs, and hashes the result. It runs again only when that source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nGroq is used when \`${this.settings.apiKeyEnvironmentVariable}\` is available and the API is reachable. The API key is read from the process environment and is never saved in this vault. If Groq cannot be reached, a deterministic local word-pattern fallback produces a low-confidence directional result. Every entry records its analyzer.\n`;
+    const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEvery Markdown note in the vault is grouped by the local calendar day of its Obsidian creation timestamp, TFile.stat.ctime. Folder, filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates all Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nGroq is used when \`${this.settings.apiKeyEnvironmentVariable}\` is available and the API is reachable. The API key is read from the process environment and is never saved in this vault. If Groq cannot be reached, a deterministic local word-pattern fallback produces a low-confidence directional result. Every entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, dashboard, false);
     await this.writeTextFile(`${this.outputFolder}/Mood History.base`, base, false);
     await this.writeTextFile(`${this.outputFolder}/Methodology.md`, methodology, false);
@@ -992,7 +986,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     element.empty();
     const wrapper = element.createDiv({ cls: "auto-mood-dashboard" });
     const records = Object.values(this.records).sort((a, b) => a.date.localeCompare(b.date));
-    const complete = records.filter((record) => record.status === "complete" && Number.isFinite(record.moodScore));
+    const timestampRecords = records.filter((record) => record.dateBasis === CREATED_DATE_BASIS);
+    const complete = timestampRecords.filter((record) => record.status === "complete" && Number.isFinite(record.moodScore));
 
     const toolbar = wrapper.createDiv({ cls: "auto-mood-toolbar" });
     toolbar.createEl("strong", { text: "AUTOMATIC MOOD HISTORY" });
@@ -1028,7 +1023,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const groqCount = complete.filter((record) => record.analysisSource === "groq").length;
     const reviewedCount = complete.filter((record) => record.analysisSource === "reviewed-backfill").length;
     const fallbackCount = complete.filter((record) => record.analysisSource === "local-fallback").length;
-    provenance.setText(`Analyzer coverage: ${groqCount} Groq · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${records.length - complete.length} insufficient evidence.`);
+    provenance.setText(`Timestamp groups: ${timestampRecords.length} · ${groqCount} Groq · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved and labeled legacy.`);
   }
 
   renderTrendChart(parent, records) {
@@ -1123,7 +1118,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const scroll = section.createDiv({ cls: "auto-mood-table-scroll" });
     const table = scroll.createEl("table");
     const head = table.createEl("thead").createEl("tr");
-    for (const label of ["Date", "Mood", "Energy", "Connection", "Emotions", "Reading", "Analyzer"]) {
+    for (const label of ["Date", "Date basis", "Mood", "Energy", "Connection", "Emotions", "Reading", "Analyzer"]) {
       head.createEl("th", { text: label });
     }
     const body = table.createEl("tbody");
@@ -1134,6 +1129,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       const link = dateCell.createEl("a", { text: record.date, cls: "internal-link" });
       link.setAttribute("data-href", entryPath);
       link.setAttribute("href", entryPath);
+      row.createEl("td", { text: record.dateBasis === CREATED_DATE_BASIS ? "Created timestamp" : "Legacy date" });
       if (record.status === "insufficient") {
         row.createEl("td", { text: "—", attr: { colspan: "3" } });
         row.createEl("td", { text: "—" });
@@ -1164,11 +1160,11 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h2", { text: "Automatic Mood History" });
     containerEl.createEl("p", {
-      text: "Local analysis is the default. Groq is optional and off until enabled. Its key is read from GROQ_API_KEY in the Obsidian process environment and is never stored in this vault."
+      text: "Every Markdown note is grouped by the local date of its Obsidian creation timestamp, regardless of folder or filename. Local analysis is the default. Groq is optional and off until enabled. Its key is read from GROQ_API_KEY in the Obsidian process environment and is never stored in this vault."
     });
     new Setting(containerEl)
       .setName("Enable Groq analysis")
-      .setDesc("When enabled, analysis may send cleaned dated-note text to Groq. This setting is off by default.")
+      .setDesc("When enabled, analysis may send cleaned text from all notes created that date to Groq. This setting is off by default.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.enableGroq)
         .onChange(async (value) => {
@@ -1189,26 +1185,8 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
           await this.plugin.savePluginData();
         }));
     new Setting(containerEl)
-      .setName("Daily notes folder")
-      .setDesc("Only notes in this folder are included by default. Use a vault-relative folder path.")
-      .addText((text) => text
-        .setValue(this.plugin.settings.dailyFolder)
-        .onChange(async (value) => {
-          this.plugin.settings.dailyFolder = value.trim().replace(/^\/+|\/+$/g, "") || "Daily";
-          await this.plugin.savePluginData();
-        }));
-    new Setting(containerEl)
-      .setName("Analyze dated notes outside this folder")
-      .setDesc("Also include date-named notes elsewhere and exact date aliases on moved notes.")
-      .addToggle((toggle) => toggle
-        .setValue(this.plugin.settings.includeOutsideDailyFolder)
-        .onChange(async (value) => {
-          this.plugin.settings.includeOutsideDailyFolder = value;
-          await this.plugin.savePluginData();
-        }));
-    new Setting(containerEl)
       .setName("Analyze note changes automatically")
-      .setDesc("Reanalyze a date after a dated source note changes.")
+      .setDesc("Reanalyze the note's creation-date group after any included note changes.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.autoAnalyze)
         .onChange(async (value) => {
@@ -1216,8 +1194,8 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
           await this.plugin.savePluginData();
         }));
     new Setting(containerEl)
-      .setName("Backfill on startup")
-      .setDesc("Check all dated notes after Obsidian starts. Unchanged source hashes are skipped.")
+      .setName("Analyze on startup")
+      .setDesc("Check all note creation-date groups after Obsidian starts. Unchanged source hashes are skipped.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.analyzeOnStartup)
         .onChange(async (value) => {
@@ -1230,7 +1208,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         void this.plugin.analyzeAll({ force: false, forceGroq: false });
       }));
     new Setting(containerEl)
-      .setName("Retry every date with Groq")
+      .setName("Retry every creation-date group with Groq")
       .setDesc("Forces reanalysis and retries Groq even after a recent network error.")
       .addButton((button) => button.setButtonText("Retry Groq").onClick(() => {
         void this.plugin.retryAllWithGroq();
