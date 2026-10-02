@@ -47,10 +47,11 @@
 
 ## Known limitations and unresolved items
 
+- Release 1.1.1 is installed in the local Obsidian plugin folder, and the Obsidian runtime reports it loaded successfully. The existing plugin data file was preserved.
 - The new dark theme has not yet been inspected in the live Obsidian app.
-- GitHub Actions run `37050294845` passed for commit `5b3829b`, including the sanitized fixture checks. The public release tag and assets are pending.
+- CI run `37050294845` passed on the corrected source. Release workflow `37050813967` passed the test suite, manifest-tag check, and asset upload for release `1.1.1`.
 - The Groq service and configured model can change independently of this plugin; local analysis remains available.
 
 ## RESUME HERE
 
-The public repository is live at `https://github.com/remriel/automatic-mood-history`, commit `5b3829b` is pushed to `main`, and CI run `37050294845` passed. Push tag `1.1.1` and confirm the release assets. The live Obsidian dark-theme rendering and any update inside the private vault remain unverified; do not seed or backfill vault records during publication.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.1` is published with `main.js`, `manifest.json`, and `styles.css`, and the local Obsidian runtime reports the installed version loaded. CI and the release workflow passed. The live dark-theme appearance has not been visually inspected. Do not add vault records or personal settings to this public repository.

@@ -1,8 +1,8 @@
 # Project Progress
 
-## Current objective — dark-mode refinement and public GitHub release
+## Current objective — dark-mode refinement, public GitHub release, and Obsidian install
 
-**Progress: 90%**
+**Progress: 100%**
 
 - [x] Locate the standalone plugin source and reconcile the handoff notes with the source tree.
 - [x] Identify and correct mismatches between the privacy documentation and runtime defaults.
@@ -14,15 +14,16 @@
 - [x] Scan public files for personal paths, names, dates, diary excerpts, and credentials.
 - [x] Create the public GitHub repository and push `main`.
 - [x] Push the CI assertion correction and confirm a passing run.
-- [ ] Push tag `1.1.1` and confirm the release assets.
+- [x] Push tag `1.1.1` and confirm the release assets.
+- [x] Install release `1.1.1` into the local Obsidian plugin folder, preserve existing plugin data, and confirm runtime load.
 
 ## Current implementation state
 
-The public repository is `https://github.com/remriel/automatic-mood-history`. Commit `5b3829bd2fd5f041f99294cb894e9327033d87fd` is pushed to `main`, and CI run `37050294845` passed. `npm run build` generated `main.js` at 51,106 bytes. The surrounding vault project files were excluded.
+The public repository is `https://github.com/remriel/automatic-mood-history`; public release `1.1.1` includes `main.js`, `manifest.json`, and `styles.css`. The release workflow passed on tag commit `2929b0513d5525be637509f10396142341e8387e`. Personal vault data and the surrounding work folder are not part of the repository.
 
 ## Current blockers
 
-Current blocker: push tag `1.1.1` and confirm the release assets.
+No blockers remain for this public release.
 
 ## Verification performed
 
@@ -34,10 +35,10 @@ Current blocker: push tag `1.1.1` and confirm the release assets.
 - Initial GitHub Actions run `37048590402` exposed an assertion left over from the fixture sanitization.
 - Corrected the assertion; run `37050294845` passed on commit `5b3829b`.
 - No test suite has been run locally.
+- Installed version `1.1.1` reports `loaded` in Obsidian runtime data; existing plugin data was preserved. No live screenshot was captured, so visual dark-mode appearance remains unverified.
 
 ## Exact next steps
 
-1. Push tag `1.1.1` and wait for the release workflow.
-2. Confirm the public release contains `main.js`, `manifest.json`, and `styles.css`.
-3. Install the release files in the local Obsidian plugin folder while preserving `data.json` and existing mood history.
-4. Verify runtime load status and record the release URL, CI result, and live UI verification boundary.
+1. Sync this installation-verification documentation update to GitHub and confirm main CI.
+2. For a future update, implement from `src/`, build `main.js`, update the manifest/version files, and tag the matching release.
+3. Visually inspect dark mode in Obsidian when desktop screenshot automation is available.
