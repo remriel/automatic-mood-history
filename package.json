@@ -1,0 +1,12 @@
+{
+  "name": "automatic-mood-history",
+  "version": "1.1.1",
+  "private": true,
+  "description": "Local-first mood history for dated Obsidian notes, with optional Groq analysis.",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "check": "node --check src/main.js && node --check src/sentiment-core.js && node --check main.js",
+    "test": "npm run build && npm run check && node tests/core.test.js && node tests/bundle-load.test.js && node tests/onload.test.js && node tests/groq-fallback.test.js"
+  },
+  "license": "MIT"
+}
