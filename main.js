@@ -427,6 +427,7 @@ const {
   PluginSettingTab,
   Setting,
   TFile,
+  TFolder,
   requestUrl
 } = require("obsidian");
 
@@ -467,7 +468,6 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.groqBlockedUntil = 0;
     this.lastGroqError = "";
 
-    await this.ensureSupportFiles();
     await this.savePluginData();
 
     this.addRibbonIcon("activity", "Open Automatic Mood History", () => this.openDashboard());
@@ -511,8 +511,15 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
     this.addSettingTab(new AutomaticMoodHistorySettingTab(this.app, this));
 
-    this.app.workspace.onLayoutReady(() => {
+    this.app.workspace.onLayoutReady(async () => {
       this.registerSourceEvents();
+      try {
+        await this.ensureSupportFiles();
+        await this.savePluginData();
+      } catch (error) {
+        console.error("Automatic Mood History could not prepare its history files", error);
+        new Notice(`Automatic Mood History loaded, but could not prepare its history files: ${error.message}`, 9000);
+      }
       if (this.settings.analyzeOnStartup) {
         const startupTimer = window.setTimeout(() => {
           void this.analyzeAll({ force: false, forceGroq: false });
@@ -869,12 +876,38 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async ensureFolder(path) {
     const normalized = path.replace(/^\/+|\/+$/g, "");
-    if (!normalized || this.app.vault.getAbstractFileByPath(normalized)) return;
+    if (!normalized) return;
+
+    const folderExists = async (folderPath) => {
+      const abstractFile = this.app.vault.getAbstractFileByPath(folderPath);
+      if (abstractFile) {
+        if (!(abstractFile instanceof TFolder)) {
+          throw new Error(`Expected a folder at "${folderPath}".`);
+        }
+        return true;
+      }
+
+      // The adapter can see folders on disk before Obsidian's abstract-file
+      // cache indexes them. Check it before creating folders during startup.
+      const stat = await this.app.vault.adapter.stat(folderPath);
+      if (!stat) return false;
+      if (stat.type !== "folder") throw new Error(`Expected a folder at "${folderPath}".`);
+      return true;
+    };
+
     const parts = normalized.split("/");
     let current = "";
     for (const part of parts) {
       current = current ? `${current}/${part}` : part;
-      if (!this.app.vault.getAbstractFileByPath(current)) await this.app.vault.createFolder(current);
+      if (await folderExists(current)) continue;
+      try {
+        await this.app.vault.createFolder(current);
+      } catch (error) {
+        // Another startup task may create the same directory between the
+        // existence check and createFolder. Ignore only a confirmed folder.
+        if (await folderExists(current)) continue;
+        throw error;
+      }
     }
   }
 

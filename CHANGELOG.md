@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2 — 2026-10-02
+
+- Prevent startup load failures when Obsidian has not indexed existing output folders yet.
+- Defer generated-file setup until the vault layout is ready and safely handle confirmed folder-creation races.
+
 ## 1.1.1 — 2026-10-02
 
 - Improve dark-mode contrast and adapt surfaces, borders, and chart grids to the active Obsidian theme.

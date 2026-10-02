@@ -27,6 +27,7 @@
 - Version 1.1.0 documentation promised opt-in Groq and bounded folder scope, but code defaults could scan on startup, analyze on note edits, and call Groq when the key existed. Version 1.1.1 aligns behavior with the privacy documentation.
 - Version 1.1.0 exposed an editable environment-variable name. This is now pinned to `GROQ_API_KEY` so synced plugin data cannot select another process secret.
 - An earlier test fixture contained a real-looking backfill date and derived mood values. It has been replaced with synthetic data.
+- A fresh 1.1.1 launch logged `Plugin failure: automatic-mood-history Error: Folder already exists.` The failure came from support-folder creation during `onload`. Version 1.1.2 moves setup after Obsidian's layout-ready event, checks adapter state, and accepts only confirmed existing folders after a creation race.
 - The release workflow validates that the pushed tag equals the manifest version and attaches `main.js`, `manifest.json`, and `styles.css`.
 - The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; commit `5b3829bd2fd5f041f99294cb894e9327033d87fd` is pushed to `main`.
 
@@ -47,11 +48,11 @@
 
 ## Known limitations and unresolved items
 
-- Release 1.1.1 is installed in the local Obsidian plugin folder, and the Obsidian runtime reports it loaded successfully. The existing plugin data file was preserved.
+- The 1.1.2 build is installed locally. A fresh Obsidian launch saved runtime version `1.1.2` with status `loaded`; the diagnostic stderr contained no plugin failure or support-folder error.
 - The new dark theme has not yet been inspected in the live Obsidian app.
-- CI run `37050294845` passed on the corrected source. Release workflow `37050813967` passed the test suite, manifest-tag check, and asset upload for release `1.1.1`.
+- CI run `37053044933` passed for the 1.1.1 installation-documentation update. Release workflow `37050813967` passed for release `1.1.1`; the 1.1.2 push and release are pending.
 - The Groq service and configured model can change independently of this plugin; local analysis remains available.
 
 ## RESUME HERE
 
-The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.1` is published with `main.js`, `manifest.json`, and `styles.css`, and the local Obsidian runtime reports the installed version loaded. CI and the release workflow passed. The live dark-theme appearance has not been visually inspected. Do not add vault records or personal settings to this public repository.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.1` remains published. Version 1.1.2 fixes the captured `Folder already exists.` startup failure by deferring support-folder setup until layout-ready and verifying existing folders through the adapter when the file cache lags. The full local test suite passed, and a fresh Obsidian launch persisted runtime version `1.1.2`, status `loaded`, with no matching startup errors. Push main, confirm CI, tag `1.1.2`, and confirm its release assets. Do not add vault records or personal settings to this public repository.

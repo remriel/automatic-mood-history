@@ -1,44 +1,38 @@
 # Project Progress
 
-## Current objective — dark-mode refinement, public GitHub release, and Obsidian install
+## Current objective — fix the Obsidian startup load failure and publish the patch
 
-**Progress: 100%**
+**Progress: 85%**
 
-- [x] Locate the standalone plugin source and reconcile the handoff notes with the source tree.
-- [x] Identify and correct mismatches between the privacy documentation and runtime defaults.
-- [x] Improve dark-mode surfaces, contrast, borders, chart grid, and theme adaptation.
-- [x] Make Groq opt-in, pin the API key lookup, and scope default analysis to the configured Daily folder.
-- [x] Add conflict-safe output names and replace personal-derived test fixtures with synthetic examples.
-- [x] Update release metadata and documentation for version 1.1.1.
-- [x] Build the bundled release `main.js` and pass Node syntax checks.
-- [x] Scan public files for personal paths, names, dates, diary excerpts, and credentials.
-- [x] Create the public GitHub repository and push `main`.
-- [x] Push the CI assertion correction and confirm a passing run.
-- [x] Push tag `1.1.1` and confirm the release assets.
-- [x] Install release `1.1.1` into the local Obsidian plugin folder, preserve existing plugin data, and confirm runtime load.
+- [x] Capture the actual Obsidian startup error: `Folder already exists.`
+- [x] Trace the failure to eager support-folder setup during plugin `onload`.
+- [x] Defer generated-folder setup until layout-ready and add adapter checks plus a race-safe recovery path.
+- [x] Add a regression test that reproduces a duplicate-folder creation race and verifies history is preserved.
+- [x] Run the full local test suite and inspect the patch.
+- [x] Install the 1.1.2 build without replacing `data.json` and verify a fresh Obsidian startup.
+- [ ] Commit and push the fix, confirm CI, tag `1.1.2`, and confirm release assets.
+- [ ] Update the private project handoff with the verified startup result.
 
 ## Current implementation state
 
-The public repository is `https://github.com/remriel/automatic-mood-history`; public release `1.1.1` includes `main.js`, `manifest.json`, and `styles.css`. The release workflow passed on tag commit `2929b0513d5525be637509f10396142341e8387e`. Personal vault data and the surrounding work folder are not part of the repository.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.1` remains published. Version `1.1.2` passes local tests and fresh-launch verification but has not been pushed or released yet. No vault data is included in the repository.
 
 ## Current blockers
 
-No blockers remain for this public release.
+No code or local-install blocker remains. GitHub CI and the tagged 1.1.2 release are pending.
 
 ## Verification performed
 
-- Read project state and progress notes, inspected the source, manifest, release workflows, and both candidate directories.
-- Confirmed the public source contains a test fixture that needed synthetic replacement and that the surrounding project folder is not a Git repository.
-- `rtk npm run build` completed successfully and regenerated `main.js` at 51,106 bytes.
-- `rtk npm run check` passed for both source files and the bundle.
-- The public-file scan matched only generic privacy documentation about cloud-sync risks; no personal diary content or secret value was found.
-- Initial GitHub Actions run `37048590402` exposed an assertion left over from the fixture sanitization.
-- Corrected the assertion; run `37050294845` passed on commit `5b3829b`.
-- No test suite has been run locally.
-- Installed version `1.1.1` reports `loaded` in Obsidian runtime data; existing plugin data was preserved. No live screenshot was captured, so visual dark-mode appearance remains unverified.
+- A fresh launch of 1.1.1 logged `Plugin failure: automatic-mood-history Error: Folder already exists.` The previously saved `loaded` marker was stale and did not verify that launch.
+- The 1.1.2 regression test simulates an existing directory missed by the vault cache and a duplicate-folder response from `createFolder`.
+- `npm test` passed: build, JavaScript syntax checks, core tests, bundled-load test, startup race test, and Groq fallback tests.
+- Installed `main.js`, `manifest.json`, and `styles.css` match the 1.1.2 working-tree files by SHA-256.
+- Fresh launch saved runtime version `1.1.2` and status `loaded`; startup stderr contained no plugin failure or folder setup error.
+- Existing history remained intact. The previous 1.1.1 plugin code is backed up outside the public repository; `data.json` was not replaced during install.
 
 ## Exact next steps
 
-1. Sync this installation-verification documentation update to GitHub and confirm main CI.
-2. For a future update, implement from `src/`, build `main.js`, update the manifest/version files, and tag the matching release.
-3. Visually inspect dark mode in Obsidian when desktop screenshot automation is available.
+1. Commit and push the tested 1.1.2 patch.
+2. Confirm main CI succeeds.
+3. Tag `1.1.2`, then confirm the release has `main.js`, `manifest.json`, and `styles.css`.
+4. Update the private project handoff with the release URL and successful fresh-start check.
