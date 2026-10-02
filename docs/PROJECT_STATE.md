@@ -28,7 +28,7 @@
 - Version 1.1.0 exposed an editable environment-variable name. This is now pinned to `GROQ_API_KEY` so synced plugin data cannot select another process secret.
 - An earlier test fixture contained a real-looking backfill date and derived mood values. It has been replaced with synthetic data.
 - The release workflow validates that the pushed tag equals the manifest version and attaches `main.js`, `manifest.json`, and `styles.css`.
-- The source folder initially had no Git metadata or remote. The public release repository is intended to be `remriel/automatic-mood-history`.
+- The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; commit `f8e7eb764554d188092ae66fd263e6dd07609e2b` is pushed to `main`.
 
 ## Failed approaches not to repeat
 
@@ -48,9 +48,9 @@
 ## Known limitations and unresolved items
 
 - The new dark theme has not yet been inspected in the live Obsidian app.
-- GitHub Actions still needs to run for the public push and release tag.
+- GitHub Actions run `37048590402` failed because a test assertion still expected the old fixture emotions after the fixture was sanitized. The assertion now matches the synthetic fixture; push this correction and rerun CI before tagging.
 - The Groq service and configured model can change independently of this plugin; local analysis remains available.
 
 ## RESUME HERE
 
-The 1.1.1 bundle is built and the targeted private-data scan is clean. Next inspect the staged Git content, create and push this directory to the public GitHub repository, then push tag `1.1.1` and confirm Actions created the release assets. Report that live Obsidian rendering remains unverified unless it is inspected in the app.
+The public repository is live at `https://github.com/remriel/automatic-mood-history`, commit `f8e7eb7` is pushed to `main`. The initial CI run exposed a stale assertion in the sanitized fixture; the assertion is corrected locally. Commit the correction, wait for passing CI, then push tag `1.1.1` and confirm release assets. The live Obsidian dark-theme rendering and any update inside the private vault remain unverified; do not seed or backfill vault records during publication.

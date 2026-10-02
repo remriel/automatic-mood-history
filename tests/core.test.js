@@ -7,7 +7,7 @@ const negative = core.localSentiment(
 );
 assert(negative.moodScore <= 2);
 assert(negative.connectionScore <= 2);
-assert(negative.emotions.includes("lonely") || negative.emotions.includes("angry"));
+assert(negative.emotions.includes("frustrated") || negative.emotions.includes("anxious"));
 assert.strictEqual(negative.confidence, "low");
 
 const positive = core.localSentiment(
