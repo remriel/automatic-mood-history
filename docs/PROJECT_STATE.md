@@ -31,9 +31,9 @@
 - Version 1.1.0 exposed an editable environment-variable name. This is now pinned to `GROQ_API_KEY` so synced plugin data cannot select another process secret.
 - An earlier test fixture contained a real-looking backfill date and derived mood values. It has been replaced with synthetic data.
 - A fresh 1.1.1 launch logged `Plugin failure: automatic-mood-history Error: Folder already exists.` The failure came from support-folder creation during `onload`. Version 1.1.2 moves setup after Obsidian's layout-ready event, checks adapter state, and accepts only confirmed existing folders after a creation race.
-- The user's corrected scope is all notes created on a day, using Obsidian creation timestamps. Version 1.2.0 implements local-day grouping from `TFile.stat.ctime` and no longer uses filenames, frontmatter dates, aliases, or Daily-folder settings.
+- The user's corrected scope is all notes created on a day, using Obsidian creation timestamps. Version 1.2.0 implements local-day grouping from `TFile.stat.ctime`, no longer uses filenames/frontmatter/aliases/folder scope, and preserves old records as legacy.
 - The release workflow validates that the pushed tag equals the manifest version and attaches `main.js`, `manifest.json`, and `styles.css`.
-- The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; startup fix commit `929d5cb0b9f787b71ce902bb3877cf5cafffcf41` is on `main` and tagged `1.1.2`.
+- The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; all-note timestamp commit `5fd02b1c836245c3ce0a2e2190b18b7c41934e7e` is tagged `1.2.0`.
 
 ## Failed approaches not to repeat
 
@@ -52,11 +52,11 @@
 
 ## Known limitations and unresolved items
 
-- Version `1.2.0` is installed locally. A fresh Obsidian launch reports `loaded`; the live scan grouped notes by creation timestamp, preserved old records with the legacy marker, and had no plugin errors.
+- Release `1.2.0` is published and installed locally. A fresh Obsidian launch reports `loaded`; the live scan grouped notes by creation timestamp, preserved old records with the legacy marker, and had no plugin errors. Downloaded release files match the source build and installed files by SHA-256.
 - The new dark theme has not yet been inspected in the live Obsidian app.
-- CI run `37054881647` passed on the 1.1.2 fix. The 1.2.0 source push and release workflow are pending.
+- CI run `37059163020` and release workflow `37059296342` passed for 1.2.0.
 - The Groq service and configured model can change independently of this plugin; local analysis remains available.
 
 ## RESUME HERE
 
-The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.2` is the previous published version. Version `1.2.0` groups all Markdown notes by local day from `TFile.stat.ctime`, preserves old records as legacy, removes obsolete Daily-folder settings, passes local tests, and loaded in Obsidian with no startup errors. Push main, confirm CI, tag `1.2.0`, and verify release assets. Do not add vault records or personal settings to this public repository.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.2.0` is published and installed. It groups every Markdown note by the local date of Obsidian's creation timestamp, preserves previous-scope entries as legacy, and removes the Daily-folder scope. Local tests, fresh Obsidian startup, CI, release workflow, and asset hashes passed. The live dark-theme appearance has not been visually inspected. Do not add vault records or personal settings to this public repository.

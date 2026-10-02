@@ -2,7 +2,7 @@
 
 ## Current objective — group all notes by creation timestamp and release the update
 
-**Progress: 80%**
+**Progress: 100%**
 
 - [x] Replace Daily-folder, filename, and frontmatter date discovery with all-vault Markdown grouping by Obsidian creation timestamp.
 - [x] Exclude generated history and trash notes; keep created-date grouping stable when notes are renamed.
@@ -11,15 +11,15 @@
 - [x] Add tests for all folders, timestamp dates overriding titles/frontmatter, exclusions, note grouping, and legacy record preservation.
 - [x] Pass the full local test suite and bundle build.
 - [x] Install `1.2.0` without replacing `data.json`; verify a fresh Obsidian launch, timestamp-grouped scan, and legacy-record preservation.
-- [ ] Push to GitHub, confirm CI, tag `1.2.0`, and verify release assets.
+- [x] Push to GitHub, confirm CI, tag `1.2.0`, and verify release assets.
 
 ## Current implementation state
 
-The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.1.2` remains published. Version `1.2.0` passes local tests and a fresh Obsidian scan, but is not pushed or released yet. Existing legacy records are kept and marked as prior-scope history.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.2.0` is published at `https://github.com/remriel/automatic-mood-history/releases/tag/1.2.0`. The tag points to code commit `5fd02b1c836245c3ce0a2e2190b18b7c41934e7e`. Version 1.2.0 is installed and scanned in Obsidian.
 
 ## Current blockers
 
-No code or real-vault blocker remains. GitHub CI and release publication are pending.
+No blocker remains for the all-note timestamp scope or release. A live dark-mode screenshot was not captured.
 
 ## Verification performed
 
@@ -28,9 +28,10 @@ No code or real-vault blocker remains. GitHub CI and release publication are pen
 - The regression test verifies that unchanged legacy analysis is relabeled without rewriting its generated entry or discarding its result.
 - `npm test` passed: bundle build, syntax checks, core tests, bundle-load test, startup regression, timestamp grouping, and Groq fallback.
 - A fresh Obsidian launch reports runtime version `1.2.0 / loaded`; the live scan grouped all Markdown notes from the Obsidian API by `ctime`, retained prior records as legacy, and reported no plugin errors.
+- GitHub CI run `37059163020` and release workflow `37059296342` passed. The published `main.js`, `manifest.json`, and `styles.css` hashes match the source build and installed files.
 
 ## Exact next steps
 
-1. Push the tested code and confirm main CI.
-2. Tag `1.2.0` and confirm all three release assets match source and installed files.
-3. Update the private project handoff with the release results.
+1. For a future issue, reproduce it against note creation timestamps across folders.
+2. For a future release, run `npm test` and ensure the version, tag, and assets match.
+3. Visually inspect dark mode in Obsidian when screenshot automation is available.
