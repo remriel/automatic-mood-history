@@ -42,7 +42,7 @@ let layoutReadyCallback;
 const createFolderCalls = [];
 let saveCalls = 0;
 const existingRecord = { date: "2099-01-02", status: "insufficient", sourceHash: "synthetic" };
-instance.manifest = { version: "1.2.0" };
+instance.manifest = { version: require("../manifest.json").version };
 instance.loadData = async () => ({
   settings: {
     dailyFolder: "Daily",
@@ -87,6 +87,7 @@ instance.app = {
       return file;
     },
     modify: async () => {},
+    cachedRead: async () => "",
     on: () => ({})
   },
   metadataCache: { getFileCache: () => ({}) },
@@ -100,7 +101,7 @@ instance.onload().then(() => {
   assert(saved);
   assert.strictEqual(saveCalls, 1, "plugin data is saved before vault folder setup");
   assert.strictEqual(saved.runtime.lastLoadStatus, "loaded");
-  assert.strictEqual(saved.runtime.version, "1.2.0");
+  assert.strictEqual(saved.runtime.version, instance.manifest.version);
   assert.strictEqual(saved.records["2099-01-02"], existingRecord, "existing history is preserved");
   assert.strictEqual(existingRecord.dateBasis, "legacy-note-date");
   assert.strictEqual(saved.settings.dailyFolder, undefined, "obsolete Daily-folder setting is removed");
@@ -115,6 +116,25 @@ instance.onload().then(() => {
   assert.strictEqual(saveCalls, 2, "runtime state is persisted after support files initialize");
   assert.strictEqual(saved.runtime.lastLoadStatus, "loaded");
   console.log("plugin startup tolerates a duplicate-folder race in the Obsidian mock");
+  // Layout-only startup/opening must not initiate analysis when preferences
+  // are off, even when remote analysis itself is opted in.
+  const manual = new LoadedPlugin();
+  manual.manifest = instance.manifest;
+  const complete = { date: "2099-02-03", dateBasis: "created-at-local-date", status: "complete", moodScore: 4, energyScore: 3, connectionScore: 4, intensityScore: 2, summary: "Fictional existing analysis", emotions: ["hopeful"], analysisSource: "groq", sourceHash: "fictional" };
+  const snapshot = JSON.stringify(complete);
+  manual.loadData = async () => ({ settings: { autoAnalyze: false, analyzeOnStartup: false, enableGroq: true }, records: { [complete.date]: complete } });
+  manual.saveData = async () => {};
+  for (const method of ["addRibbonIcon", "addCommand", "registerMarkdownCodeBlockProcessor", "registerEvent", "addSettingTab", "register"]) manual[method] = () => {};
+  manual.app = instance.app;
+  manual.app.workspace.getLeaf = () => ({ openFile: async () => {}, setViewState: async () => {} });
+  manual.analyzeAll = manual.analyzeDate = async () => { throw new Error("Unexpected sentiment analysis during layout-only startup"); };
+  return manual.onload().then(() => layoutReadyCallback()).then(() => manual.openDashboard()).then(() => {
+    manual.handleSourceEvent(new TFile("Fictional source.md"));
+    manual.refreshRenderers();
+    assert.strictEqual(manual.debounceTimers.size, 0, "disabled automatic analysis does not queue work");
+    assert.strictEqual(JSON.stringify(complete), snapshot, "layout-only startup and dashboard opening preserve existing records");
+    console.log("manual-only startup, source events, and dashboard opening do not analyze or change records");
+  });
 }).catch((error) => {
   console.error(error);
   process.exitCode = 1;

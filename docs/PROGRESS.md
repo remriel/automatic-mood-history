@@ -1,8 +1,37 @@
 # Project Progress
 
-## Current objective — group all notes by creation timestamp and release the update
+## Current objective — eliminate horizontal scrolling, install, and publish 1.2.2
 
-**Progress: 100%**
+**Progress: 85%**
+
+- [x] Read continuity, inspect Git changes, locate public source and live 1.2.1 installation.
+- [x] Reproduce chart/table overflow and identify the embedded Base and window-only breakpoint problems.
+- [x] Implement pane-responsive charts, history cards, controls/settings, and safe dashboard migration.
+- [x] Pass core/provider/migration regressions and browser layout tests; inspect screenshots.
+- [x] Back up/install without replacing data; verify native startup/layout and preserved record dates/settings.
+- [ ] Synchronize GitHub/release assets; verify CI and hashes.
+
+The source started with uncommitted 1.2.1 Groq recovery work below. Preserve it; 1.2.2 includes those fixes instead of resetting the dirty tree. The live installed version is 1.2.1, not the stale 1.2.0 in the previous snapshot. No private-note analysis is required. See `docs/LAYOUT_QA.md` for coverage.
+
+Verified: `npm test` passed the build and core/startup/timestamp/provider/migration tests. `npm run test:layout` passed light/dark 240–1440px panes, 200% text, long unbroken content, empty/insufficient/one-day and 365-day history, button/settings/link interactions, SVG label bounds, and observer cleanup. Wide and 390px fixture screenshots were reviewed; fixture data is fictional. Native install/reload and publication are next.
+
+Native 1.2.2 started successfully and rendered the new cards in the user's theme. The installer replaced only the three release code files and proved `data.json` unchanged at copy time. Settings and all record dates are preserved. The user explicitly ran analysis during native verification; retain the updated results, not the backup's older analysis. Prior-scope records stay unchanged. Native screenshots/backups are private. The app was subsequently closed; the full narrow-pane matrix is browser-fixture evidence, not a claim of native measurements at every width.
+
+## Previous staged 1.2.1 work (preserved)
+
+- [x] Reconcile source, Git state, installed provider diagnostics, and current settings.
+- [x] Identify the rejected schema field, incomplete-output handling, broken manual retry, and stale failure notices.
+- [x] Repair provider requests, output validation, retry state, and local-analysis labels.
+- [x] Add focused provider recovery regressions and pass the required build/test suite.
+- [x] Install while preserving data and preferences; verify a live Groq response and Obsidian startup (included in 1.2.2).
+- [x] Capture the dashboard in dark mode.
+- [ ] Push, publish 1.2.2 (superseding staged 1.2.1), verify CI and asset hashes.
+
+The earlier provider failure was HTTP 400 rejection of `uniqueItems`, followed by unusable fallback output. The staged repair is preserved and included in 1.2.2; current installation is 1.2.2.
+
+The 1.2.1 source removes the rejected constraint, supplies schema instructions before the user text, uses low GPT-OSS reasoning without returned reasoning, and retries completion-limit exhaustion once with a larger budget. It validates required result fields, keeps valid unchanged Groq records on a failed retry, serializes date analysis, honors Retry-After, and reports per-run results. A sample-text connection check and visible provider status are implemented. `npm test` passed all existing tests and the new provider recovery suite.
+
+## Completed 1.2.0 milestone
 
 - [x] Replace Daily-folder, filename, and frontmatter date discovery with all-vault Markdown grouping by Obsidian creation timestamp.
 - [x] Exclude generated history and trash notes; keep created-date grouping stable when notes are renamed.
@@ -19,7 +48,7 @@ The public repository is `https://github.com/remriel/automatic-mood-history`; re
 
 ## Current blockers
 
-No blocker remains for the all-note timestamp scope or release. A live dark-mode screenshot was not captured.
+No access blocker. The provider fix and live verification are in progress.
 
 ## Verification performed
 
@@ -32,6 +61,6 @@ No blocker remains for the all-note timestamp scope or release. A live dark-mode
 
 ## Exact next steps
 
-1. For a future issue, reproduce it against note creation timestamps across folders.
-2. For a future release, run `npm test` and ensure the version, tag, and assets match.
-3. Visually inspect dark mode in Obsidian when screenshot automation is available.
+1. Commit/push the completed 1.2.2 source and tag the exact manifest version.
+2. Wait for CI/release, download the three assets, and compare their hashes with the build/installation.
+3. Record final release evidence and update continuity.

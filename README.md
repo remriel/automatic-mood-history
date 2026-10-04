@@ -25,7 +25,7 @@ This plugin can transmit cleaned text from all Markdown notes created on a selec
 - The API key is never written to the vault or plugin data.
 - Groq receives the local creation date, cleaned text consolidated across that day's notes, scoring instructions, and response schema.
 - Filenames and vault paths remain local and are not included in the Groq prompt.
-- Generated records include the analyzer used: `groq`, `local-fallback`, `reviewed-backfill` (legacy records), or `none`.
+- Generated records include the analyzer used: `groq`, `local` (intentional local analysis), `local-fallback`, `reviewed-backfill` (legacy records), or `none`.
 - If enabled Groq analysis cannot be reached, that run falls back to local word-pattern scoring and is marked low confidence.
 
 Automatic note watching and startup backfill are also disabled by default. Do not enable Groq analysis if you do not want your dated-note text sent to Groq.
@@ -71,8 +71,17 @@ Use the command palette:
 - **Automatic Mood History: Analyze changed notes**
 - **Automatic Mood History: Reanalyze all notes with Groq**
 - **Automatic Mood History: Analyze the active note**
+- **Automatic Mood History: Check Groq connection with sample text**
+
+**Check Groq** sends a fictional sample instead of vault notes and shows whether the configured model returns valid analysis. The dashboard shows connection status, the last valid response, or a specific failure category. **Analyze changed** retries unchanged local results when the provider pause has expired. **Retry all with Groq** bypasses an old pause once; a new rate limit pauses the remaining requests in that run. Rate-limit pauses follow Groq's `Retry-After` header when supplied.
 
 Every Markdown note is assigned to the local calendar day of `TFile.stat.ctime`, Obsidian's file creation timestamp. Folder, filename, frontmatter dates, and aliases do not change the assigned day. Notes without a valid creation timestamp are skipped. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
+
+### Pane-responsive dashboard
+
+The dashboard is designed for vertical scrolling only. Charts redraw for the note pane's width with readable axes and fewer date labels when space is tight; no data points are dropped. Day-by-day cards wrap scores, emotion labels, analyzer/date-basis badges, and the complete summary rather than forcing a wide table or truncating text. Controls and settings also reflow based on their own pane, not the overall application window.
+
+Existing plugin-owned dashboard notes have only their exact Base embed replaced by a link; custom writing and metadata are preserved. The optional native Base table remains available as a separate Obsidian view with its own table behavior, but it is no longer embedded in the dashboard.
 
 Local analysis is the default. Automatic note watching and startup analysis are off for new installs. Enabling Groq can send the cleaned text from every note in an analyzed creation-date group to Groq; review the opt-in settings before running a full scan.
 

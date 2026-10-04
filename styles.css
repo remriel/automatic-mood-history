@@ -1,3 +1,18 @@
+.auto-mood-render-root {
+  container-name: auto-mood;
+  container-type: inline-size;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.auto-mood-dashboard,
+.auto-mood-dashboard *,
+.auto-mood-dashboard *::before,
+.auto-mood-dashboard *::after {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
 .auto-mood-dashboard {
   --amh-text: #171717;
   --amh-frame: #171717;
@@ -27,6 +42,12 @@
   padding: 18px;
   margin: 18px 8px 28px;
   font-family: var(--font-interface);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.auto-mood-toolbar > strong {
+  color: var(--amh-on-accent);
 }
 
 .auto-mood-toolbar {
@@ -51,6 +72,25 @@
   gap: 9px;
 }
 
+.auto-mood-provider-status {
+  color: var(--amh-text);
+  background: var(--amh-surface);
+  border: 2px solid var(--amh-frame);
+  border-left: 8px solid var(--amh-green);
+  padding: 10px 12px;
+  margin: 0 0 18px;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.auto-mood-provider-status[data-kind="warning"] {
+  border-left-color: var(--amh-yellow);
+}
+
+.auto-mood-provider-status[data-kind="local"] {
+  border-left-color: var(--amh-blue);
+}
+
 .auto-mood-actions button {
   appearance: none;
   background: #fff;
@@ -60,6 +100,11 @@
   box-shadow: 3px 3px 0 var(--amh-shadow);
   font-weight: 800;
   padding: 7px 10px;
+  height: auto;
+  min-height: 36px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .auto-mood-actions button:hover {
@@ -70,7 +115,7 @@
 
 .auto-mood-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
   gap: 13px;
   margin-bottom: 20px;
 }
@@ -119,18 +164,47 @@
   letter-spacing: 0.09em;
 }
 
-.auto-mood-chart-scroll,
-.auto-mood-table-scroll {
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scrollbar-gutter: stable;
-  padding-bottom: 6px;
+.auto-mood-chart {
+  width: 100%;
+  max-width: 100%;
+}
+
+.auto-mood-chart-range {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  color: var(--amh-text);
+}
+
+.auto-mood-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.auto-mood-chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.auto-mood-legend-swatch {
+  flex: 0 0 24px;
+  border-top: 3px solid;
 }
 
 .auto-mood-svg {
   display: block;
   background: var(--amh-surface);
   border: 2px solid var(--amh-frame);
+  width: 100%;
+  max-width: 100%;
+  height: 260px;
 }
 
 .auto-mood-svg .grid {
@@ -150,7 +224,6 @@
 
 .auto-mood-svg .date-label {
   font-size: 10px;
-  text-anchor: end;
 }
 
 .auto-mood-bars {
@@ -160,7 +233,7 @@
 
 .auto-mood-bar-row {
   display: grid;
-  grid-template-columns: minmax(88px, 140px) 1fr 30px;
+  grid-template-columns: minmax(0, 140px) minmax(0, 1fr) minmax(24px, auto);
   align-items: center;
   gap: 8px;
   font-size: 0.82rem;
@@ -184,67 +257,104 @@
   font-weight: 900;
 }
 
-.auto-mood-table-scroll table {
-  border-collapse: collapse;
-  width: 100%;
-  min-width: 780px;
-  font-size: 0.78rem;
+.auto-mood-history-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 14px;
 }
 
-.auto-mood-table-scroll th:first-child,
-.auto-mood-table-scroll td:first-child {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-}
-
-.auto-mood-table-scroll th:first-child {
-  z-index: 2;
-}
-
-.auto-mood-table-scroll td:first-child {
+.auto-mood-day {
+  border: 2px solid var(--amh-frame);
   background: var(--amh-surface);
+  padding: 14px;
 }
 
-.auto-mood-table-scroll tbody tr:nth-child(even) td:first-child {
+.auto-mood-day:nth-child(even) {
   background: var(--amh-surface-alt);
 }
 
-.auto-mood-table-scroll tbody tr:hover td:first-child {
-  background: color-mix(in srgb, var(--amh-blue) 18%, var(--amh-surface));
+.auto-mood-day-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
 }
 
-.auto-mood-table-scroll th,
-.auto-mood-table-scroll td {
-  border: 2px solid var(--amh-frame);
+.auto-mood-day-date {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.auto-mood-day-badges,
+.auto-mood-day-emotions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.auto-mood-badge,
+.auto-mood-emotion {
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid var(--amh-frame);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  font-weight: 750;
+}
+
+.auto-mood-badge {
+  background: var(--amh-paper);
+}
+
+.auto-mood-emotion {
+  background: var(--amh-surface-alt);
+}
+
+.auto-mood-day-scores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 95px), 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.auto-mood-day-metric {
   padding: 8px;
-  vertical-align: top;
+  border: 1px solid var(--amh-frame);
+  background: var(--amh-paper);
 }
 
-.auto-mood-table-scroll th {
-  background: var(--amh-yellow);
-  color: var(--amh-on-accent);
-  text-align: left;
+.auto-mood-day-metric dt {
+  font-size: 0.7rem;
+  line-height: 1.4;
+  font-weight: 800;
+}
+
+.auto-mood-day-metric dd {
+  margin: 5px 0 0;
+  padding: 3px 6px;
+  font-family: var(--font-monospace);
+  font-size: 1.1rem;
+  line-height: 1.3;
   font-weight: 900;
-  letter-spacing: 0.04em;
-  position: sticky;
-  top: 0;
-  z-index: 1;
 }
 
-.auto-mood-table-scroll tbody tr:nth-child(even) td {
-  background-color: var(--amh-surface-alt);
-}
-
-.auto-mood-table-scroll tbody tr:hover td {
-  background-color: color-mix(in srgb, var(--amh-blue) 18%, var(--amh-surface));
-}
-
-.auto-mood-table-scroll td.auto-mood-score {
+.auto-mood-day .auto-mood-score {
   color: var(--amh-on-accent);
-  font-weight: 950;
-  text-align: center;
-  white-space: nowrap;
+}
+
+.auto-mood-day-reading,
+.auto-mood-insufficient {
+  margin: 12px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  color: var(--amh-text);
+}
+
+.auto-mood-insufficient {
+  font-weight: 800;
 }
 
 .auto-mood-provenance,
@@ -282,12 +392,6 @@
 .auto-mood-dashboard button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-.auto-mood-table-scroll td:nth-child(6),
-.auto-mood-table-scroll td:nth-child(7),
-.auto-mood-table-scroll td:nth-child(5) {
-  overflow-wrap: anywhere;
 }
 
 .theme-dark .auto-mood-dashboard {
@@ -331,12 +435,29 @@
   color: var(--amh-text);
 }
 
-.theme-dark .auto-mood-table-scroll tbody tr:nth-child(even) td.auto-mood-score,
-.theme-dark .auto-mood-table-scroll tbody tr:hover td.auto-mood-score {
-  color: var(--amh-on-accent);
+.auto-mood-settings {
+  container-name: auto-mood-settings;
+  container-type: inline-size;
+  min-width: 0;
 }
 
-@media (max-width: 650px) {
+.auto-mood-settings .setting-item-info,
+.auto-mood-settings .setting-item-control {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.auto-mood-settings .setting-item-control {
+  flex-wrap: wrap;
+}
+
+.auto-mood-settings input[type="text"],
+.auto-mood-settings button {
+  max-width: 100%;
+  min-width: 0;
+}
+
+@container auto-mood (max-width: 620px) {
   .auto-mood-dashboard {
     margin: 10px 2px 22px;
     padding: 10px;
@@ -363,11 +484,58 @@
   }
 
   .auto-mood-cards {
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
   }
 
   .auto-mood-bar-row {
-    grid-template-columns: minmax(70px, 100px) 1fr 24px;
+    grid-template-columns: minmax(0, 100px) minmax(0, 1fr) minmax(24px, auto);
+  }
+}
+
+@container auto-mood (max-width: 360px) {
+  .auto-mood-dashboard {
+    padding: 8px;
+    margin-inline: 0 6px;
+    box-shadow: 4px 4px 0 var(--amh-shadow);
+  }
+
+  .auto-mood-toolbar {
+    padding: 10px;
+    font-size: 1rem;
+  }
+
+  .auto-mood-section {
+    padding: 10px;
+  }
+
+  .auto-mood-section h3 {
+    margin: -10px -10px 12px;
+  }
+
+  .auto-mood-day {
+    padding: 10px;
+  }
+}
+
+@container auto-mood-settings (max-width: 520px) {
+  .auto-mood-settings .setting-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .auto-mood-settings .setting-item-control {
+    justify-content: flex-start;
+    max-width: 100%;
+  }
+
+  .auto-mood-settings input[type="text"] {
+    width: 100%;
+  }
+
+  .auto-mood-settings button {
+    height: auto;
+    white-space: normal;
   }
 }
 

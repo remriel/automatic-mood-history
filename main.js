@@ -60,7 +60,6 @@ const ANALYSIS_SCHEMA = {
       type: "array",
       minItems: 1,
       maxItems: 6,
-      uniqueItems: true,
       items: { type: "string", enum: ALLOWED_EMOTIONS }
     },
     summary: { type: "string" },
@@ -343,7 +342,7 @@ function localSentiment(text, topic = "") {
     summary: topic || "Local sentiment estimate from the day's writing.",
     drivers: drivers.slice(0, 4),
     confidence: "low",
-    confidenceReason: "Groq was unavailable, so this entry uses deterministic word-pattern scoring and should be treated as directional."
+    confidenceReason: "This entry uses deterministic word-pattern scoring and should be treated as directional."
   });
 }
 
@@ -385,7 +384,7 @@ function buildEntryMarkdown(record) {
     `# Mood — ${record.date}`,
     "",
     "> [!info] Automatic inference",
-    `> ${record.analysisSource === "groq" ? "Groq analyzed" : record.analysisSource === "reviewed-backfill" ? "A reviewed backfill analyzed" : "A local fallback analyzed"} this day’s writing. This is a reading of the text, not a diagnosis or a statement of objective truth.`,
+    `> ${record.analysisSource === "groq" ? "Groq analyzed" : record.analysisSource === "reviewed-backfill" ? "A reviewed backfill analyzed" : record.analysisSource === "local" ? "Local scoring analyzed" : "A local fallback analyzed"} this day’s writing. This is a reading of the text, not a diagnosis or a statement of objective truth.`,
     "",
     "## Snapshot",
     ""
@@ -407,6 +406,9 @@ function buildEntryMarkdown(record) {
   if (record.drivers?.length) {
     lines.push("", "## Signals", "");
     for (const driver of record.drivers) lines.push(`- ${driver}`);
+  }
+  if (record.providerIssue?.message) {
+    lines.push("", "## Groq status", "", record.providerIssue.message);
   }
   lines.push("", "## Sources", "");
   for (const path of record.sourcePaths || []) {
@@ -463,14 +465,18 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (record && !record.dateBasis) record.dateBasis = LEGACY_DATE_BASIS;
     }
     this.runtime = loaded.runtime || {};
+    if (!this.runtime.lastGroqIssue) delete this.runtime.lastGroqError;
     this.runtime.lastLoadedAt = new Date().toISOString();
     this.runtime.version = this.manifest.version;
     this.runtime.apiKeyDetected = Boolean(globalThis.process?.env?.[GROQ_API_KEY_ENV]);
     this.runtime.lastLoadStatus = "loaded";
     this.debounceTimers = new Map();
     this.renderContainers = new Set();
-    this.groqBlockedUntil = 0;
-    this.lastGroqError = "";
+    this.chartObservers = new Map();
+    const savedRetryAt = Date.parse(this.runtime.nextGroqRetryAt || "");
+    this.groqBlockedUntil = Number.isFinite(savedRetryAt) ? savedRetryAt : 0;
+    this.lastGroqError = this.runtime.lastGroqIssue?.message || "";
+    this.analysisQueue = Promise.resolve();
 
     await this.savePluginData();
 
@@ -491,6 +497,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       callback: () => this.retryAllWithGroq()
     });
     this.addCommand({
+      id: "check-groq-connection",
+      name: "Check Groq connection with sample text",
+      callback: () => this.checkGroqConnection()
+    });
+    this.addCommand({
       id: "analyze-active-note",
       name: "Analyze the active note",
       callback: async () => {
@@ -508,7 +519,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.registerMarkdownCodeBlockProcessor("automatic-mood-history", (_source, element, context) => {
       this.renderContainers.add(element);
       const child = new Component();
-      child.onunload = () => this.renderContainers.delete(element);
+      child.onunload = () => {
+        this.disposeDashboard(element);
+        this.renderContainers.delete(element);
+      };
       context.addChild(child);
       this.renderDashboard(element);
     });
@@ -536,6 +550,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   onunload() {
     for (const timer of this.debounceTimers.values()) window.clearTimeout(timer);
     this.debounceTimers.clear();
+    this.disposeDashboard();
     this.renderContainers.clear();
   }
 
@@ -665,13 +680,108 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       body: JSON.stringify(payload),
       throw: false
     });
+    let json;
+    try { json = response.json; } catch { json = null; }
     if (response.status < 200 || response.status >= 300) {
-      const message = response.json?.error?.message || response.text || `HTTP ${response.status}`;
-      const error = new Error(`Groq ${response.status}: ${message}`);
+      // Error bodies can include generated note text or account identifiers.
+      // Keep provider status and safe error codes, never the response body.
+      const code = String(json?.error?.code || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 80);
+      const error = new Error(`Groq HTTP ${response.status}${code ? ` (${code})` : ""}.`);
       error.status = response.status;
+      const headers = Object.fromEntries(Object.entries(response.headers || {}).map(([key, value]) => [key.toLowerCase(), value]));
+      const retryAfter = headers["retry-after"];
+      const seconds = Number(retryAfter);
+      const delay = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter) - Date.now();
+      if (retryAfter && Number.isFinite(delay) && delay > 0) error.retryAfterMilliseconds = delay;
       throw error;
     }
-    return response.json;
+    return json;
+  }
+
+  clearGroqPause() {
+    this.groqBlockedUntil = 0;
+    this.lastGroqError = "";
+    this.runtime.lastGroqError = "";
+    delete this.runtime.lastGroqIssue;
+    delete this.runtime.nextGroqRetryAt;
+  }
+
+  recordGroqSuccess() {
+    this.clearGroqPause();
+    this.runtime.lastGroqSuccessAt = new Date().toISOString();
+    this.runtime.lastGroqModel = this.settings.model;
+  }
+
+  recordGroqFailure(error) {
+    const status = error.status;
+    let kind = "connection";
+    let message = "Groq could not be reached.";
+    let delay = 60 * 1000;
+    if (error.code === "missing_key") {
+      kind = "configuration";
+      message = "Obsidian has no GROQ_API_KEY in its environment.";
+      delay = 5 * 60 * 1000;
+    } else if (status === 401 || status === 403) {
+      kind = "authentication";
+      message = `Groq rejected the API key or access (HTTP ${status}).`;
+      delay = 5 * 60 * 1000;
+    } else if (status === 429) {
+      kind = "rate-limit";
+      delay = error.retryAfterMilliseconds || delay;
+      message = "Groq reached its rate limit (HTTP 429). Retry after the pause.";
+    } else if (status === 400 || status === 404 || status === 413) {
+      kind = "request";
+      message = `Groq rejected this model or request (HTTP ${status}). Check the selected model.`;
+      delay = 5 * 60 * 1000;
+    } else if (status === 422) {
+      kind = "output";
+      message = "Groq returned incomplete or invalid analysis.";
+    } else if (status >= 500) {
+      kind = "service";
+      message = `Groq returned a service error (HTTP ${status}).`;
+    }
+    const retryAt = new Date(Date.now() + delay).toISOString();
+    const issue = { kind, message, retryAt };
+    this.groqBlockedUntil = Date.parse(retryAt);
+    this.lastGroqError = message;
+    this.runtime.lastGroqError = message;
+    this.runtime.lastGroqIssue = issue;
+    this.runtime.nextGroqRetryAt = retryAt;
+    this.runtime.lastGroqFailureAt = new Date().toISOString();
+    return issue;
+  }
+
+  parseGroqAnalysis(response) {
+    const choice = response?.choices?.[0];
+    if (choice?.finish_reason === "length") {
+      const error = new Error("Groq reached the completion limit before finishing the analysis.");
+      error.code = "completion_limit";
+      throw error;
+    }
+    const raw = choice?.message?.content;
+    if (typeof raw !== "string" || !raw.trim()) throw new Error("Groq returned no analysis content.");
+    // Do not accept JSON in a reasoning section as a final answer.
+    const finalText = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    const start = finalText.indexOf("{");
+    const end = finalText.lastIndexOf("}");
+    if (start < 0 || end <= start) throw new Error("Groq returned no JSON object.");
+    const parsed = JSON.parse(finalText.slice(start, end + 1));
+    if (!parsed || Array.isArray(parsed) || ANALYSIS_SCHEMA.required.some((key) => !Object.hasOwn(parsed, key))) {
+      throw new Error("Groq omitted required analysis fields.");
+    }
+    for (const key of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) {
+      if (!Number.isInteger(parsed[key]) || parsed[key] < 1 || parsed[key] > 5) throw new Error("Groq returned an invalid score.");
+    }
+    if (!Array.isArray(parsed.emotions) || !parsed.emotions.length ||
+      parsed.emotions.some((value) => !ANALYSIS_SCHEMA.properties.emotions.items.enum.includes(value)) ||
+      !Array.isArray(parsed.drivers) || !parsed.drivers.length || parsed.drivers.some((value) => typeof value !== "string") ||
+      typeof parsed.summary !== "string" || !parsed.summary.trim() ||
+      typeof parsed.confidenceReason !== "string" || !parsed.confidenceReason.trim() ||
+      !ANALYSIS_SCHEMA.properties.valence.enum.includes(parsed.valence) ||
+      !ANALYSIS_SCHEMA.properties.confidence.enum.includes(parsed.confidence)) {
+      throw new Error("Groq returned invalid analysis fields.");
+    }
+    return validateAnalysis(parsed);
   }
 
   groqPrompt(date, text) {
@@ -690,25 +800,31 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     ].join("\n");
   }
 
-  async analyzeWithGroq(date, text) {
-    if (!this.apiKey()) throw new Error(`Environment variable ${GROQ_API_KEY_ENV} is missing.`);
-    if (Date.now() < this.groqBlockedUntil) throw new Error(this.lastGroqError || "Groq retry is temporarily paused.");
+  async analyzeWithGroq(date, text, options = {}) {
+    if (!this.apiKey()) {
+      const error = new Error(`Environment variable ${GROQ_API_KEY_ENV} is missing.`);
+      error.code = "missing_key";
+      throw error;
+    }
+    if (!options.forceGroq && Date.now() < this.groqBlockedUntil) throw new Error(this.lastGroqError || "Groq retry is temporarily paused.");
 
+    const schemaInstruction = `Return one JSON object matching this schema exactly: ${JSON.stringify(ANALYSIS_SCHEMA)}. Use distinct emotions. Output raw JSON only, with no Markdown fence, preface, or explanation.`;
     const base = {
       model: this.settings.model,
       messages: [
         {
           role: "system",
-          content: "You are a precise journal sentiment analyst. Return only the requested structured data. Never infer a diagnosis."
+          content: `You are a precise journal sentiment analyst. Never infer a diagnosis. ${schemaInstruction}`
         },
         { role: "user", content: this.groqPrompt(date, text) }
       ],
       temperature: 0.1,
-      max_completion_tokens: 1600,
-      citation_options: "disabled"
+      max_completion_tokens: 4096
     };
-
-    const schemaInstruction = `Return one JSON object matching this schema exactly: ${JSON.stringify(ANALYSIS_SCHEMA)}`;
+    if (/^openai\/gpt-oss-(20b|120b)$/.test(this.settings.model)) {
+      base.reasoning_effort = "low";
+      base.include_reasoning = false;
+    }
     const attempts = [
       {
         name: "strict structured output",
@@ -728,7 +844,6 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         name: "JSON object mode",
         payload: {
           ...base,
-          messages: [...base.messages, { role: "system", content: schemaInstruction }],
           response_format: { type: "json_object" }
         }
       },
@@ -736,28 +851,21 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         name: "plain JSON fallback",
         payload: {
           ...base,
-          messages: [
-            ...base.messages,
-            {
-              role: "system",
-              content: `${schemaInstruction} Output raw JSON only: no Markdown fence, preface, or explanation.`
-            }
-          ]
         }
       }
     ];
 
     const failures = [];
+    let retriedCompletionLimit = false;
     for (const attempt of attempts) {
       try {
-        const response = await this.requestGroq(attempt.payload);
-        const raw = response?.choices?.[0]?.message?.content;
-        if (typeof raw !== "string" || !raw.trim()) throw new Error("Groq returned no analysis content.");
-        const unfenced = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-        const objectStart = unfenced.indexOf("{");
-        const objectEnd = unfenced.lastIndexOf("}");
-        if (objectStart < 0 || objectEnd <= objectStart) throw new Error("Groq returned no JSON object.");
-        return validateAnalysis(JSON.parse(unfenced.slice(objectStart, objectEnd + 1)));
+        try {
+          return this.parseGroqAnalysis(await this.requestGroq(attempt.payload));
+        } catch (error) {
+          if (error.code !== "completion_limit" || retriedCompletionLimit) throw error;
+          retriedCompletionLimit = true;
+          return this.parseGroqAnalysis(await this.requestGroq({ ...attempt.payload, max_completion_tokens: 8192 }));
+        }
       } catch (error) {
         failures.push(`${attempt.name}: ${error.message}`);
         if (error.status && ![400, 422].includes(error.status)) throw error;
@@ -769,9 +877,19 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeDate(date, options = {}) {
+    // Serialize scans, active-note commands, and debounced note events.
+    const task = (this.analysisQueue || Promise.resolve()).then(() => this.analyzeDateNow(date, options));
+    this.analysisQueue = task.catch(() => {});
+    return task;
+  }
+
+  async analyzeDateNow(date, options = {}) {
     const gathered = await this.gatherDate(date);
     const previous = this.records[date];
-    if (!options.force && previous?.contentHash === gathered.contentHash) {
+    const retryLocalResult = this.settings.enableGroq &&
+      ["local", "local-fallback"].includes(previous?.analysisSource) &&
+      (options.forceGroq || Date.now() >= this.groqBlockedUntil);
+    if (!options.force && !retryLocalResult && previous?.contentHash === gathered.contentHash) {
       if (previous.dateBasis === CREATED_DATE_BASIS) return false;
       previous.dateBasis = CREATED_DATE_BASIS;
       await this.savePluginData();
@@ -801,36 +919,40 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       let analysis;
       let analysisSource;
       let model;
+      let providerIssue;
       const canTryGroq = this.settings.enableGroq && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
       if (canTryGroq) {
         try {
-          analysis = await this.analyzeWithGroq(date, gathered.analysisText);
+          analysis = await this.analyzeWithGroq(date, gathered.analysisText, options);
           analysisSource = "groq";
           model = this.settings.model;
-          this.lastGroqError = "";
-          this.groqBlockedUntil = 0;
-          this.runtime.lastGroqError = "";
-          this.runtime.lastGroqSuccessAt = new Date().toISOString();
+          this.recordGroqSuccess();
         } catch (error) {
-          this.lastGroqError = error.message;
-          this.groqBlockedUntil = Date.now() + 15 * 60 * 1000;
-          this.runtime.lastGroqError = error.message;
-          this.runtime.lastGroqFailureAt = new Date().toISOString();
+          providerIssue = this.recordGroqFailure(error);
+          if (options.runStats) options.runStats.failures += 1;
+          if (previous?.status === "complete" && previous.analysisSource === "groq" && previous.contentHash === gathered.contentHash) {
+            // A failed manual retry must not downgrade a valid unchanged result.
+            await this.savePluginData();
+            this.refreshRenderers();
+            return false;
+          }
           analysis = localSentiment(gathered.analysisText, gathered.topic);
           analysisSource = "local-fallback";
           model = "deterministic-lexicon-v1";
-          console.warn("Automatic Mood History used local fallback", error);
+          console.warn("Automatic Mood History:", providerIssue.message);
         }
       } else {
         analysis = localSentiment(gathered.analysisText, gathered.topic);
-        analysisSource = "local-fallback";
+        analysisSource = this.settings.enableGroq ? "local-fallback" : "local";
         model = "deterministic-lexicon-v1";
+        if (this.settings.enableGroq) providerIssue = this.runtime.lastGroqIssue;
       }
       record = {
         date,
         status: "complete",
         analysisSource,
         model,
+        ...(providerIssue ? { providerIssue } : {}),
         ...analysis
       };
     }
@@ -845,19 +967,75 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.records[date] = record;
     await this.savePluginData();
     this.refreshRenderers();
+    if (options.runStats) {
+      options.runStats[record.status === "insufficient" ? "insufficient" : record.analysisSource === "groq" ? "groq" : record.analysisSource === "local" ? "local" : "fallback"] += 1;
+    }
     return true;
   }
 
   async analyzeAll(options = {}) {
+    if (this.checkingGroq) {
+      new Notice("Automatic Mood History: wait for the Groq connection check to finish.");
+      return;
+    }
+    if (this.activeScan) {
+      new Notice("Automatic Mood History: an analysis is already running.");
+      return this.activeScan;
+    }
+    const task = this.analyzeAllNow(options);
+    this.activeScan = task;
+    this.refreshRenderers();
+    try { return await task; } finally {
+      this.activeScan = null;
+      this.refreshRenderers();
+    }
+  }
+
+  async analyzeAllNow(options) {
+    // An explicit retry bypasses an old pause once. A new rate limit pauses
+    // the remaining dates in the same run instead of hammering the provider.
+    if (options.forceGroq) this.clearGroqPause();
+    const runStats = { groq: 0, local: 0, fallback: 0, insufficient: 0, failures: 0 };
+    const dateOptions = { ...options, forceGroq: false, runStats };
     const dates = this.getAllDates();
     new Notice(`Automatic Mood History: checking ${dates.length} creation-date groups…`);
     let changed = 0;
     for (const date of dates) {
-      if (await this.analyzeDate(date, options)) changed += 1;
+      if (await this.analyzeDate(date, dateOptions)) changed += 1;
     }
     await this.ensureSupportFiles();
-    const suffix = this.lastGroqError ? " Groq was unavailable; affected entries use the labeled local fallback." : "";
+    await this.savePluginData();
+    const suffix = runStats.fallback ? ` ${runStats.groq} used Groq; ${runStats.fallback} used local fallback. ${this.runtime.lastGroqIssue?.message || "Groq retries are paused."}` : runStats.failures ? ` Groq retry failed; existing valid results were kept. ${this.runtime.lastGroqIssue?.message || ""}` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
     new Notice(`Automatic Mood History: ${changed} creation-date groups updated.${suffix}`, 9000);
+    return { updated: changed, ...runStats };
+  }
+
+  async checkGroqConnection() {
+    if (!this.settings.enableGroq) {
+      new Notice("Automatic Mood History: enable Groq analysis in settings before checking the connection.");
+      return false;
+    }
+    if (this.activeScan || this.checkingGroq) {
+      new Notice("Automatic Mood History: wait for the current analysis or connection check to finish.");
+      return false;
+    }
+    this.checkingGroq = true;
+    this.refreshRenderers();
+    new Notice("Automatic Mood History: checking Groq with sample text…");
+    try {
+      await this.analyzeWithGroq("2030-03-14", "This is a fictional connection-check sample. The writer feels calm, hopeful, and supported after a friendly conversation.", { forceGroq: true });
+      this.recordGroqSuccess();
+      new Notice("Automatic Mood History: Groq connection works. No vault notes were sent.");
+      return true;
+    } catch (error) {
+      const issue = this.recordGroqFailure(error);
+      new Notice(`Automatic Mood History: connection check failed. ${issue.message}`, 9000);
+      return false;
+    } finally {
+      this.checkingGroq = false;
+      await this.savePluginData();
+      this.refreshRenderers();
+    }
   }
 
   async retryAllWithGroq() {
@@ -866,6 +1044,22 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return;
     }
     await this.analyzeAll({ force: true, forceGroq: true });
+  }
+
+  groqStatus() {
+    if (!this.settings.enableGroq) return { kind: "local", text: "LOCAL MODE · Groq is disabled. Analysis stays on this device." };
+    if (!this.apiKey()) return { kind: "warning", text: "GROQ KEY MISSING · Start Obsidian with GROQ_API_KEY in its environment." };
+    if (this.checkingGroq) return { kind: "ready", text: "CHECKING GROQ · Sending fictional sample text." };
+    if (this.activeScan) return { kind: "ready", text: "ANALYZING · Notes are grouped by their creation timestamps." };
+    const issue = this.runtime.lastGroqIssue;
+    if (issue) {
+      const remaining = Math.max(0, Math.ceil((this.groqBlockedUntil - Date.now()) / 1000));
+      return { kind: "warning", text: `${issue.message}${remaining ? ` Retry pause: ${remaining}s.` : " Analyze changed will retry local results."}` };
+    }
+    if (this.runtime.lastGroqSuccessAt && this.runtime.lastGroqModel === this.settings.model) {
+      return { kind: "ready", text: `GROQ CONNECTED · ${this.settings.model} · Last valid response ${new Date(this.runtime.lastGroqSuccessAt).toLocaleString()}.` };
+    }
+    return { kind: "ready", text: `GROQ READY TO CHECK · ${this.settings.model} · Use Check Groq to test with sample text.` };
   }
 
   async ensureFolder(path) {
@@ -953,12 +1147,31 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async ensureSupportFiles() {
     await this.ensureFolder(this.outputFolder);
     await this.ensureFolder(this.entriesFolder);
-    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups every Markdown note by the local calendar day of its Obsidian creation timestamp, regardless of folder or filename. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## All entries\n\n![[${this.outputFolder}/Mood History.base]]\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
+    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups every Markdown note by the local calendar day of its Obsidian creation timestamp, regardless of folder or filename. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
     const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEvery Markdown note in the vault is grouped by the local calendar day of its Obsidian creation timestamp, TFile.stat.ctime. Folder, filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates all Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nGroq is used when \`${this.settings.apiKeyEnvironmentVariable}\` is available and the API is reachable. The API key is read from the process environment and is never saved in this vault. If Groq cannot be reached, a deterministic local word-pattern fallback produces a low-confidence directional result. Every entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, dashboard, false);
+    await this.upgradeDashboardLayout();
     await this.writeTextFile(`${this.outputFolder}/Mood History.base`, base, false);
     await this.writeTextFile(`${this.outputFolder}/Methodology.md`, methodology, false);
+  }
+
+  async upgradeDashboardLayout() {
+    const file = this.app.vault.getAbstractFileByPath(this.dashboardPath);
+    if (!(file instanceof TFile)) return;
+    const embed = `![[${this.outputFolder}/Mood History.base]]`;
+    const isOwnedDashboard = (text) => {
+      const frontmatter = text.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+      return Boolean(frontmatter && /^type:\s*["']?mood-history-dashboard["']?\s*$/m.test(frontmatter[1]));
+    };
+    const content = await this.app.vault.cachedRead(file);
+    if (!isOwnedDashboard(content) || !content.includes(embed)) return;
+    // Only migrate this exact plugin-created embed. Atomic processing keeps
+    // concurrent edits and every other line of the dashboard intact.
+    await this.app.vault.process(file, (current) => {
+      if (!isOwnedDashboard(current)) return current;
+      return current.replace(embed, `[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.`);
+    });
   }
 
   async openDashboard() {
@@ -972,8 +1185,20 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   refreshRenderers() {
     for (const element of Array.from(this.renderContainers)) {
-      if (!element.isConnected) this.renderContainers.delete(element);
+      if (!element.isConnected) {
+        this.disposeDashboard(element);
+        this.renderContainers.delete(element);
+      }
       else this.renderDashboard(element);
+    }
+  }
+
+  disposeDashboard(element) {
+    for (const [svg, observer] of this.chartObservers || []) {
+      if (!element || !svg.isConnected || element.contains(svg)) {
+        observer.disconnect();
+        this.chartObservers.delete(svg);
+      }
     }
   }
 
@@ -983,7 +1208,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   renderDashboard(element) {
+    this.disposeDashboard(element);
     element.empty();
+    element.classList.add("auto-mood-render-root");
     const wrapper = element.createDiv({ cls: "auto-mood-dashboard" });
     const records = Object.values(this.records).sort((a, b) => a.date.localeCompare(b.date));
     const timestampRecords = records.filter((record) => record.dateBasis === CREATED_DATE_BASIS);
@@ -995,7 +1222,15 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const changedButton = actions.createEl("button", { text: "Analyze changed" });
     changedButton.addEventListener("click", () => void this.analyzeAll({ force: false, forceGroq: false }));
     const groqButton = actions.createEl("button", { text: "Retry all with Groq" });
-    groqButton.addEventListener("click", () => void this.analyzeAll({ force: true, forceGroq: true }));
+    groqButton.addEventListener("click", () => void this.retryAllWithGroq());
+    const checkButton = actions.createEl("button", { text: "Check Groq" });
+    checkButton.addEventListener("click", () => void this.checkGroqConnection());
+    groqButton.disabled = checkButton.disabled = !this.settings.enableGroq || Boolean(this.activeScan) || Boolean(this.checkingGroq);
+    changedButton.disabled = Boolean(this.activeScan) || Boolean(this.checkingGroq);
+    const status = this.groqStatus();
+    const statusElement = wrapper.createDiv({ cls: "auto-mood-provider-status", text: status.text });
+    statusElement.dataset.kind = status.kind;
+    statusElement.setAttribute("role", "status");
 
     if (!records.length) {
       wrapper.createDiv({ cls: "auto-mood-empty", text: "No history yet. Run Analyze changed to build it." });
@@ -1017,78 +1252,96 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
     if (complete.length) this.renderTrendChart(wrapper, complete);
     this.renderEmotionBars(wrapper, complete);
-    this.renderHistoryTable(wrapper, records);
+    this.renderHistoryCards(wrapper, records);
 
     const provenance = wrapper.createDiv({ cls: "auto-mood-provenance" });
     const groqCount = complete.filter((record) => record.analysisSource === "groq").length;
     const reviewedCount = complete.filter((record) => record.analysisSource === "reviewed-backfill").length;
     const fallbackCount = complete.filter((record) => record.analysisSource === "local-fallback").length;
-    provenance.setText(`Timestamp groups: ${timestampRecords.length} · ${groqCount} Groq · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved and labeled legacy.`);
+    const localCount = complete.filter((record) => record.analysisSource === "local").length;
+    provenance.setText(`Timestamp groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved and labeled legacy.`);
   }
 
   renderTrendChart(parent, records) {
     const section = parent.createDiv({ cls: "auto-mood-section" });
     section.createEl("h3", { text: "TREND" });
-    const scroll = section.createDiv({ cls: "auto-mood-chart-scroll" });
-    const width = Math.max(760, records.length * 66);
-    const height = 310;
-    const left = 46;
-    const top = 26;
-    const bottom = 52;
-    const chartHeight = height - top - bottom;
+    section.createEl("p", { cls: "auto-mood-chart-range", text: `${records[0].date} to ${records[records.length - 1].date} · creation-date groups · scores 1–5` });
+    const chart = section.createDiv({ cls: "auto-mood-chart" });
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svg.setAttribute("width", String(width));
-    svg.setAttribute("height", String(height));
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "260");
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "Mood, energy, and connection scores by date on a one-to-five scale");
     svg.classList.add("auto-mood-svg");
-    scroll.appendChild(svg);
-
-    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-    title.textContent = "Mood, energy, and connection trend";
-    svg.appendChild(title);
-
-    const make = (name, attributes, text) => {
-      const node = document.createElementNS("http://www.w3.org/2000/svg", name);
-      for (const [key, value] of Object.entries(attributes || {})) node.setAttribute(key, String(value));
-      if (text !== undefined) node.textContent = text;
-      svg.appendChild(node);
-      return node;
-    };
-    const x = (index) => left + index * ((width - left - 24) / Math.max(1, records.length - 1));
-    const y = (score) => top + (5 - score) * (chartHeight / 4);
-
-    for (let score = 1; score <= 5; score += 1) {
-      make("line", { x1: left, y1: y(score), x2: width - 20, y2: y(score), class: "grid" });
-      make("text", { x: 18, y: y(score) + 5, class: "axis-label" }, String(score));
-    }
+    chart.appendChild(svg);
     const series = [
       ["Mood", "moodScore", "var(--amh-series-mood)", "none"],
       ["Energy", "energyScore", "var(--amh-series-energy)", "10 5"],
       ["Connection", "connectionScore", "var(--amh-series-connection)", "3 5"]
     ];
-    for (const [label, property, color, dashArray] of series) {
-      const points = records.map((record, index) => `${x(index)},${y(record[property])}`).join(" ");
-      make("polyline", {
-        points,
-        fill: "none",
-        stroke: color,
-        "stroke-width": 5,
-        "stroke-dasharray": dashArray,
-        class: "series"
-      });
-      records.forEach((record, index) => make("circle", {
-        cx: x(index), cy: y(record[property]), r: 5, fill: color, stroke: "var(--amh-chart-outline)", "stroke-width": 2
-      }));
-      const legendX = left + series.findIndex((item) => item[0] === label) * 150;
-      make("rect", { x: legendX, y: height - 24, width: 18, height: 8, fill: color, stroke: "var(--amh-chart-outline)" });
-      make("text", { x: legendX + 26, y: height - 15, class: "legend-label" }, label);
+    const legend = section.createEl("ul", { cls: "auto-mood-chart-legend", attr: { "aria-label": "Chart series" } });
+    for (const [label, , color, dashArray] of series) {
+      const item = legend.createEl("li");
+      const swatch = item.createEl("span", { cls: "auto-mood-legend-swatch", attr: { "aria-hidden": "true" } });
+      swatch.style.borderTopColor = color;
+      swatch.style.borderTopStyle = dashArray === "none" ? "solid" : label === "Energy" ? "dashed" : "dotted";
+      item.createEl("span", { text: label });
     }
-    records.forEach((record, index) => {
-      const label = record.date.slice(5);
-      make("text", { x: x(index), y: height - 38, class: "date-label", transform: `rotate(-45 ${x(index)} ${height - 38})` }, label);
-    });
+
+    let previousWidth = 0;
+    const draw = (availableWidth) => {
+      const width = Math.max(1, Math.floor(availableWidth));
+      if (width === previousWidth) return;
+      previousWidth = width;
+      const height = 260;
+      const left = 32;
+      const right = 14;
+      const top = 20;
+      const plotWidth = Math.max(1, width - left - right);
+      const chartHeight = height - top - 38;
+      svg.replaceChildren();
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      const make = (name, attributes, text, target = svg) => {
+        const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+        for (const [key, value] of Object.entries(attributes || {})) node.setAttribute(key, String(value));
+        if (text !== undefined) node.textContent = text;
+        target.appendChild(node);
+        return node;
+      };
+      make("title", {}, "Mood, energy, and connection trend. Full daily values are listed below.");
+      const x = (index) => left + (records.length === 1 ? plotWidth / 2 : index * plotWidth / (records.length - 1));
+      const y = (score) => top + (5 - score) * (chartHeight / 4);
+      for (let score = 1; score <= 5; score += 1) {
+        make("line", { x1: left, y1: y(score), x2: width - right, y2: y(score), class: "grid" });
+        make("text", { x: 12, y: y(score) + 4, class: "axis-label" }, String(score));
+      }
+      for (const [label, property, color, dashArray] of series) {
+        const valid = records.map((record, index) => ({ record, index })).filter(({ record }) => Number.isFinite(record[property]));
+        make("polyline", { points: valid.map(({ record, index }) => `${x(index)},${y(record[property])}`).join(" "), fill: "none", stroke: color, "stroke-width": 2.5, "stroke-dasharray": dashArray, class: "series", "vector-effect": "non-scaling-stroke" });
+        for (const { record, index } of valid) {
+          const point = make("circle", { cx: x(index), cy: y(record[property]), r: 3.5, fill: color, stroke: "var(--amh-chart-outline)", "stroke-width": 1.5 });
+          make("title", {}, `${record.date}: ${label} ${record[property]}/5`, point);
+        }
+      }
+      // Keep every data point, but limit date labels to the actual pane width.
+      // Redrawing in CSS-pixel coordinates keeps text legible rather than
+      // shrinking a desktop-sized SVG into a narrow pane.
+      const labelCount = Math.min(records.length, Math.max(2, Math.floor(plotWidth / 80)));
+      const indices = new Set(Array.from({ length: labelCount }, (_, i) => labelCount === 1 ? 0 : Math.round(i * (records.length - 1) / (labelCount - 1))));
+      for (const index of indices) {
+        make("text", { x: x(index), y: height - 10, class: "date-label", "text-anchor": records.length === 1 ? "middle" : index === 0 ? "start" : index === records.length - 1 ? "end" : "middle" }, records[index].date.slice(5));
+      }
+    };
+    draw(chart.clientWidth || 640);
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width;
+        if (width > 0) draw(width);
+      });
+      observer.observe(chart);
+      this.chartObservers ||= new Map();
+      this.chartObservers.set(svg, observer);
+    }
   }
 
   renderEmotionBars(parent, records) {
@@ -1112,39 +1365,40 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
   }
 
-  renderHistoryTable(parent, records) {
+  renderHistoryCards(parent, records) {
     const section = parent.createDiv({ cls: "auto-mood-section" });
     section.createEl("h3", { text: "DAY BY DAY" });
-    const scroll = section.createDiv({ cls: "auto-mood-table-scroll" });
-    const table = scroll.createEl("table");
-    const head = table.createEl("thead").createEl("tr");
-    for (const label of ["Date", "Date basis", "Mood", "Energy", "Connection", "Emotions", "Reading", "Analyzer"]) {
-      head.createEl("th", { text: label });
-    }
-    const body = table.createEl("tbody");
+    const list = section.createDiv({ cls: "auto-mood-history-list" });
     for (const record of [...records].reverse()) {
-      const row = body.createEl("tr");
-      const dateCell = row.createEl("td");
+      const card = list.createEl("article", { cls: "auto-mood-day", attr: { "aria-label": `Mood history for ${record.date}` } });
+      const header = card.createDiv({ cls: "auto-mood-day-header" });
+      const heading = header.createEl("h4", { cls: "auto-mood-day-date" });
       const entryPath = String(record.entryPath || (this.entriesFolder + "/" + record.date + ".md")).replace(/[.]md$/i, "");
-      const link = dateCell.createEl("a", { text: record.date, cls: "internal-link" });
+      const link = heading.createEl("a", { text: record.date, cls: "internal-link", attr: { "aria-label": `Open mood entry for ${record.date}` } });
       link.setAttribute("data-href", entryPath);
       link.setAttribute("href", entryPath);
-      row.createEl("td", { text: record.dateBasis === CREATED_DATE_BASIS ? "Created timestamp" : "Legacy date" });
+      const badges = header.createDiv({ cls: "auto-mood-day-badges" });
+      badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CREATED_DATE_BASIS ? "Created timestamp" : "Legacy date" });
+      const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource || "none" });
+      if (record.providerIssue?.message) analyzer.setAttribute("title", record.providerIssue.message);
       if (record.status === "insufficient") {
-        row.createEl("td", { text: "—", attr: { colspan: "3" } });
-        row.createEl("td", { text: "—" });
-        row.createEl("td", { text: record.summary });
-        row.createEl("td", { text: "none" });
+        card.createEl("p", { cls: "auto-mood-insufficient", text: "Insufficient evidence · no scores assigned" });
+        card.createEl("p", { cls: "auto-mood-day-reading", text: record.summary || "No readable text was available for this date." });
         continue;
-  }
-      const mood = row.createEl("td", { text: `${record.moodScore}/5` });
-      mood.classList.add("auto-mood-score");
-      mood.dataset.score = String(record.moodScore);
-      row.createEl("td", { text: `${record.energyScore}/5` });
-      row.createEl("td", { text: `${record.connectionScore}/5` });
-      row.createEl("td", { text: (record.emotions || []).join(", ") });
-      row.createEl("td", { text: record.summary || "" });
-      row.createEl("td", { text: record.analysisSource });
+      }
+      const scores = card.createEl("dl", { cls: "auto-mood-day-scores" });
+      for (const [label, property] of [["Mood", "moodScore"], ["Energy", "energyScore"], ["Connection", "connectionScore"], ["Intensity", "intensityScore"]]) {
+        const metric = scores.createDiv({ cls: "auto-mood-day-metric" });
+        metric.createEl("dt", { text: label });
+        const value = metric.createEl("dd", { text: Number.isFinite(record[property]) ? `${record[property]}/5` : "—" });
+        if (property === "moodScore" && Number.isFinite(record[property])) {
+          value.classList.add("auto-mood-score");
+          value.dataset.score = String(record[property]);
+        }
+      }
+      const emotions = card.createDiv({ cls: "auto-mood-day-emotions", attr: { "aria-label": "Emotions" } });
+      for (const emotion of record.emotions || []) emotions.createEl("span", { cls: "auto-mood-emotion", text: emotion });
+      card.createEl("p", { cls: "auto-mood-day-reading", text: record.summary || "No summary available." });
     }
   }
 }
@@ -1158,6 +1412,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.classList.add("auto-mood-settings");
     containerEl.createEl("h2", { text: "Automatic Mood History" });
     containerEl.createEl("p", {
       text: "Every Markdown note is grouped by the local date of its Obsidian creation timestamp, regardless of folder or filename. Local analysis is the default. Groq is optional and off until enabled. Its key is read from GROQ_API_KEY in the Obsidian process environment and is never stored in this vault."
@@ -1169,11 +1424,9 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.enableGroq)
         .onChange(async (value) => {
           this.plugin.settings.enableGroq = value;
-          if (!value) {
-            this.plugin.lastGroqError = "";
-            this.plugin.groqBlockedUntil = 0;
-          }
+          this.plugin.clearGroqPause();
           await this.plugin.savePluginData();
+          this.plugin.refreshRenderers();
         }));
     new Setting(containerEl)
       .setName("Groq model")
@@ -1182,7 +1435,9 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.model)
         .onChange(async (value) => {
           this.plugin.settings.model = value.trim() || DEFAULT_SETTINGS.model;
+          this.plugin.clearGroqPause();
           await this.plugin.savePluginData();
+          this.plugin.refreshRenderers();
         }));
     new Setting(containerEl)
       .setName("Analyze note changes automatically")

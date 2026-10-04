@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.2 — 2026-10-03
+
+- Remove horizontal scrolling from the dashboard: replace the wide daily table with wrapping, source-linked history cards.
+- Fit trend charts to the actual Obsidian pane, keep readable labels, and redraw automatically on pane resize.
+- Use pane-width container queries for controls, statistics, emotion bars, and plugin settings, including long text.
+- Replace only the exact Base embed in plugin-owned dashboards with an optional link; preserve all other writing and the Base itself.
+- Add narrow-pane, enlarged-text, dense-history, empty-state, interaction, observer-cleanup, and safe-migration regressions.
+- Include the previously staged 1.2.1 Groq recovery fixes below.
+
+## 1.2.1 — 2026-10-03
+
+- Remove the JSON-schema field rejected by Groq strict output and use supported GPT-OSS reasoning settings.
+- Retry completion-limit exhaustion with a larger response budget and reject incomplete analysis objects.
+- Fix explicit retries, honor provider Retry-After, serialize date analysis, and retry unchanged local results when Groq can recover.
+- Report the current scan's results, distinguish intentional local analysis from provider fallback, and avoid saving provider response bodies.
+- Add a sample-text Groq connection check and a dark-mode status panel.
+
 ## 1.2.0 — 2026-10-02
 
 - Group every Markdown note by the local calendar day of Obsidian's file-creation timestamp, across all folders and filenames.

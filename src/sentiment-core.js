@@ -58,7 +58,6 @@ const ANALYSIS_SCHEMA = {
       type: "array",
       minItems: 1,
       maxItems: 6,
-      uniqueItems: true,
       items: { type: "string", enum: ALLOWED_EMOTIONS }
     },
     summary: { type: "string" },
@@ -341,7 +340,7 @@ function localSentiment(text, topic = "") {
     summary: topic || "Local sentiment estimate from the day's writing.",
     drivers: drivers.slice(0, 4),
     confidence: "low",
-    confidenceReason: "Groq was unavailable, so this entry uses deterministic word-pattern scoring and should be treated as directional."
+    confidenceReason: "This entry uses deterministic word-pattern scoring and should be treated as directional."
   });
 }
 
@@ -383,7 +382,7 @@ function buildEntryMarkdown(record) {
     `# Mood — ${record.date}`,
     "",
     "> [!info] Automatic inference",
-    `> ${record.analysisSource === "groq" ? "Groq analyzed" : record.analysisSource === "reviewed-backfill" ? "A reviewed backfill analyzed" : "A local fallback analyzed"} this day’s writing. This is a reading of the text, not a diagnosis or a statement of objective truth.`,
+    `> ${record.analysisSource === "groq" ? "Groq analyzed" : record.analysisSource === "reviewed-backfill" ? "A reviewed backfill analyzed" : record.analysisSource === "local" ? "Local scoring analyzed" : "A local fallback analyzed"} this day’s writing. This is a reading of the text, not a diagnosis or a statement of objective truth.`,
     "",
     "## Snapshot",
     ""
@@ -405,6 +404,9 @@ function buildEntryMarkdown(record) {
   if (record.drivers?.length) {
     lines.push("", "## Signals", "");
     for (const driver of record.drivers) lines.push(`- ${driver}`);
+  }
+  if (record.providerIssue?.message) {
+    lines.push("", "## Groq status", "", record.providerIssue.message);
   }
   lines.push("", "## Sources", "");
   for (const path of record.sourcePaths || []) {
