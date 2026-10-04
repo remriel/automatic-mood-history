@@ -2,18 +2,21 @@
 
 ## Current objective — eliminate horizontal scrolling, install, and publish 1.2.2
 
-**Progress: 85%**
+**Progress: 100% - built, installed, and published. Manual acceptance is handed to the user.**
 
 - [x] Read continuity, inspect Git changes, locate public source and live 1.2.1 installation.
 - [x] Reproduce chart/table overflow and identify the embedded Base and window-only breakpoint problems.
 - [x] Implement pane-responsive charts, history cards, controls/settings, and safe dashboard migration.
 - [x] Pass core/provider/migration regressions and browser layout tests; inspect screenshots.
 - [x] Back up/install without replacing data; verify native startup/layout and preserved record dates/settings.
-- [ ] Synchronize GitHub/release assets; verify CI and hashes.
+- [x] Synchronize GitHub and publish 1.2.2 through the existing tagged-release workflow.
 
 The source started with uncommitted 1.2.1 Groq recovery work below. Preserve it; 1.2.2 includes those fixes instead of resetting the dirty tree. The live installed version is 1.2.1, not the stale 1.2.0 in the previous snapshot. No private-note analysis is required. See `docs/LAYOUT_QA.md` for coverage.
 
-Verified: `npm test` passed the build and core/startup/timestamp/provider/migration tests. `npm run test:layout` passed light/dark 240–1440px panes, 200% text, long unbroken content, empty/insufficient/one-day and 365-day history, button/settings/link interactions, SVG label bounds, and observer cleanup. Wide and 390px fixture screenshots were reviewed; fixture data is fictional. Native install/reload and publication are next.
+Verified before the user switched to Build Once & Publish: `npm test` and `npm run test:layout` passed core/startup/timestamp/provider/migration tests and light/dark 240–1440px panes, 200% enlargement, long content, dense/empty/insufficient/one-day history, controls, SVG bounds, and observer cleanup. Wide and 390px fictional-data screenshots were reviewed. Source/installed release files matched. No further validation was performed after the workflow change.
+
+Release: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.2
+Tag commit: `c11f60292e87729130bee48ffb4d84c8acf6b058`. Release workflow `37178543489` completed successfully and published the three assets. Post-publication hash downloads, browser checks, and further test passes were intentionally skipped at the user's request.
 
 Native 1.2.2 started successfully and rendered the new cards in the user's theme. The installer replaced only the three release code files and proved `data.json` unchanged at copy time. Settings and all record dates are preserved. The user explicitly ran analysis during native verification; retain the updated results, not the backup's older analysis. Prior-scope records stay unchanged. Native screenshots/backups are private. The app was subsequently closed; the full narrow-pane matrix is browser-fixture evidence, not a claim of native measurements at every width.
 
@@ -25,7 +28,7 @@ Native 1.2.2 started successfully and rendered the new cards in the user's theme
 - [x] Add focused provider recovery regressions and pass the required build/test suite.
 - [x] Install while preserving data and preferences; verify a live Groq response and Obsidian startup (included in 1.2.2).
 - [x] Capture the dashboard in dark mode.
-- [ ] Push, publish 1.2.2 (superseding staged 1.2.1), verify CI and asset hashes.
+- [x] Publish 1.2.2, superseding staged 1.2.1; the existing release workflow succeeded.
 
 The earlier provider failure was HTTP 400 rejection of `uniqueItems`, followed by unusable fallback output. The staged repair is preserved and included in 1.2.2; current installation is 1.2.2.
 
@@ -44,11 +47,11 @@ The 1.2.1 source removes the rejected constraint, supplies schema instructions b
 
 ## Current implementation state
 
-The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.2.0` is published at `https://github.com/remriel/automatic-mood-history/releases/tag/1.2.0`. The tag points to code commit `5fd02b1c836245c3ce0a2e2190b18b7c41934e7e`. Version 1.2.0 is installed and scanned in Obsidian.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.2.2` is published and installed. Its tag points to `c11f60292e87729130bee48ffb4d84c8acf6b058`. Earlier milestone evidence below is historical.
 
 ## Current blockers
 
-No access blocker. The provider fix and live verification are in progress.
+None for build, installation, or publication. Manual acceptance is now the user's responsibility; no further tests or polish are queued.
 
 ## Verification performed
 
@@ -61,6 +64,6 @@ No access blocker. The provider fix and live verification are in progress.
 
 ## Exact next steps
 
-1. Commit/push the completed 1.2.2 source and tag the exact manifest version.
-2. Wait for CI/release, download the three assets, and compare their hashes with the build/installation.
-3. Record final release evidence and update continuity.
+1. No implementation or publication work remains.
+2. User: open the dashboard, narrow the Obsidian pane, and perform manual acceptance.
+3. Make further changes only in response to a new request; do not resume validation loops.
