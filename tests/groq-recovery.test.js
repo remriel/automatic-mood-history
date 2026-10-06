@@ -89,7 +89,8 @@ async function run() {
   const before = Date.now();
   const limited = await plugin.analyzeAll({ force: true, forceGroq: true });
   assert.strictEqual(requests.length, 1, "a new provider pause applies to the remaining dates of a forced run");
-  assert.strictEqual(limited.fallback, 2);
+  assert.strictEqual(limited.fallback, 0, "provider pauses do not create local-fallback records");
+  assert.strictEqual(limited.pending, 2, "the failed and paused groups remain queued for Groq");
   assert.strictEqual(limited.failures, 1);
   assert(plugin.groqBlockedUntil >= before + 120000 && plugin.groqBlockedUntil <= Date.now() + 120000);
   assert.strictEqual(plugin.runtime.lastGroqIssue.kind, "rate-limit");

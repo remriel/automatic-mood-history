@@ -86,6 +86,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       callback: () => this.checkGroqConnection()
     });
     this.addCommand({
+      id: "recover-fallback-entries",
+      name: "Retry fallback entries with Groq",
+      callback: () => this.recoverFallbacksWithGroq()
+    });
+    this.addCommand({
       id: "analyze-active-note",
       name: "Analyze the active note",
       callback: async () => {
@@ -206,7 +211,21 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async gatherDate(date) {
-    const files = this.filesForDate(date);
+    return this.gatherFiles(date, this.filesForDate(date));
+  }
+
+  async gatherLegacyDate(date) {
+    const previous = this.records[date];
+    const paths = Array.from(new Set(previous?.sourcePaths || []));
+    if (!paths.length || previous.dateBasis !== LEGACY_DATE_BASIS) return null;
+    const files = paths.map((path) => typeof path === "string" ? this.app.vault.getAbstractFileByPath(path) : null);
+    // Never substitute unrelated creation-date notes or silently score a
+    // partial set when a legacy record's original sources are unavailable.
+    if (files.some((file) => !this.getCreationDateForFile(file))) return null;
+    return this.gatherFiles(date, files.sort((a, b) => a.path.localeCompare(b.path)));
+  }
+
+  async gatherFiles(date, files) {
     const sourceTexts = [];
     const topics = [];
     for (const file of files) {
@@ -225,6 +244,30 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       topic: Array.from(new Set(topics)).join(" / "),
       contentHash: sha256(JSON.stringify({ sourcePaths, analysisText }))
     };
+  }
+
+  fallbackRecords() {
+    return Object.values(this.records || {}).filter((record) => record.status === "complete" && record.analysisSource === "local-fallback");
+  }
+
+  legacyRecords() {
+    return Object.values(this.records || {}).filter((record) => record.dateBasis === LEGACY_DATE_BASIS);
+  }
+
+  getAnalysisTargets(options = {}) {
+    const targets = new Map();
+    if (!options.onlyFallbacks) {
+      for (const date of this.getAllDates()) targets.set(date, { date, legacySources: false });
+    }
+    if (this.settings.enableGroq && this.apiKey()) {
+      const recordsToRetry = options.onlyFallbacks ? this.fallbackRecords() : this.legacyRecords();
+      for (const record of recordsToRetry) {
+        // Retain the original legacy source set and date even if a current
+        // creation-date group happens to use the same date key.
+        targets.set(record.date, { date: record.date, legacySources: record.dateBasis === LEGACY_DATE_BASIS });
+      }
+    }
+    return Array.from(targets.values()).sort((a, b) => a.date.localeCompare(b.date));
   }
 
   handleSourceEvent(file) {
@@ -468,14 +511,36 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeDateNow(date, options = {}) {
-    const gathered = await this.gatherDate(date);
     const previous = this.records[date];
-    const retryLocalResult = this.settings.enableGroq &&
-      ["local", "local-fallback"].includes(previous?.analysisSource) &&
+    const recovering = Boolean(options.onlyFallbacks || options.legacySources);
+    const dateBasis = options.legacySources ? LEGACY_DATE_BASIS : CREATED_DATE_BASIS;
+    const skipRecovery = (pending = false) => {
+      if (options.runStats) {
+        options.runStats.skipped += 1;
+        if (pending) options.runStats.pending += 1;
+      }
+      return false;
+    };
+    if (recovering && (!this.settings.enableGroq || !this.apiKey() || !options.forceGroq && Date.now() < this.groqBlockedUntil)) {
+      const needsGroq = options.force || !previous || previous.status === "complete" && previous.analysisSource !== "groq";
+      return skipRecovery(Boolean(this.settings.enableGroq && needsGroq && (!this.apiKey() || !options.forceGroq && Date.now() < this.groqBlockedUntil)));
+    }
+    const gathered = options.legacySources ? await this.gatherLegacyDate(date) : await this.gatherDate(date);
+    if (!gathered || recovering && gathered.analysisText.length < this.settings.minimumCharacters) {
+      return skipRecovery(Boolean(recovering && this.settings.enableGroq && previous?.status === "complete" && previous.analysisSource !== "groq"));
+    }
+    const retryNonGroqResult = this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
+      (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback"].includes(previous?.analysisSource)) &&
       (options.forceGroq || Date.now() >= this.groqBlockedUntil);
-    if (!options.force && !retryLocalResult && previous?.contentHash === gathered.contentHash) {
-      if (previous.dateBasis === CREATED_DATE_BASIS) return false;
-      previous.dateBasis = CREATED_DATE_BASIS;
+    const pendingDuringPause = this.settings.enableGroq && !options.forceGroq && Date.now() < this.groqBlockedUntil &&
+      (options.force || previous?.contentHash !== gathered.contentHash || previous?.dateBasis !== dateBasis || previous?.status === "complete" && previous?.analysisSource !== "groq");
+    if (pendingDuringPause) {
+      if (options.runStats) options.runStats.pending += 1;
+      return false;
+    }
+    if (!options.force && !retryNonGroqResult && previous?.contentHash === gathered.contentHash) {
+      if (previous.dateBasis === dateBasis) return false;
+      previous.dateBasis = dateBasis;
       await this.savePluginData();
       this.refreshRenderers();
       return true;
@@ -503,8 +568,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       let analysis;
       let analysisSource;
       let model;
-      let providerIssue;
       const canTryGroq = this.settings.enableGroq && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
+      if (this.settings.enableGroq && !canTryGroq) {
+        if (options.runStats) options.runStats.pending += 1;
+        return false;
+      }
       if (canTryGroq) {
         try {
           analysis = await this.analyzeWithGroq(date, gathered.analysisText, options);
@@ -512,40 +580,37 @@ class AutomaticMoodHistoryPlugin extends Plugin {
           model = this.settings.model;
           this.recordGroqSuccess();
         } catch (error) {
-          providerIssue = this.recordGroqFailure(error);
-          if (options.runStats) options.runStats.failures += 1;
-          if (previous?.status === "complete" && previous.analysisSource === "groq" && previous.contentHash === gathered.contentHash) {
-            // A failed manual retry must not downgrade a valid unchanged result.
-            await this.savePluginData();
-            this.refreshRenderers();
-            return false;
+          this.recordGroqFailure(error);
+          if (options.runStats) {
+            options.runStats.failures += 1;
+            options.runStats.pending += 1;
           }
-          analysis = localSentiment(gathered.analysisText, gathered.topic);
-          analysisSource = "local-fallback";
-          model = "deterministic-lexicon-v1";
-          console.warn("Automatic Mood History:", providerIssue.message);
+          // Groq-enabled mode is provider-only. Keep a saved result as-is and
+          // leave new/changed groups pending instead of silently scoring local.
+          await this.savePluginData();
+          this.refreshRenderers();
+          return false;
         }
       } else {
         analysis = localSentiment(gathered.analysisText, gathered.topic);
-        analysisSource = this.settings.enableGroq ? "local-fallback" : "local";
+        analysisSource = "local";
         model = "deterministic-lexicon-v1";
-        if (this.settings.enableGroq) providerIssue = this.runtime.lastGroqIssue;
       }
       record = {
         date,
         status: "complete",
         analysisSource,
         model,
-        ...(providerIssue ? { providerIssue } : {}),
         ...analysis
       };
     }
 
     Object.assign(record, {
-      dateBasis: CREATED_DATE_BASIS,
+      dateBasis,
       contentHash: gathered.contentHash,
       sourcePaths: gathered.sourcePaths,
-      analyzedAt: new Date().toISOString()
+      analyzedAt: new Date().toISOString(),
+      ...(previous?.entryPath ? { entryPath: previous.entryPath } : {})
     });
     await this.writeEntryNote(record);
     this.records[date] = record;
@@ -579,19 +644,21 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // An explicit retry bypasses an old pause once. A new rate limit pauses
     // the remaining dates in the same run instead of hammering the provider.
     if (options.forceGroq) this.clearGroqPause();
-    const runStats = { groq: 0, local: 0, fallback: 0, insufficient: 0, failures: 0 };
+    const runStats = { groq: 0, local: 0, fallback: 0, insufficient: 0, failures: 0, pending: 0, skipped: 0 };
     const dateOptions = { ...options, forceGroq: false, runStats };
-    const dates = this.getAllDates();
-    new Notice(`Automatic Mood History: checking ${dates.length} creation-date groups…`);
+    const targets = this.getAnalysisTargets(options);
+    new Notice(`Automatic Mood History: checking ${targets.length} history groups (${targets.filter((target) => target.legacySources).length} saved legacy sources)…`);
     let changed = 0;
-    for (const date of dates) {
-      if (await this.analyzeDate(date, dateOptions)) changed += 1;
+    for (const target of targets) {
+      if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources })) changed += 1;
     }
     await this.ensureSupportFiles();
     await this.savePluginData();
-    const suffix = runStats.fallback ? ` ${runStats.groq} used Groq; ${runStats.fallback} used local fallback. ${this.runtime.lastGroqIssue?.message || "Groq retries are paused."}` : runStats.failures ? ` Groq retry failed; existing valid results were kept. ${this.runtime.lastGroqIssue?.message || ""}` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
-    new Notice(`Automatic Mood History: ${changed} creation-date groups updated.${suffix}`, 9000);
-    return { updated: changed, ...runStats };
+    const suffix = runStats.pending ? ` ${runStats.pending} groups remain pending Groq; existing results were kept. ${this.runtime.lastGroqIssue?.message || "Groq retries are paused."}` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
+    const pendingFallbacks = this.fallbackRecords().length;
+    const pending = this.settings.enableGroq && pendingFallbacks ? ` ${pendingFallbacks} saved local-fallback entries still await a successful Groq result.` : "";
+    new Notice(`Automatic Mood History: ${changed} history groups updated.${suffix}${pending}`, 9000);
+    return { updated: changed, ...runStats, pendingFallbacks };
   }
 
   async checkGroqConnection() {
@@ -630,6 +697,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     await this.analyzeAll({ force: true, forceGroq: true });
   }
 
+  async recoverFallbacksWithGroq() {
+    if (!this.settings.enableGroq || !this.apiKey()) {
+      new Notice("Automatic Mood History: enable Groq analysis and start Obsidian with GROQ_API_KEY before retrying fallbacks.");
+      return;
+    }
+    return this.analyzeAll({ onlyFallbacks: true, forceGroq: true });
+  }
+
   groqStatus() {
     if (!this.settings.enableGroq) return { kind: "local", text: "LOCAL MODE · Groq is disabled. Analysis stays on this device." };
     if (!this.apiKey()) return { kind: "warning", text: "GROQ KEY MISSING · Start Obsidian with GROQ_API_KEY in its environment." };
@@ -638,10 +713,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const issue = this.runtime.lastGroqIssue;
     if (issue) {
       const remaining = Math.max(0, Math.ceil((this.groqBlockedUntil - Date.now()) / 1000));
-      return { kind: "warning", text: `${issue.message}${remaining ? ` Retry pause: ${remaining}s.` : " Analyze changed will retry local results."}` };
+      return { kind: "warning", text: `${issue.message}${remaining ? ` Retry pause: ${remaining}s; Groq-enabled analysis stays pending.` : " Run Analyze changed to retry with Groq."}` };
     }
     if (this.runtime.lastGroqSuccessAt && this.runtime.lastGroqModel === this.settings.model) {
-      return { kind: "ready", text: `GROQ CONNECTED · ${this.settings.model} · Last valid response ${new Date(this.runtime.lastGroqSuccessAt).toLocaleString()}.` };
+      const pending = this.fallbackRecords().length;
+      return { kind: "ready", text: `GROQ CONNECTED · ${this.settings.model} · Last valid response ${new Date(this.runtime.lastGroqSuccessAt).toLocaleString()}.${pending ? ` ${pending} saved fallback entries await reanalysis. Use Retry fallback entries.` : ""}` };
     }
     return { kind: "ready", text: `GROQ READY TO CHECK · ${this.settings.model} · Use Check Groq to test with sample text.` };
   }
@@ -733,7 +809,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     await this.ensureFolder(this.entriesFolder);
     const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups every Markdown note by the local calendar day of its Obsidian creation timestamp, regardless of folder or filename. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
-    const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEvery Markdown note in the vault is grouped by the local calendar day of its Obsidian creation timestamp, TFile.stat.ctime. Folder, filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates all Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nGroq is used when \`${this.settings.apiKeyEnvironmentVariable}\` is available and the API is reachable. The API key is read from the process environment and is never saved in this vault. If Groq cannot be reached, a deterministic local word-pattern fallback produces a low-confidence directional result. Every entry records its analyzer.\n`;
+const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEvery Markdown note in the vault is grouped by the local calendar day of its Obsidian creation timestamp, TFile.stat.ctime. Folder, filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates all Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key is read from the process environment and is never saved in this vault. Every completed entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, dashboard, false);
     await this.upgradeDashboardLayout();
     await this.writeTextFile(`${this.outputFolder}/Mood History.base`, base, false);
@@ -809,7 +885,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     groqButton.addEventListener("click", () => void this.retryAllWithGroq());
     const checkButton = actions.createEl("button", { text: "Check Groq" });
     checkButton.addEventListener("click", () => void this.checkGroqConnection());
+    const fallbackButton = actions.createEl("button", { text: "Retry fallback entries" });
+    fallbackButton.addEventListener("click", () => void this.recoverFallbacksWithGroq());
     groqButton.disabled = checkButton.disabled = !this.settings.enableGroq || Boolean(this.activeScan) || Boolean(this.checkingGroq);
+    fallbackButton.disabled = groqButton.disabled || !this.fallbackRecords().length;
     changedButton.disabled = Boolean(this.activeScan) || Boolean(this.checkingGroq);
     const status = this.groqStatus();
     const statusElement = wrapper.createDiv({ cls: "auto-mood-provider-status", text: status.text });
@@ -843,7 +922,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const reviewedCount = complete.filter((record) => record.analysisSource === "reviewed-backfill").length;
     const fallbackCount = complete.filter((record) => record.analysisSource === "local-fallback").length;
     const localCount = complete.filter((record) => record.analysisSource === "local").length;
-    provenance.setText(`Timestamp groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved and labeled legacy.`);
+    const legacyFallbackCount = records.filter((record) => record.dateBasis === LEGACY_DATE_BASIS && record.analysisSource === "local-fallback").length;
+    provenance.setText(`Timestamp groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved and labeled legacy.${legacyFallbackCount ? ` ${legacyFallbackCount} legacy fallback entries can be recovered with Retry fallback entries.` : ""}`);
   }
 
   renderTrendChart(parent, records) {
@@ -999,11 +1079,11 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.classList.add("auto-mood-settings");
     containerEl.createEl("h2", { text: "Automatic Mood History" });
     containerEl.createEl("p", {
-      text: "Every Markdown note is grouped by the local date of its Obsidian creation timestamp, regardless of folder or filename. Local analysis is the default. Groq is optional and off until enabled. Its key is read from GROQ_API_KEY in the Obsidian process environment and is never stored in this vault."
+      text: "Every Markdown note is grouped by the local date of its Obsidian creation timestamp, regardless of folder or filename. Local analysis is the default. When Groq is enabled, eligible analysis uses Groq only; failed or paused requests stay pending instead of switching to local scoring. Its key is read from GROQ_API_KEY in the Obsidian process environment and is never stored in this vault."
     });
     new Setting(containerEl)
       .setName("Enable Groq analysis")
-      .setDesc("When enabled, analysis may send cleaned text from all notes created that date to Groq. This setting is off by default.")
+      .setDesc("When enabled, eligible analysis sends cleaned text from all notes created that date to Groq only. If Groq is unavailable or paused, the plugin keeps existing results and leaves new work pending. This setting is off by default.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.enableGroq)
         .onChange(async (value) => {
@@ -1051,6 +1131,12 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .setDesc("Forces reanalysis and retries Groq even after a recent network error.")
       .addButton((button) => button.setButtonText("Retry Groq").onClick(() => {
         void this.plugin.retryAllWithGroq();
+      }));
+    new Setting(containerEl)
+      .setName("Retry fallback entries with Groq")
+      .setDesc("Retry only saved local-fallback results, including legacy entries using their original source notes. Successful Groq results are not rerun; missing sources and failed retries keep the existing result.")
+      .addButton((button) => button.setButtonText("Retry fallbacks").onClick(() => {
+        void this.plugin.recoverFallbacksWithGroq();
       }));
   }
 }

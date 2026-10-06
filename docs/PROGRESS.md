@@ -1,8 +1,26 @@
 # Project Progress
 
-## Current objective — eliminate horizontal scrolling, install, and publish 1.2.2
+## Current objective — make Groq mode provider-only and include legacy-date entries in Groq analysis; prepare 1.2.4
 
-**Progress: 100% - built, installed, and published. Manual acceptance is handed to the user.**
+**Progress: [###############-----] 75% - source built and installed locally with plugin data preserved; live recovery and GitHub publication remain.**
+
+- [x] Reconcile repository state and preserve the existing uncommitted 1.2.3 legacy-recovery work.
+- [x] Identify why Groq-enabled scans created local fallback entries and why saved legacy dates could be omitted.
+- [x] Make Groq-enabled analysis provider-only; failed/paused requests keep existing records and leave work pending.
+- [x] Include all legacy-date records using saved source notes, retaining their date basis and entry path.
+- [x] Update user-facing descriptions, README, changelog, project state, and version metadata for 1.2.4.
+- [x] Build the release bundle and inspect the source diff; do not run tests unless requested.
+- [x] Back up and install only plugin code files; verify plugin data/settings remain unchanged.
+- [ ] Recover saved fallback entries through Obsidian with Groq and confirm analyzer/date preservation.
+- [ ] Synchronize the repository and publish the finished release.
+
+Cause: the old hybrid behavior wrote local-fallback scores after a Groq error and for later dates after a retry pause. A successful sample connection check did not replace cached fallback records. Existing legacy records were not all included in the creation-date target list. The repair uses Groq only while the setting is enabled, targets legacy records by their stored source paths, and preserves their original date labels. Automatic/startup settings are unchanged.
+
+Repository inspection also found that current local records are separate from the saved legacy dates; no date-key collisions were present in the live vault at inspection time. The public repository must contain no private note contents, vault path, API key, or record data.
+
+The 1.2.4 bundle is installed in the user's vault. `main.js` and `styles.css` match the source build, and `data.json` has the same SHA-256 before and after installation. Obsidian was closed during installation, so the new code has not yet run against the vault. On next launch, run **Automatic Mood History: Analyze changed notes** to refresh all legacy records from their saved source notes; the dashboard's **Retry fallback entries** button retries the saved fallback subset. No test suite was run in this turn.
+
+## Completed 1.2.2 layout milestone
 
 - [x] Read continuity, inspect Git changes, locate public source and live 1.2.1 installation.
 - [x] Reproduce chart/table overflow and identify the embedded Base and window-only breakpoint problems.

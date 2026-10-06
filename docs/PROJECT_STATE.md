@@ -5,8 +5,9 @@
 - This is an Obsidian desktop community plugin. `scripts/build.js` bundles `src/sentiment-core.js` and `src/main.js` into the self-contained `main.js` loaded by Obsidian.
 - `src/main.js` owns plugin lifecycle, date discovery, source events, settings, optional Groq requests, generated files, and the dashboard renderer.
 - Provider responses are parsed and validated before normalization. GPT-OSS uses low reasoning and a 4096-token budget, with one 8192-token retry on completion-limit exhaustion. Date analyses share a serialized queue; a forced scan clears a previous provider pause once, while a new rate limit pauses its remaining requests.
+- Groq-enabled mode is provider-only: valid Groq responses are saved; provider errors or pauses preserve existing records and leave new work pending. Local scoring is used only while Groq is disabled. Existing `local-fallback` records are historical results eligible for recovery, not a path new Groq-enabled scans use.
 - `runtime.lastGroqIssue` stores a safe failure category and retry timestamp. Provider error bodies are not logged or saved. Connection checks send fictional sample text and update connection status without creating mood records.
-- Intentional local analysis uses `analysisSource: local`; provider fallback uses `local-fallback` with a per-record provider issue. Unchanged fallback records are retried after the provider pause expires. Valid unchanged Groq results survive a failed manual retry.
+- Intentional local analysis uses `analysisSource: local`; older provider fallback results use `local-fallback`. Unchanged local and fallback records are retried with Groq after a provider pause expires. Valid saved results survive failed retries.
 - `src/sentiment-core.js` owns text cleanup, duplicate paragraph removal, SHA-256 hashing, local lexicon scoring, result validation, and generated entry Markdown.
 - The analysis scope is every Markdown note in the vault. Each note is assigned to the local calendar day of Obsidian's `TFile.stat.ctime`; folder, filename, frontmatter dates, aliases, and later edits do not set that day.
 - Generated files under the configured `Mood History/` output folder and notes in `.trash/` are excluded. Notes without a valid creation timestamp are skipped.
@@ -19,6 +20,7 @@
 
 ## Design decisions and rationale
 
+- 1.2.3 started legacy fallback discovery. 1.2.4 includes every legacy-date record in Groq scans, regardless of its prior analyzer, and `gatherLegacyDate()` reads its exact saved source paths. The original legacy date basis and entry path are retained. Failed or paused requests preserve existing results and leave the group pending; no new local-fallback scores are written while Groq is enabled.
 - No-horizontal-scroll layout in 1.2.2 uses pane container queries, intrinsically shrinkable grids, full-width history cards, and a ResizeObserver-redrawn SVG with CSS-pixel-sized labels. It does not hide/clamp overflowing content or discard chart points. Chart observers are disposed on refresh and unload.
 - A dashboard's native Base embed independently caused overflow. New dashboards link to it instead. `upgradeDashboardLayout()` atomically replaces only the exact embed in an owned dashboard, checking ownership again during processing and retaining other writing; native Base tables remain separate optional views.
 - The source started this task with uncommitted 1.2.1 provider recovery changes. Preserve those changes and include them in 1.2.2; do not reset the working tree to published 1.2.0.
@@ -42,6 +44,8 @@
 - An earlier test fixture contained a real-looking backfill date and derived mood values. It has been replaced with synthetic data.
 - A fresh 1.1.1 launch logged `Plugin failure: automatic-mood-history Error: Folder already exists.` The failure came from support-folder creation during `onload`. Version 1.1.2 moves setup after Obsidian's layout-ready event, checks adapter state, and accepts only confirmed existing folders after a creation race.
 - The user's corrected scope is all notes created on a day, using Obsidian creation timestamps. Version 1.2.0 implements local-day grouping from `TFile.stat.ctime`, no longer uses filenames/frontmatter/aliases/folder scope, and preserves old records as legacy.
+- The previous Groq-enabled path silently wrote local fallback scores after provider errors and for remaining targets after a pause. A passing sample connection check did not make earlier saved fallbacks update. Also, only legacy fallback records had been added to the staged recovery; legacy records with other analyzer labels were not selected.
+- Legacy records have saved `sourcePaths`. Recovery must read that complete saved set and retain the legacy date, rather than grouping the same notes by current creation date or substituting notes from another group. Current user vault metadata confirmed saved paths for the applicable legacy records; do not copy the record data or private note text into this public repository.
 - The release workflow validates that the pushed tag equals the manifest version and attaches `main.js`, `manifest.json`, and `styles.css`.
 - The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; all-note timestamp commit `5fd02b1c836245c3ce0a2e2190b18b7c41934e7e` is tagged `1.2.0`.
 
@@ -49,6 +53,7 @@
 
 - Fixed chart/table minimum widths and window-width media queries cannot fit narrow Obsidian split panes. Overflow hiding is not a fix: verify descendant bounds and scroll metrics, with large text and long unbroken content.
 - Do not send `uniqueItems` to Groq strict structured output, or send GPT-OSS the unsupported `reasoning_format` parameter.
+- Paid Groq usage does not guarantee every request succeeds; the provider still enforces account/model rate limits and can return HTTP 429. Provider-only mode must leave affected groups pending rather than fill them with local estimates.
 - Do not apply a fixed 15-minute pause to every provider error or use a saved error as evidence that the current scan failed.
 
 - Do not publish the surrounding vault-work folder or its project notes. Publish only this sanitized plugin directory.
@@ -70,12 +75,16 @@
 
 ## Known limitations and unresolved items
 
-- Release `1.2.0` is published and installed locally. A fresh Obsidian launch reports `loaded`; the live scan grouped notes by creation timestamp, preserved old records with the legacy marker, and had no plugin errors. Downloaded release files match the source build and installed files by SHA-256.
+- Release `1.2.2` is published and installed locally. The current user vault has legacy-date records with saved source paths, and Groq is enabled. Earlier installs can retain local-fallback history until it is successfully retried; the current fix has not yet been installed or used for a live recovery.
 - Native 1.2.2 startup and day-card rendering have been inspected in the user's dark theme. Browser fixture checks cover the detailed 240–1440px narrow-pane/large-text matrix; native screenshots and user data are not published.
 - CI run `37059163020` and release workflow `37059296342` passed for 1.2.0.
 - The Groq service and configured model can change independently of this plugin; local analysis remains available.
 
 ## RESUME HERE
+
+Current task: complete 1.2.4 provider-only Groq and full legacy-date recovery. The bundle is built and installed in the user's vault; `main.js` and `styles.css` match the source build, and `data.json` is unchanged. Obsidian was closed during installation, so launch it and run **Automatic Mood History: Analyze changed notes** to update all eligible legacy entries from their saved source notes. Then synchronize the repository and publish 1.2.4. Preserve the user's existing settings and records. Do not expose user note text, vault paths, API keys, or record contents in GitHub. No test suite was run during this turn.
+
+The repository is `https://github.com/remriel/automatic-mood-history`. The installed release before this work is 1.2.2. The working tree already contained uncommitted 1.2.3 legacy-recovery changes; preserve and include them in 1.2.4.
 
 1.2.2 is complete, installed, and published: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.2. Tag commit `c11f60292e87729130bee48ffb4d84c8acf6b058`; release workflow `37178543489` succeeded. The user switched to Build Once & Publish after the successful local build/checks, so additional post-publication verification was intentionally skipped. Manual acceptance is now theirs; do not continue test/polish loops without a new request. Preserve the user's new manual-analysis results and existing preferences. Native screenshots/backups remain private.
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.4 — 2026-10-05
+
+- Make Groq-enabled analysis provider-only; failures and pauses leave records pending instead of generating new local-fallback scores.
+- Include every saved legacy-date record in Groq scans and analyze it from its original saved notes while preserving its legacy date.
+- Keep existing records unchanged when Groq fails and clearly report groups still pending.
+
+## 1.2.3 — 2026-10-05
+
+- Retry saved legacy local-fallback entries instead of limiting recovery to current creation-date groups.
+- Read each legacy entry's original saved source notes and retain its legacy date basis and stored entry path.
+- Add a focused Retry fallback entries command/button so successful Groq results need not be rerun.
+- Distinguish Groq connectivity from cached fallback history awaiting reanalysis.
+- Preserve existing results when sources are missing/empty or Groq retries fail; honor new provider pauses.
+- Add focused legacy-recovery and responsive-button regressions.
+
 ## 1.2.2 — 2026-10-03
 
 - Remove horizontal scrolling from the dashboard: replace the wide daily table with wrapping, source-linked history cards.

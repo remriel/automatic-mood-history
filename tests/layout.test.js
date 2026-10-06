@@ -72,7 +72,7 @@ async function inspectLayout(page, label) {
       await inspectLayout(page, JSON.stringify(options));
     }
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
-    for (const [name, counter] of [["Analyze changed", "analyze"], ["Retry all with Groq", "retry"], ["Check Groq", "check"]]) {
+    for (const [name, counter] of [["Analyze changed", "analyze"], ["Retry all with Groq", "retry"], ["Check Groq", "check"], ["Retry fallback entries", "recover"]]) {
       await page.getByRole("button", { name, exact: true }).click();
       await inspectLayout(page, `${name} busy state`);
       await page.waitForFunction(() => !fixture.plugin.activeScan && !fixture.plugin.checkingGroq);

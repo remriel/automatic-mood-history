@@ -36,11 +36,11 @@ function fixtureHTML() {
     ${bundle}
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
     plugin.settings={outputFolder:'Mood History',enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
-    const calls={analyze:0,retry:0,check:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};
+    const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};
     let statusText='SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';
     plugin.groqStatus=()=>({kind:plugin.settings.enableGroq?'ready':'local',text:plugin.activeScan?'Analyzing fictional fixture records':plugin.checkingGroq?'Checking with fictional fixture text':statusText});
     const action=async(name)=>{calls[name]+=1;if(name==='check')plugin.checkingGroq=true;else plugin.activeScan=true;plugin.refreshRenderers();await new Promise(r=>setTimeout(r,120));plugin.checkingGroq=false;plugin.activeScan=false;plugin.refreshRenderers();};
-    plugin.analyzeAll=()=>action('analyze');plugin.retryAllWithGroq=()=>action('retry');plugin.checkGroqConnection=()=>action('check');
+    plugin.analyzeAll=()=>action('analyze');plugin.retryAllWithGroq=()=>action('retry');plugin.checkGroqConnection=()=>action('check');plugin.recoverFallbacksWithGroq=()=>action('recover');
     const tab=new AutomaticMoodHistorySettingTab({},plugin);tab.containerEl=document.getElementById('settings');
     function configure(options={}) {
       document.documentElement.style.fontSize=options.largeText?'32px':'16px';document.body.className=options.theme==='light'?'theme-light':'theme-dark';document.getElementById('pane').style.width=options.paneWidth?options.paneWidth+'px':'100%';
