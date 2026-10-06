@@ -13,6 +13,7 @@
 - Generated files under the configured `Mood History/` output folder and notes in `.trash/` are excluded. Notes without a valid creation timestamp are skipped.
 - Startup analysis, automatic note-change analysis, and Groq requests are off by default. Local scoring runs when a user requests analysis. Groq requires the settings opt-in and reads only `GROQ_API_KEY` from the Obsidian process environment.
 - No API key value is stored. The user-selected environment-variable setting from version 1.1.0 is ignored and omitted from saved settings.
+- Tagged releases attach version-specific notes and use GitHub Actions to attest the built `main.js`, `manifest.json`, and `styles.css` assets.
 - Generated files live under `Mood History/` by default. Entries contain an ownership marker. If a date path belongs to another note, the plugin picks a conflict-safe name and stores that path so dashboard links remain correct.
 - Existing records from prior filename/frontmatter grouping are retained with `dateBasis: legacy-note-date`; new or verified groups use `dateBasis: created-at-local-date`.
 - Mood scores are text-based inferences, not diagnoses or objective facts. Groq receives cleaned note text only after opt-in; file paths remain local.
@@ -47,6 +48,7 @@
 - The previous Groq-enabled path silently wrote local fallback scores after provider errors and for remaining targets after a pause. A passing sample connection check did not make earlier saved fallbacks update. Also, only legacy fallback records had been added to the staged recovery; legacy records with other analyzer labels were not selected.
 - Legacy records have saved `sourcePaths`. Recovery must read that complete saved set and retain the legacy date, rather than grouping the same notes by current creation date or substituting notes from another group. Current user vault metadata confirmed saved paths for the applicable legacy records; do not copy the record data or private note text into this public repository.
 - The release workflow validates that the pushed tag equals the manifest version and attaches `main.js`, `manifest.json`, and `styles.css`.
+- 1.2.4 fixes the release audit findings: the manifest description no longer says "Obsidian", the GitHub release body comes from `docs/RELEASE_NOTES_1.2.4.md`, and `actions/attest@v4` signs provenance for each release asset. CSS score colors and reduced-motion rules use scoped selector specificity; the `text-decoration-thickness` override was removed.
 - The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; all-note timestamp commit `5fd02b1c836245c3ce0a2e2190b18b7c41934e7e` is tagged `1.2.0`.
 
 ## Failed approaches not to repeat
@@ -82,7 +84,7 @@
 
 ## RESUME HERE
 
-Current task: complete 1.2.4 provider-only Groq and full legacy-date recovery. The bundle is built and installed in the user's vault; `main.js` and `styles.css` match the source build, and `data.json` is unchanged. Source is pushed to branch `codex/groq-provider-only-legacy-1-2-4` at commit `8e50198`. Obsidian was closed during installation, so launch it and run **Automatic Mood History: Analyze changed notes** to update all eligible legacy entries from their saved source notes. Then publish 1.2.4. Preserve the user's existing settings and records. Do not expose user note text, vault paths, API keys, or record contents in GitHub. No test suite was run during this turn.
+Current task: publish 1.2.4 with the requested release-audit fixes. The manifest, release notes, attestation workflow, and CSS warnings are fixed. `npm test`, `npm run audit:release`, and `npm run test:layout` pass. Commit the changes, push the branch, fast-forward `main`, then push tag `1.2.4` and verify the GitHub release body, attached assets, and attestations. The plugin was previously installed locally with `data.json` unchanged. Do not expose user note text, vault paths, API keys, or record contents in GitHub.
 
 The repository is `https://github.com/remriel/automatic-mood-history`. The installed release before this work is 1.2.2. The working tree already contained uncommitted 1.2.3 legacy-recovery changes; preserve and include them in 1.2.4.
 

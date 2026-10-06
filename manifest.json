@@ -3,7 +3,7 @@
   "name": "Automatic Mood History",
   "version": "1.2.4",
   "minAppVersion": "1.5.0",
-  "description": "Local-first mood history dashboard for dated Obsidian notes, with optional Groq analysis.",
+  "description": "Local-first mood history dashboard for dated notes, with optional Groq analysis.",
   "author": "remriel",
   "authorUrl": "https://github.com/remriel",
   "isDesktopOnly": true

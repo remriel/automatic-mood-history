@@ -366,16 +366,15 @@
   font-weight: 700;
 }
 
-.auto-mood-score[data-score="1"] { background: #ff4d6d !important; }
-.auto-mood-score[data-score="2"] { background: #ff8c42 !important; }
-.auto-mood-score[data-score="3"] { background: #f4d35e !important; }
-.auto-mood-score[data-score="4"] { background: #62d2a2 !important; }
-.auto-mood-score[data-score="5"] { background: #23b5d3 !important; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="1"] { background: #ff4d6d; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="2"] { background: #ff8c42; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="3"] { background: #f4d35e; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="4"] { background: #62d2a2; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="5"] { background: #23b5d3; }
 
 .auto-mood-dashboard a.internal-link {
   color: var(--link-color);
   font-weight: 800;
-  text-decoration-thickness: 2px;
 }
 
 .auto-mood-dashboard button:focus-visible,
@@ -540,10 +539,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auto-mood-dashboard *,
-  .auto-mood-dashboard *::before,
-  .auto-mood-dashboard *::after {
-    scroll-behavior: auto !important;
-    transition: none !important;
+  .auto-mood-render-root .auto-mood-dashboard *,
+  .auto-mood-render-root .auto-mood-dashboard *::before,
+  .auto-mood-render-root .auto-mood-dashboard *::after {
+    scroll-behavior: auto;
+    transition: none;
   }
 }

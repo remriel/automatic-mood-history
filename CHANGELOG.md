@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.4 — 2026-10-05
+## 1.2.4 — 2026-10-06
 
 - Make Groq-enabled analysis provider-only; failures and pauses leave records pending instead of generating new local-fallback scores.
 - Include every saved legacy-date record in Groq scans and analyze it from its original saved notes while preserving its legacy date.

@@ -1,25 +1,18 @@
 # Project Progress
 
-## Current objective — make Groq mode provider-only and include legacy-date entries in Groq analysis; prepare 1.2.4
+## Current objective — fix release audit findings and publish 1.2.4
 
-**Progress: [#################---] 85% - source built, installed locally, and pushed to GitHub; live legacy recovery and release publication remain.**
+**Progress: [#################---] 85% - release findings fixed and local CI-equivalent checks pass; merge, tag, and release workflow remain.**
 
-- [x] Reconcile repository state and preserve the existing uncommitted 1.2.3 legacy-recovery work.
-- [x] Identify why Groq-enabled scans created local fallback entries and why saved legacy dates could be omitted.
-- [x] Make Groq-enabled analysis provider-only; failed/paused requests keep existing records and leave work pending.
-- [x] Include all legacy-date records using saved source notes, retaining their date basis and entry path.
-- [x] Update user-facing descriptions, README, changelog, project state, and version metadata for 1.2.4.
-- [x] Build the release bundle and inspect the source diff; do not run tests unless requested.
-- [x] Back up and install only plugin code files; verify plugin data/settings remain unchanged.
-- [x] Synchronize the 1.2.4 source to GitHub branch `codex/groq-provider-only-legacy-1-2-4` at commit `8e50198`.
-- [ ] Recover saved fallback entries through Obsidian with Groq and confirm analyzer/date preservation.
-- [ ] Publish the finished 1.2.4 release.
+- [x] Reconcile repository, branch, and installed 1.2.4 state.
+- [x] Remove "Obsidian" from the manifest description.
+- [x] Remove the `text-decoration-thickness` compatibility warning and replace `!important` rules with scoped specificity.
+- [x] Add versioned GitHub release notes and build-provenance attestations for all release files.
+- [x] Pass `npm test`, `npm run audit:release`, and `npm run test:layout`.
+- [ ] Commit and push these release fixes, then fast-forward `main`.
+- [ ] Push tag `1.2.4`; confirm the GitHub release description, assets, and attestations.
 
-Cause: the old hybrid behavior wrote local-fallback scores after a Groq error and for later dates after a retry pause. A successful sample connection check did not replace cached fallback records. Existing legacy records were not all included in the creation-date target list. The repair uses Groq only while the setting is enabled, targets legacy records by their stored source paths, and preserves their original date labels. Automatic/startup settings are unchanged.
-
-Repository inspection also found that current local records are separate from the saved legacy dates; no date-key collisions were present in the live vault at inspection time. The public repository must contain no private note contents, vault path, API key, or record data.
-
-The 1.2.4 bundle is installed in the user's vault. `main.js` and `styles.css` match the source build, and `data.json` has the same SHA-256 before and after installation. Obsidian was closed during installation, so the new code has not yet run against the vault. On next launch, run **Automatic Mood History: Analyze changed notes** to refresh all legacy records from their saved source notes; the dashboard's **Retry fallback entries** button retries the saved fallback subset. No test suite was run in this turn.
+The release checker flagged the manifest description, empty release body, absent asset attestations, and CSS compatibility/`!important` warnings. The fixes are in the existing 1.2.4 branch. Provider-only Groq and legacy-date recovery remain included. The public repository contains no vault records, note contents, keys, or absolute vault paths.
 
 ## Completed 1.2.2 layout milestone
 
