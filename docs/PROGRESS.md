@@ -2,7 +2,7 @@
 
 ## Current objective — make Groq mode provider-only and include legacy-date entries in Groq analysis; prepare 1.2.4
 
-**Progress: [###############-----] 75% - source built and installed locally with plugin data preserved; live recovery and GitHub publication remain.**
+**Progress: [#################---] 85% - source built, installed locally, and pushed to GitHub; live legacy recovery and release publication remain.**
 
 - [x] Reconcile repository state and preserve the existing uncommitted 1.2.3 legacy-recovery work.
 - [x] Identify why Groq-enabled scans created local fallback entries and why saved legacy dates could be omitted.
@@ -11,8 +11,9 @@
 - [x] Update user-facing descriptions, README, changelog, project state, and version metadata for 1.2.4.
 - [x] Build the release bundle and inspect the source diff; do not run tests unless requested.
 - [x] Back up and install only plugin code files; verify plugin data/settings remain unchanged.
+- [x] Synchronize the 1.2.4 source to GitHub branch `codex/groq-provider-only-legacy-1-2-4` at commit `8e50198`.
 - [ ] Recover saved fallback entries through Obsidian with Groq and confirm analyzer/date preservation.
-- [ ] Synchronize the repository and publish the finished release.
+- [ ] Publish the finished 1.2.4 release.
 
 Cause: the old hybrid behavior wrote local-fallback scores after a Groq error and for later dates after a retry pause. A successful sample connection check did not replace cached fallback records. Existing legacy records were not all included in the creation-date target list. The repair uses Groq only while the setting is enabled, targets legacy records by their stored source paths, and preserves their original date labels. Automatic/startup settings are unchanged.
 

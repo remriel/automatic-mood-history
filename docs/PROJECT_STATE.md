@@ -82,7 +82,7 @@
 
 ## RESUME HERE
 
-Current task: complete 1.2.4 provider-only Groq and full legacy-date recovery. The bundle is built and installed in the user's vault; `main.js` and `styles.css` match the source build, and `data.json` is unchanged. Obsidian was closed during installation, so launch it and run **Automatic Mood History: Analyze changed notes** to update all eligible legacy entries from their saved source notes. Then synchronize the repository and publish 1.2.4. Preserve the user's existing settings and records. Do not expose user note text, vault paths, API keys, or record contents in GitHub. No test suite was run during this turn.
+Current task: complete 1.2.4 provider-only Groq and full legacy-date recovery. The bundle is built and installed in the user's vault; `main.js` and `styles.css` match the source build, and `data.json` is unchanged. Source is pushed to branch `codex/groq-provider-only-legacy-1-2-4` at commit `8e50198`. Obsidian was closed during installation, so launch it and run **Automatic Mood History: Analyze changed notes** to update all eligible legacy entries from their saved source notes. Then publish 1.2.4. Preserve the user's existing settings and records. Do not expose user note text, vault paths, API keys, or record contents in GitHub. No test suite was run during this turn.
 
 The repository is `https://github.com/remriel/automatic-mood-history`. The installed release before this work is 1.2.2. The working tree already contained uncommitted 1.2.3 legacy-recovery changes; preserve and include them in 1.2.4.
 
