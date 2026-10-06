@@ -1,18 +1,19 @@
 # Project Progress
 
-## Current objective — fix release audit findings and publish 1.2.4
+## Current objective — create the Automatic Mood History community-listing icon
 
-**Progress: 100% - 1.2.4 is published with release notes and verified artifact attestations.**
+**Progress: 75% - icon artwork is generated and saved in the repo and outputs; commit/push and community-listing upload remain.**
 
-- [x] Reconcile repository, branch, and installed 1.2.4 state.
-- [x] Remove "Obsidian" from the manifest description.
-- [x] Remove the `text-decoration-thickness` compatibility warning and replace `!important` rules with scoped specificity.
-- [x] Add versioned GitHub release notes and build-provenance attestations for all release files.
-- [x] Pass `npm test`, `npm run audit:release`, and `npm run test:layout`.
-- [x] Commit and push the release fixes, then fast-forward `main`.
-- [x] Push tag `1.2.4`; confirm the GitHub release description, assets, and attestations.
+- [x] Reconcile this repo's instructions, state, and Git status.
+- [x] Confirm the community-directory icon is managed in listing settings, not `manifest.json`.
+- [x] Generate a square aubergine/coral heart-sun and timeline icon.
+- [x] Save the same 1254×1254 PNG under `assets/community-icon.png` and task outputs.
+- [x] Update `audit:release` to allow this one explicitly public directory icon while retaining the image/private-artifact scan for other files.
+- [x] Run `npm run audit:release` and `git diff --check`; it permits only this intentional public image while still scanning other images/private files.
+- [ ] Commit and push the icon asset and audit allowlist.
+- [ ] Upload it through the Community directory **Edit listing** form if the signed-in editor is accessible.
 
-The release checker flagged the manifest description, empty release body, absent asset attestations, and CSS compatibility/`!important` warnings. The fixes are in the existing 1.2.4 branch. Provider-only Groq and legacy-date recovery remain included. The public repository contains no vault records, note contents, keys, or absolute vault paths.
+This icon is a directory-listing asset and stays outside the three-file plugin release bundle. Icon image: a heart-sun in an emotional arc of timestamp nodes.
 
 Published: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.4
 
@@ -21,6 +22,8 @@ Published: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.4
 - The release body contains the 1.2.4 notes and includes `main.js`, `manifest.json`, and `styles.css`.
 - `gh attestation verify` succeeded for all three downloaded release assets using `.github/workflows/release.yml` as the expected signer workflow.
 - A convenience zip containing those exact downloaded release assets is in the task outputs. The installed plugin directory was left unchanged during final sync because Obsidian was running.
+
+The directory's Edit listing icon update is still pending. Browser capture failed twice while trying to inspect Edge (`FrameArrived timed out: timed out waiting on channel`, then `window capture timed out: timed out waiting on channel`), so no listing UI change was made.
 
 ## Completed 1.2.2 layout milestone
 

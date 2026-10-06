@@ -5,6 +5,10 @@ const root = path.resolve(__dirname, "..");
 const files = execFileSync("git", ["-C", root, "ls-files", "--cached", "--others", "--exclude-standard", "-z"], { encoding: "utf8" }).split("\0").filter(Boolean);
 const sensitive = /(?:C:[\\/]+Users[\\/]+[^\\/]+[\\/]+(?:OneDrive|Documents)|gsk_[A-Za-z0-9]{24,}|gh[pousr]_[A-Za-z0-9]{30,})/i;
 const sensitiveFiles = files.filter(file => sensitive.test(fs.readFileSync(path.join(root, file), "utf8")));
-const privateArtifacts = files.filter(file => /(?:^|\/)(?:data\.json|\.obsidian|Mood History|outputs)(?:\/|$)|\.(?:png|jpg|zip)$/i.test(file));
+const publicListingAssets = new Set(["assets/community-icon.png"]);
+const privateArtifacts = files.filter(file => {
+  const normalized = file.replace(/\\/g, "/");
+  return !publicListingAssets.has(normalized) && /(?:^|\/)(?:data\.json|\.obsidian|Mood History|outputs)(?:\/|$)|\.(?:png|jpg|zip)$/i.test(normalized);
+});
 console.log(JSON.stringify({ auditedFileCount: files.length, sensitiveFiles, privateArtifacts }));
 if (sensitiveFiles.length || privateArtifacts.length) throw new Error("Private artifacts or sensitive paths/tokens must not be published.");

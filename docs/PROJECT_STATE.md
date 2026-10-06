@@ -49,6 +49,7 @@
 - Legacy records have saved `sourcePaths`. Recovery must read that complete saved set and retain the legacy date, rather than grouping the same notes by current creation date or substituting notes from another group. Current user vault metadata confirmed saved paths for the applicable legacy records; do not copy the record data or private note text into this public repository.
 - The release workflow validates that the pushed tag equals the manifest version and attaches `main.js`, `manifest.json`, and `styles.css`.
 - 1.2.4 fixes the release audit findings: the manifest description no longer says "Obsidian", the GitHub release body comes from `docs/RELEASE_NOTES_1.2.4.md`, and `actions/attest@v4` signs provenance for each release asset. CSS score colors and reduced-motion rules use scoped selector specificity; the `text-decoration-thickness` override was removed.
+- The community-directory icon is managed separately in the listing's **Edit listing** form, not through `manifest.json`. `assets/community-icon.png` is the source artwork for Automatic Mood History's directory listing; do not include it in the plugin's three-file release bundle.
 - The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; all-note timestamp commit `5fd02b1c836245c3ce0a2e2190b18b7c41934e7e` is tagged `1.2.0`.
 
 ## Failed approaches not to repeat
@@ -86,7 +87,7 @@
 
 ## RESUME HERE
 
-Current task complete: Automatic Mood History 1.2.4 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.2.4. CI run `37504613977` and release workflow `37504844245` passed. The release body, all three assets, and provenance attestations were verified. The local plugin already runs 1.2.4 provider-only legacy recovery; only the final description/CSS release-audit changes remain unapplied locally because Obsidian was open. Keep `data.json` unchanged. Do not expose user note text, vault paths, API keys, or record contents in GitHub.
+Current follow-up: a new `assets/community-icon.png` is generated for Automatic Mood History in an aubergine/coral/amber/mint palette, with a heart-sun surrounded by timeline nodes. The PNG is also copied to task outputs. The directory stores this artwork via **Edit listing**, separately from the plugin manifest/release. The authenticated browser could not be inspected after two repeated screenshot timeouts (`FrameArrived timed out: timed out waiting on channel`, then `window capture timed out: timed out waiting on channel`); do not continue UI actions with stale state. The icon file is ready for upload when the listing editor can be opened.
 
 The repository is `https://github.com/remriel/automatic-mood-history`. The installed release before this work is 1.2.2. The working tree already contained uncommitted 1.2.3 legacy-recovery changes; preserve and include them in 1.2.4.
 
