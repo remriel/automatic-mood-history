@@ -2,7 +2,7 @@
 
 ## Current objective — create the Automatic Mood History community-listing icon
 
-**Progress: 75% - icon artwork is generated and saved in the repo and outputs; commit/push and community-listing upload remain.**
+**Progress: 90% - icon artwork is generated and pushed to GitHub; community-listing upload remains.**
 
 - [x] Reconcile this repo's instructions, state, and Git status.
 - [x] Confirm the community-directory icon is managed in listing settings, not `manifest.json`.
@@ -10,7 +10,7 @@
 - [x] Save the same 1254×1254 PNG under `assets/community-icon.png` and task outputs.
 - [x] Update `audit:release` to allow this one explicitly public directory icon while retaining the image/private-artifact scan for other files.
 - [x] Run `npm run audit:release` and `git diff --check`; it permits only this intentional public image while still scanning other images/private files.
-- [ ] Commit and push the icon asset and audit allowlist.
+- [x] Commit and push the icon asset and audit allowlist on `codex/community-icon-automatic-mood-history` (`4d1fa0e`).
 - [ ] Upload it through the Community directory **Edit listing** form if the signed-in editor is accessible.
 
 This icon is a directory-listing asset and stays outside the three-file plugin release bundle. Icon image: a heart-sun in an emotional arc of timestamp nodes.
