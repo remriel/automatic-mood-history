@@ -2,17 +2,25 @@
 
 ## Current objective — fix release audit findings and publish 1.2.4
 
-**Progress: [#################---] 85% - release findings fixed and local CI-equivalent checks pass; merge, tag, and release workflow remain.**
+**Progress: 100% - 1.2.4 is published with release notes and verified artifact attestations.**
 
 - [x] Reconcile repository, branch, and installed 1.2.4 state.
 - [x] Remove "Obsidian" from the manifest description.
 - [x] Remove the `text-decoration-thickness` compatibility warning and replace `!important` rules with scoped specificity.
 - [x] Add versioned GitHub release notes and build-provenance attestations for all release files.
 - [x] Pass `npm test`, `npm run audit:release`, and `npm run test:layout`.
-- [ ] Commit and push these release fixes, then fast-forward `main`.
-- [ ] Push tag `1.2.4`; confirm the GitHub release description, assets, and attestations.
+- [x] Commit and push the release fixes, then fast-forward `main`.
+- [x] Push tag `1.2.4`; confirm the GitHub release description, assets, and attestations.
 
 The release checker flagged the manifest description, empty release body, absent asset attestations, and CSS compatibility/`!important` warnings. The fixes are in the existing 1.2.4 branch. Provider-only Groq and legacy-date recovery remain included. The public repository contains no vault records, note contents, keys, or absolute vault paths.
+
+Published: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.4
+
+- Main CI run `37504613977` passed for commit `f450e84`.
+- Release workflow `37504844245` passed; it ran tests, release audit, layout checks, tag/version validation, asset attestation, and GitHub release creation.
+- The release body contains the 1.2.4 notes and includes `main.js`, `manifest.json`, and `styles.css`.
+- `gh attestation verify` succeeded for all three downloaded release assets using `.github/workflows/release.yml` as the expected signer workflow.
+- A convenience zip containing those exact downloaded release assets is in the task outputs. The installed plugin directory was left unchanged during final sync because Obsidian was running.
 
 ## Completed 1.2.2 layout milestone
 
@@ -59,14 +67,19 @@ The 1.2.1 source removes the rejected constraint, supplies schema instructions b
 
 ## Current implementation state
 
-The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.2.2` is published and installed. Its tag points to `c11f60292e87729130bee48ffb4d84c8acf6b058`. Earlier milestone evidence below is historical.
+The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.2.4` is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.2.4. Tag commit: `f450e84dcf85f3b46a0d861ce52a3a821eec0d1e`. Main CI `37504613977` and Release workflow `37504844245` passed. Earlier milestone evidence below is historical.
 
 ## Current blockers
 
-None for build, installation, or publication. Manual acceptance is now the user's responsibility; no further tests or polish are queued.
+None for the requested release. The final manifest and stylesheet have not been copied to the open local Obsidian process; its vault data was left untouched. If the user wants those exact files locally, wait until Obsidian is closed, back up the three plugin code files, copy from the downloaded release assets, and confirm `data.json` remains unchanged.
 
 ## Verification performed
 
+- `npm test`, `npm run audit:release`, and `npm run test:layout` passed locally before release.
+- Main CI run `37504613977` and tag release workflow `37504844245` both passed.
+- The GitHub release contains the 1.2.4 release notes plus `main.js`, `manifest.json`, and `styles.css`.
+- `gh attestation verify` succeeded for the exact downloaded release assets, with `.github/workflows/release.yml` enforced as the signer.
+- The convenience zip in `outputs/` was assembled from those downloaded, verified GitHub release assets.
 - Official Obsidian API declarations define `TFile.stat.ctime` as a millisecond creation timestamp.
 - The new timestamp regression test confirms that folder, filename, and frontmatter dates do not override `ctime`; notes from multiple folders are combined, while generated output, trash, non-Markdown files, and timestamp-less notes are skipped.
 - The regression test verifies that unchanged legacy analysis is relabeled without rewriting its generated entry or discarding its result.
@@ -76,6 +89,6 @@ None for build, installation, or publication. Manual acceptance is now the user'
 
 ## Exact next steps
 
-1. No implementation or publication work remains.
-2. User: open the dashboard, narrow the Obsidian pane, and perform manual acceptance.
-3. Make further changes only in response to a new request; do not resume validation loops.
+1. No implementation or publication work remains for release 1.2.4.
+2. If requested, sync the final release files into the local Obsidian plugin folder after Obsidian is closed, preserving `data.json`.
+3. The user can run **Automatic Mood History: Analyze changed notes** to send eligible saved legacy entries to Groq.

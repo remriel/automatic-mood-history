@@ -77,14 +77,16 @@
 
 ## Known limitations and unresolved items
 
-- Release `1.2.2` is published and installed locally. The current user vault has legacy-date records with saved source paths, and Groq is enabled. Earlier installs can retain local-fallback history until it is successfully retried; the current fix has not yet been installed or used for a live recovery.
+- Release `1.2.4` is published with a description, three attached assets, and verified build-provenance attestations. Main CI and the tagged release workflow both passed.
+- The local plugin already had version `1.2.4` from the earlier installation, but final `manifest.json` and `styles.css` release-audit fixes were not copied while Obsidian was running. Its `data.json` was not changed. If a future request asks to sync the exact release files locally, close Obsidian first.
+- The current user vault has legacy-date records with saved source paths, and Groq is enabled. Older local-fallback results still require a run of **Analyze changed notes** after Obsidian restarts.
 - Native 1.2.2 startup and day-card rendering have been inspected in the user's dark theme. Browser fixture checks cover the detailed 240–1440px narrow-pane/large-text matrix; native screenshots and user data are not published.
 - CI run `37059163020` and release workflow `37059296342` passed for 1.2.0.
 - The Groq service and configured model can change independently of this plugin; local analysis remains available.
 
 ## RESUME HERE
 
-Current task: publish 1.2.4 with the requested release-audit fixes. The manifest, release notes, attestation workflow, and CSS warnings are fixed. `npm test`, `npm run audit:release`, and `npm run test:layout` pass. Commit the changes, push the branch, fast-forward `main`, then push tag `1.2.4` and verify the GitHub release body, attached assets, and attestations. The plugin was previously installed locally with `data.json` unchanged. Do not expose user note text, vault paths, API keys, or record contents in GitHub.
+Current task complete: Automatic Mood History 1.2.4 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.2.4. CI run `37504613977` and release workflow `37504844245` passed. The release body, all three assets, and provenance attestations were verified. The local plugin already runs 1.2.4 provider-only legacy recovery; only the final description/CSS release-audit changes remain unapplied locally because Obsidian was open. Keep `data.json` unchanged. Do not expose user note text, vault paths, API keys, or record contents in GitHub.
 
 The repository is `https://github.com/remriel/automatic-mood-history`. The installed release before this work is 1.2.2. The working tree already contained uncommitted 1.2.3 legacy-recovery changes; preserve and include them in 1.2.4.
 
