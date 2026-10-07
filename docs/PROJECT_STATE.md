@@ -77,7 +77,7 @@
 
 ## Known limitations and unresolved items
 
-- Release `1.2.4` is published with a description, three attached assets, and verified build-provenance attestations. Main CI and the tagged release workflow both passed.
+- Release `1.2.5` is published with version-specific notes, three attached assets, and verified build-provenance attestations. Main CI and the tagged release workflow both passed.
 - The local plugin already had version `1.2.4` from the earlier installation, but final `manifest.json` and `styles.css` release-audit fixes were not copied while Obsidian was running. Its `data.json` was not changed. If a future request asks to sync the exact release files locally, close Obsidian first.
 - The current user vault has legacy-date records with saved source paths, and Groq is enabled. Older local-fallback results still require a run of **Analyze changed notes** after Obsidian restarts.
 - Native 1.2.2 startup and day-card rendering have been inspected in the user's dark theme. Browser fixture checks cover the detailed 240–1440px narrow-pane/large-text matrix; native screenshots and user data are not published.
@@ -95,4 +95,6 @@
 
 ## RESUME HERE
 
-The 1.2.5 implementation is complete on codex/intensity-chart-1-2-5, based on published main. Local tests and layout checks pass. Commit/push and fast-forward main, confirm CI, then tag 1.2.5 and verify release assets and attestations. Do not merge private archive branches or publish vault data. See docs/PROGRESS.md for current execution state.
+Automatic Mood History 1.2.5 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.2.5. Release tag/source commit: a2eb6b39a87c6016a5455a385643acd037acc303. Main CI 37657910548 and Release workflow 37658046595 passed. All three downloaded release assets passed gh attestation verify with .github/workflows/release.yml enforced as the signer. Published asset SHA-256 values match the downloads. Local core, provider, privacy, and responsive layout checks passed. The public trend chart includes Mood, Energy, Connection, and Intensity with existing saved scores; no analysis rerun is required.
+
+No implementation or publication work remains. Keep private archive code and results outside this repository. The installed personal plugin retains private archive support and has its intensity chart update verified locally. Future release work must preserve its saved data and private features.

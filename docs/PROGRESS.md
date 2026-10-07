@@ -4,24 +4,30 @@
 
 Release Automatic Mood History 1.2.5 with intensity plotted alongside mood, energy, and connection.
 
-**Progress: 85% — implementation and local checks complete; GitHub publication pending.**
+**Progress: 100% — implemented, verified, and published.**
 
-- [x] Reconcile Git state and published 1.2.4 source.
-- [x] Add saved intensity scores to the responsive trend chart.
-- [x] Add light/dark colors, a dash-dot trace and legend, tooltips, and accessible description.
-- [x] Verify exact plotted intensity values and omission of missing scores.
+- [x] Reconcile repository and published 1.2.4 source.
+- [x] Plot saved intensity scores on the common 1–5 scale.
+- [x] Add distinct light/dark color, dash-dot pattern, legend, tooltips, and accessible description.
+- [x] Verify exact plotted intensity and omission of missing values.
 - [x] Pass npm test, npm run audit:release, and npm run test:layout.
-- [x] Prepare 1.2.5 metadata, changelog, and version-specific release notes.
-- [ ] Push completed source and confirm main CI.
-- [ ] Publish tag 1.2.5, verify release workflow, assets, and attestations.
+- [x] Update version metadata, changelog, and version-specific release notes.
+- [x] Push source to main, confirm CI, and publish tag 1.2.5.
+- [x] Verify release notes, three assets, published hashes, and signer-workflow attestations.
 
-## Implementation and decisions
+## Current implementation state
 
-Intensity uses existing saved intensityScore values on the common 1–5 scale; no analysis or migration is required. A purple dash-dot trace distinguishes it from the existing three series. The build import matcher now accepts Windows CRLF and Unix LF line endings.
+Published: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.5
+
+Tag/source commit: a2eb6b39a87c6016a5455a385643acd037acc303.
+
+Intensity reads existing intensityScore values. The build import matcher accepts Windows CRLF and Unix LF line endings. Groq-only analysis and legacy-date recovery remain included.
 
 ## Verification
 
-Core, startup, timestamp grouping, Groq recovery, legacy recovery, and dashboard migration checks pass. Layout checks cover light/dark 240–1440px panes, 200% zoom, dense history, missing intensity, exact score coordinates, distinct trace patterns, legends, accessibility text, interactions, and observer cleanup. The release privacy audit finds no sensitive files or private artifacts.
+Main CI 37657910548 and Release workflow 37658046595 passed. All three downloaded release assets passed gh attestation verify with .github/workflows/release.yml enforced as the signer. Published asset SHA-256 values match the downloads.
+
+Core, startup, timestamp grouping, Groq recovery, legacy recovery, and dashboard migration tests passed. Layout checks cover light/dark 240–1440px panes, 200% zoom, dense history, missing intensity, exact score coordinates, distinct trace patterns, legends, accessibility, interactions, and observer cleanup. The privacy audit found no sensitive files or private artifacts.
 
 ## Blockers
 
@@ -29,6 +35,5 @@ None.
 
 ## Exact next steps
 
-1. Commit and push, fast-forward main, and confirm CI.
-2. Push tag 1.2.5 and wait for the release workflow.
-3. Download the three release assets, verify attestations, and deliver the release link and handoff files.
+1. No required work remains for release 1.2.5.
+2. Future local installs must preserve saved data and any private archive features.
