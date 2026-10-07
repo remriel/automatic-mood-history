@@ -13,7 +13,7 @@ const exportPattern = /\nmodule\.exports = \{[\s\S]*?\};\s*$/;
 if (!exportPattern.test(core)) throw new Error("Could not find sentiment-core export block.");
 core = core.replace(exportPattern, "\n");
 
-const importPattern = /\nconst \{\n  ANALYSIS_SCHEMA,[\s\S]*?\n\} = require\("\.\/sentiment-core"\);\n/;
+const importPattern = /\r?\nconst \{\r?\n  ANALYSIS_SCHEMA,[\s\S]*?\r?\n\} = require\("\.\/sentiment-core"\);\r?\n/;
 if (!importPattern.test(source)) throw new Error("Could not find sentiment-core import block.");
 source = source.replace(importPattern, "\n");
 

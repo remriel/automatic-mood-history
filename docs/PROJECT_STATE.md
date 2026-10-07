@@ -84,12 +84,15 @@
 - CI run `37059163020` and release workflow `37059296342` passed for 1.2.0.
 - The Groq service and configured model can change independently of this plugin; local analysis remains available.
 
+## Intensity chart — 1.2.5
+
+- Regular chart series now include intensityScore, using saved values on the same 1–5 scale. Missing scores are omitted using the existing finite-value filter.
+- Light theme intensity is #7041c4; dark theme is #be9aff. Its dash-dot pattern is distinct from mood, energy, and connection, including the legend swatch.
+- Data-series attributes identify traces and marks for regression checks. Accessible description and SVG title name all four series.
+- The build script import matcher accepts CRLF and LF, fixing Windows source checkouts.
+- Release notes live in docs/RELEASE_NOTES_1.2.5.md and are selected by the release workflow.
+- All local tests and release privacy audit pass. Only sanitized plugin source and synthetic test data belong in this repository.
+
 ## RESUME HERE
 
-Current task complete: Automatic Mood History 1.2.4 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.2.4. CI run `37504613977` and release workflow `37504844245` passed. The release body, all three assets, and provenance attestations were verified. The local plugin already runs 1.2.4 provider-only legacy recovery; only the final description/CSS release-audit changes remain unapplied locally because Obsidian was open. Keep `data.json` unchanged. Do not expose user note text, vault paths, API keys, or record contents in GitHub.
-
-The repository is `https://github.com/remriel/automatic-mood-history`. The installed release before this work is 1.2.2. The working tree already contained uncommitted 1.2.3 legacy-recovery changes; preserve and include them in 1.2.4.
-
-1.2.2 is complete, installed, and published: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.2. Tag commit `c11f60292e87729130bee48ffb4d84c8acf6b058`; release workflow `37178543489` succeeded. The user switched to Build Once & Publish after the successful local build/checks, so additional post-publication verification was intentionally skipped. Manual acceptance is now theirs; do not continue test/polish loops without a new request. Preserve the user's new manual-analysis results and existing preferences. Native screenshots/backups remain private.
-
-The public repository is `https://github.com/remriel/automatic-mood-history`; release `1.2.0` is published and installed. It groups every Markdown note by the local date of Obsidian's creation timestamp, preserves previous-scope entries as legacy, and removes the Daily-folder scope. Local tests, fresh Obsidian startup, CI, release workflow, and asset hashes passed. The live dark-theme appearance has not been visually inspected. Do not add vault records or personal settings to this public repository.
+The 1.2.5 implementation is complete on codex/intensity-chart-1-2-5, based on published main. Local tests and layout checks pass. Commit/push and fast-forward main, confirm CI, then tag 1.2.5 and verify release assets and attestations. Do not merge private archive branches or publish vault data. See docs/PROGRESS.md for current execution state.

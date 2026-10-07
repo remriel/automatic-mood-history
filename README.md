@@ -11,7 +11,7 @@ The plugin groups every Markdown note by the local calendar date of its Obsidian
 - Optional Groq structured-output analysis with a validated three-stage JSON fallback
 - Local deterministic analysis that works without a network connection or API key
 - Native Markdown entry notes and an Obsidian Base
-- Mood, energy, connection, and intensity scores from 1–5
+- Mood, energy, connection, and intensity scores from 1–5, all plotted in the trend chart
 - Dominant-emotion history and day-by-day source links
 - Light and dark themes with a colorful neo-brutalist dashboard that adapts to Obsidian theme colors
 - Source hashes so unchanged notes are skipped

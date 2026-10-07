@@ -1,6 +1,6 @@
 {
   "name": "automatic-mood-history",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "private": true,
   "description": "Local-first mood history for dated Obsidian notes, with optional Groq analysis.",
   "scripts": {

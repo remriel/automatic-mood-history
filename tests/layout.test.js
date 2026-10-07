@@ -50,13 +50,30 @@ async function inspectLayout(page, label) {
         await page.evaluate(options => fixture.configure(options), { theme, paneWidth: width, count: 32, longText: true });
         await inspectLayout(page, `${theme} ${width}px pane inside a 1600px window`);
         assert.strictEqual(await page.locator(".auto-mood-day").count(), 32, "all days remain available");
-        const pointCounts = await page.evaluate(() => ({ expected: Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').length * 3, actual: document.querySelectorAll('.auto-mood-svg circle').length }));
+        const pointCounts = await page.evaluate(() => ({ expected: Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').length * 4, actual: document.querySelectorAll('.auto-mood-svg circle').length }));
         assert.strictEqual(pointCounts.actual, pointCounts.expected, "every chart series retains every valid day");
         const graph = await page.locator(".auto-mood-svg").evaluate(svg => ({ width: svg.viewBox.baseVal.width, cssWidth: svg.clientWidth, labels: svg.querySelectorAll(".date-label").length }));
         assert(Math.abs(graph.width - graph.cssWidth) <= 5, "chart redraws for its actual width");
         assert(graph.labels <= Math.max(2, Math.floor(graph.width / 70)), "dense date labels do not collide");
       }
     }
+    await page.evaluate(() => {
+      const records = Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').sort((a, b) => a.date.localeCompare(b.date));
+      records[0].intensityScore = null;
+      records[1].intensityScore = 5;
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+      const svg = document.querySelector('.auto-mood-svg');
+      const marks = [...svg.querySelectorAll('circle[data-series="intensityScore"]')];
+      if (marks.length !== records.length - 1) throw new Error('Missing intensity is omitted rather than plotted as zero');
+      const mark = marks[0];
+      if (!mark.querySelector('title').textContent.includes(records[1].date + ': Intensity 5/5')) throw new Error('Intensity tooltip uses saved score and date');
+      const top = Number(svg.querySelectorAll('.grid')[4].getAttribute('y1'));
+      if (Number(mark.getAttribute('cy')) !== top) throw new Error('Intensity five aligns with the five gridline');
+      const traces = [...svg.querySelectorAll('.series')];
+      if (new Set(traces.map(t => t.getAttribute('stroke-dasharray'))).size !== 4) throw new Error('Series have distinct line patterns');
+      if (![...document.querySelectorAll('.auto-mood-chart-legend li')].some(li => li.textContent === 'Intensity')) throw new Error('Intensity legend is visible');
+      if (!svg.getAttribute('aria-label').includes('intensity')) throw new Error('Accessible chart description includes intensity');
+    });
     await page.setViewportSize({ width: 640, height: 1000 });
     await page.evaluate(() => { document.body.style.zoom = '2'; fixture.configure({ paneWidth: 320, longText: true }); });
     await inspectLayout(page, "200% CSS zoom, including SVG text, in a narrow pane");

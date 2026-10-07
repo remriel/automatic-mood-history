@@ -35,7 +35,7 @@ jobs:
             styles.css
       - uses: softprops/action-gh-release@v2
         with:
-          body_path: docs/RELEASE_NOTES_1.2.4.md
+          body_path: docs/RELEASE_NOTES_1.2.5.md
           files: |
             main.js
             manifest.json

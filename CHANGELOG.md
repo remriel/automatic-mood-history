@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.5 — 2026-10-07
+
+- Plot intensity alongside mood, energy, and connection on the trend chart using saved 1–5 scores.
+- Add a purple intensity trace with a distinct dash-dot pattern, legend, tooltips, and accessible chart description.
+- Verify missing scores, plotted values, light/dark themes, and responsive layouts.
+
 ## 1.2.4 — 2026-10-06
 
 - Make Groq-enabled analysis provider-only; failures and pauses leave records pending instead of generating new local-fallback scores.

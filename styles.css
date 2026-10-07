@@ -27,6 +27,7 @@
   --amh-series-mood: #c92e78;
   --amh-series-energy: #007c91;
   --amh-series-connection: #4f8c1e;
+  --amh-series-intensity: #7041c4;
   --amh-pink: #ff4d9d;
   --amh-blue: #00b8d9;
   --amh-green: #7ac943;
@@ -162,6 +163,12 @@
   border-bottom: 3px solid var(--amh-frame);
   font-size: 0.9rem;
   letter-spacing: 0.09em;
+}
+
+.auto-mood-legend-swatch[data-series="intensity"] {
+  border-top: 0;
+  height: 3px;
+  background: repeating-linear-gradient(to right, var(--amh-series-intensity) 0 12px, transparent 12px 16px, var(--amh-series-intensity) 16px 19px, transparent 19px 23px);
 }
 
 .auto-mood-chart {
@@ -407,6 +414,7 @@
   --amh-series-mood: #ff62b0;
   --amh-series-energy: #35d6ee;
   --amh-series-connection: #a6e86a;
+  --amh-series-intensity: #be9aff;
   --amh-pink: #ff62b0;
   --amh-blue: #35d6ee;
   --amh-green: #a6e86a;

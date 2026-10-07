@@ -935,20 +935,22 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "260");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Mood, energy, and connection scores by date on a one-to-five scale");
+    svg.setAttribute("aria-label", "Mood, energy, connection, and intensity scores by date on a one-to-five scale");
     svg.classList.add("auto-mood-svg");
     chart.appendChild(svg);
     const series = [
       ["Mood", "moodScore", "var(--amh-series-mood)", "none"],
       ["Energy", "energyScore", "var(--amh-series-energy)", "10 5"],
-      ["Connection", "connectionScore", "var(--amh-series-connection)", "3 5"]
+      ["Connection", "connectionScore", "var(--amh-series-connection)", "3 5"],
+      ["Intensity", "intensityScore", "var(--amh-series-intensity)", "12 4 3 4"]
     ];
     const legend = section.createEl("ul", { cls: "auto-mood-chart-legend", attr: { "aria-label": "Chart series" } });
     for (const [label, , color, dashArray] of series) {
       const item = legend.createEl("li");
       const swatch = item.createEl("span", { cls: "auto-mood-legend-swatch", attr: { "aria-hidden": "true" } });
       swatch.style.borderTopColor = color;
-      swatch.style.borderTopStyle = dashArray === "none" ? "solid" : label === "Energy" ? "dashed" : "dotted";
+      swatch.style.borderTopStyle = dashArray === "none" ? "solid" : label === "Connection" ? "dotted" : "dashed";
+      swatch.dataset.series = label.toLowerCase();
       item.createEl("span", { text: label });
     }
 
@@ -972,7 +974,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         target.appendChild(node);
         return node;
       };
-      make("title", {}, "Mood, energy, and connection trend. Full daily values are listed below.");
+      make("title", {}, "Mood, energy, connection, and intensity trend. Full daily values are listed below.");
       const x = (index) => left + (records.length === 1 ? plotWidth / 2 : index * plotWidth / (records.length - 1));
       const y = (score) => top + (5 - score) * (chartHeight / 4);
       for (let score = 1; score <= 5; score += 1) {
@@ -981,9 +983,9 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       for (const [label, property, color, dashArray] of series) {
         const valid = records.map((record, index) => ({ record, index })).filter(({ record }) => Number.isFinite(record[property]));
-        make("polyline", { points: valid.map(({ record, index }) => `${x(index)},${y(record[property])}`).join(" "), fill: "none", stroke: color, "stroke-width": 2.5, "stroke-dasharray": dashArray, class: "series", "vector-effect": "non-scaling-stroke" });
+        make("polyline", { points: valid.map(({ record, index }) => `${x(index)},${y(record[property])}`).join(" "), fill: "none", stroke: color, "stroke-width": 2.5, "stroke-dasharray": dashArray, class: "series", "data-series": property, "vector-effect": "non-scaling-stroke" });
         for (const { record, index } of valid) {
-          const point = make("circle", { cx: x(index), cy: y(record[property]), r: 3.5, fill: color, stroke: "var(--amh-chart-outline)", "stroke-width": 1.5 });
+          const point = make("circle", { cx: x(index), cy: y(record[property]), r: 3.5, fill: color, stroke: "var(--amh-chart-outline)", "stroke-width": 1.5, "data-series": property });
           make("title", {}, `${record.date}: ${label} ${record[property]}/5`, point);
         }
       }
