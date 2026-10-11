@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.6
+
+Fix Groq emotion-label rejection, isolate unreadable/invalid date groups, and persist automatic retries with backoff and startup catch-up. Preserve prior results, global rate limits, and opt-in defaults. See `docs/RELEASE_NOTES_1.2.6.md`.
+
 ## 1.2.5 — 2026-10-07
 
 - Plot intensity alongside mood, energy, and connection on the trend chart using saved 1–5 scores.

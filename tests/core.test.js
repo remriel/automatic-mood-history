@@ -28,7 +28,7 @@ const validated = core.validateAnalysis({
   energyScore: -5,
   connectionScore: 3,
   intensityScore: 4,
-  emotions: ["angry", "not-an-emotion", "angry"],
+  emotions: ["angry", "<invalid-markup>", "angry"],
   summary: "test",
   drivers: ["one"],
   confidence: "medium",

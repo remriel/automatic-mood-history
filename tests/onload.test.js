@@ -125,6 +125,7 @@ instance.onload().then(() => {
   manual.loadData = async () => ({ settings: { autoAnalyze: false, analyzeOnStartup: false, enableGroq: true }, records: { [complete.date]: complete } });
   manual.saveData = async () => {};
   for (const method of ["addRibbonIcon", "addCommand", "registerMarkdownCodeBlockProcessor", "registerEvent", "addSettingTab", "register"]) manual[method] = () => {};
+  manual.register = (cleanup) => cleanup();
   manual.app = instance.app;
   manual.app.workspace.getLeaf = () => ({ openFile: async () => {}, setViewState: async () => {} });
   manual.analyzeAll = manual.analyzeDate = async () => { throw new Error("Unexpected sentiment analysis during layout-only startup"); };

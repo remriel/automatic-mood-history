@@ -98,3 +98,15 @@
 Automatic Mood History 1.2.5 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.2.5. Release tag/source commit: a2eb6b39a87c6016a5455a385643acd037acc303. Main CI 37657910548 and Release workflow 37658046595 passed. All three downloaded release assets passed gh attestation verify with .github/workflows/release.yml enforced as the signer. Published asset SHA-256 values match the downloads. Local core, provider, privacy, and responsive layout checks passed. The public trend chart includes Mood, Energy, Connection, and Intensity with existing saved scores; no analysis rerun is required.
 
 No implementation or publication work remains. Keep private archive code and results outside this repository. The installed personal plugin retains private archive support and has its intensity chart update verified locally. Future release work must preserve its saved data and private features.
+
+## 1.2.6 reliability update (in progress)
+
+- Groq strict mode can return HTTP 400 json_validate_failed; JSON modes can return complete responses with emotion labels outside the old enumeration. A closed emotion list rejected otherwise valid analyses. Provider labels now use bounded Unicode text validation; scores, required fields, and provenance remain strict.
+- One cloud-only source read previously aborted a whole scan. Source failures now preserve that date and permit other dates to proceed, without scoring a partial source set.
+- runtime.pendingDates persists safe failure category, attempts, retryAt, and legacy source routing. One-minute polling retries pending dates with exponential backoff up to an hour, and five-minute reconciliation catches missed events. Automatic mode catches up at startup; manual-only defaults stay unchanged.
+- Output/request failures are scoped to dates; global authentication, rate limits, connection/service failures, and missing models still pause provider work. Successful dates cannot erase other pending dates.
+- New tests: tests/automatic-recovery.test.js covers labels, safe errors, failed-source isolation, persistent recovery, backoff, opt-out, unload, storage rollback, and rate limits.
+- Public source and personal installed bundles intentionally differ. Preserve personal extensions and data in future local installs; publish only this sanitized repository.
+
+## RESUME HERE — current
+1.2.6 implementation and synthetic verification are complete. Finish local integration, final diff review, CI, tag, release, and attestation verification. Earlier 1.2.5 completion sections describe the previous release.

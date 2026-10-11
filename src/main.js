@@ -62,7 +62,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.lastGroqError = this.runtime.lastGroqIssue?.message || "";
     this.analysisQueue = Promise.resolve();
 
-    await this.savePluginData();
+    try { await this.savePluginData(); } catch {
+      this.runtime.lastLoadStatus = "loaded-with-storage-error";
+      new Notice("Automatic Mood History: settings storage is unavailable; commands remain available. Check vault sync.");
+    }
 
     this.addRibbonIcon("activity", "Open Automatic Mood History", () => this.openDashboard());
     this.addCommand({
@@ -100,8 +103,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
           new Notice("Automatic Mood History: the active note has no creation timestamp.");
           return;
         }
-        await this.analyzeDate(date, { force: true, forceGroq: false });
-        new Notice(`Automatic Mood History: analyzed ${date}.`);
+        const updated = await this.analyzeDate(date, { force: true, forceGroq: false });
+        new Notice(updated ? `Automatic Mood History: analyzed ${date}.` : `Automatic Mood History: ${date} was not updated. Check pending status on the dashboard.`);
       }
     });
 
@@ -120,6 +123,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
     this.app.workspace.onLayoutReady(async () => {
       this.registerSourceEvents();
+      const recoveryTimer = window.setInterval(() => { void this.runAutomaticRecovery(); }, 60000);
+      this.register(() => window.clearInterval(recoveryTimer));
       try {
         await this.ensureSupportFiles();
         await this.savePluginData();
@@ -127,9 +132,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         console.error("Automatic Mood History could not prepare its history files", error);
         new Notice(`Automatic Mood History loaded, but could not prepare its history files: ${error.message}`, 9000);
       }
-      if (this.settings.analyzeOnStartup) {
+      if (this.settings.analyzeOnStartup || this.settings.autoAnalyze) {
         const startupTimer = window.setTimeout(() => {
-          void this.analyzeAll({ force: false, forceGroq: false });
+          void this.analyzeAll({ force: false, forceGroq: false, background: true, silent: true }).catch(() => {
+            new Notice("Automatic Mood History: startup catch-up could not finish. Check vault sync; automatic recovery will retry.");
+          });
         }, 1800);
         this.register(() => window.clearTimeout(startupTimer));
       }
@@ -137,6 +144,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   onunload() {
+    this.unloaded = true;
     for (const timer of this.debounceTimers.values()) window.clearTimeout(timer);
     this.debounceTimers.clear();
     this.disposeDashboard();
@@ -229,7 +237,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const sourceTexts = [];
     const topics = [];
     for (const file of files) {
-      const content = await this.app.vault.cachedRead(file);
+      let content;
+      try { content = await this.app.vault.cachedRead(file); } catch {
+        const error = new Error("A source note is not readable. Make cloud files available locally and check vault sync.");
+        error.code = "source_read";
+        throw error;
+      }
       if (textForAnalysis(content).length > 0) sourceTexts.push(content);
       const topic = this.topicForFile(file);
       if (topic) topics.push(topic);
@@ -281,8 +294,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (existing) window.clearTimeout(existing);
     const timer = window.setTimeout(async () => {
       this.debounceTimers.delete(date);
+      if (this.unloaded || !this.settings.autoAnalyze) return;
       try {
-        await this.analyzeDate(date, { force: false, forceGroq: false });
+        await this.analyzeDate(date, { force: false, forceGroq: false, background: true });
       } catch (error) {
         console.error("Automatic Mood History failed to analyze a changed note", error);
         new Notice(`Automatic Mood History could not analyze ${date}: ${error.message}`);
@@ -315,6 +329,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       const code = String(json?.error?.code || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 80);
       const error = new Error(`Groq HTTP ${response.status}${code ? ` (${code})` : ""}.`);
       error.status = response.status;
+      error.code = code || "http_error";
       const headers = Object.fromEntries(Object.entries(response.headers || {}).map(([key, value]) => [key.toLowerCase(), value]));
       const retryAfter = headers["retry-after"];
       const seconds = Number(retryAfter);
@@ -369,11 +384,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     const retryAt = new Date(Date.now() + delay).toISOString();
     const issue = { kind, message, retryAt };
-    this.groqBlockedUntil = Date.parse(retryAt);
+    // Invalid output or a date-specific oversized request must not block other dates.
+    this.groqBlockedUntil = ["output", "request"].includes(kind) && status !== 404 ? 0 : Date.parse(retryAt);
     this.lastGroqError = message;
     this.runtime.lastGroqError = message;
     this.runtime.lastGroqIssue = issue;
-    this.runtime.nextGroqRetryAt = retryAt;
+    if (this.groqBlockedUntil) this.runtime.nextGroqRetryAt = retryAt;
+    else delete this.runtime.nextGroqRetryAt;
     this.runtime.lastGroqFailureAt = new Date().toISOString();
     return issue;
   }
@@ -392,7 +409,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const start = finalText.indexOf("{");
     const end = finalText.lastIndexOf("}");
     if (start < 0 || end <= start) throw new Error("Groq returned no JSON object.");
-    const parsed = JSON.parse(finalText.slice(start, end + 1));
+    let parsed;
+    try { parsed = JSON.parse(finalText.slice(start, end + 1)); } catch {
+      throw new Error("Groq returned malformed JSON.");
+    }
     if (!parsed || Array.isArray(parsed) || ANALYSIS_SCHEMA.required.some((key) => !Object.hasOwn(parsed, key))) {
       throw new Error("Groq omitted required analysis fields.");
     }
@@ -400,8 +420,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (!Number.isInteger(parsed[key]) || parsed[key] < 1 || parsed[key] > 5) throw new Error("Groq returned an invalid score.");
     }
     if (!Array.isArray(parsed.emotions) || !parsed.emotions.length ||
-      parsed.emotions.some((value) => !ANALYSIS_SCHEMA.properties.emotions.items.enum.includes(value)) ||
-      !Array.isArray(parsed.drivers) || !parsed.drivers.length || parsed.drivers.some((value) => typeof value !== "string") ||
+      parsed.emotions.length > 6 || parsed.emotions.some((value) => typeof value !== "string" || !/^[\p{L}][\p{L}\p{M} -]{0,47}$/u.test(value.trim())) ||
+      !Array.isArray(parsed.drivers) || !parsed.drivers.length || parsed.drivers.length > 4 || parsed.drivers.some((value) => typeof value !== "string" || !value.trim()) ||
       typeof parsed.summary !== "string" || !parsed.summary.trim() ||
       typeof parsed.confidenceReason !== "string" || !parsed.confidenceReason.trim() ||
       !ANALYSIS_SCHEMA.properties.valence.enum.includes(parsed.valence) ||
@@ -483,6 +503,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     ];
 
     const failures = [];
+    let lastFailure;
     let retriedCompletionLimit = false;
     for (const attempt of attempts) {
       try {
@@ -494,20 +515,70 @@ class AutomaticMoodHistoryPlugin extends Plugin {
           return this.parseGroqAnalysis(await this.requestGroq({ ...attempt.payload, max_completion_tokens: 8192 }));
         }
       } catch (error) {
-        failures.push(`${attempt.name}: ${error.message}`);
+        lastFailure = error;
+        failures.push({ mode: attempt.name, status: error.status || 422, code: error.code || "invalid_output" });
         if (error.status && ![400, 422].includes(error.status)) throw error;
       }
     }
-    const error = new Error(`Groq could not produce valid structured sentiment after ${attempts.length} attempts. ${failures.join(" | ")}`);
-    error.status = 422;
+    const error = new Error("Groq could not produce a complete valid analysis after structured-output retries.");
+    error.status = lastFailure?.status === 400 && lastFailure.code !== "json_validate_failed" ? 400 : 422;
+    error.code = lastFailure?.code || "invalid_output";
+    error.attempts = failures;
     throw error;
   }
 
   async analyzeDate(date, options = {}) {
     // Serialize scans, active-note commands, and debounced note events.
-    const task = (this.analysisQueue || Promise.resolve()).then(() => this.analyzeDateNow(date, options));
+    const task = (this.analysisQueue || Promise.resolve()).then(async () => {
+      if (this.unloaded) return false;
+      const pending = this.runtime?.pendingDates?.[date];
+      if (options.background && pending && Date.parse(pending.retryAt) > Date.now()) {
+        if (options.runStats) options.runStats.pending += 1;
+        return false;
+      }
+      try { return await this.analyzeDateNow(date, options); } catch (error) {
+        this.markDatePending(date, options, error.code === "source_read" ? "source" : "storage");
+        if (options.runStats) { options.runStats.failures += 1; options.runStats.pending += 1; }
+        try { await this.savePluginData(); } catch { /* Keep in memory until storage recovers. */ }
+        this.refreshRenderers();
+        return false;
+      }
+    });
     this.analysisQueue = task.catch(() => {});
     return task;
+  }
+
+  markDatePending(date, options = {}, kind = "output") {
+    this.runtime ||= {};
+    this.runtime.pendingDates ||= {};
+    const attempts = Math.min(10, (this.runtime.pendingDates[date]?.attempts || 0) + 1);
+    const retryAt = new Date(Math.max(Date.now() + Math.min(3600000, 60000 * 2 ** (attempts - 1)), this.groqBlockedUntil || 0)).toISOString();
+    this.runtime.pendingDates[date] = { kind, attempts, retryAt, legacySources: Boolean(options.legacySources) };
+  }
+
+  async clearDatePending(date) {
+    if (this.runtime?.pendingDates?.[date]) {
+      delete this.runtime.pendingDates[date];
+      await this.savePluginData();
+    }
+  }
+
+  async runAutomaticRecovery() {
+    if (this.unloaded || !this.settings.autoAnalyze || this.activeScan || this.checkingGroq || this.automaticRecoveryRunning || Date.now() < this.groqBlockedUntil) return;
+    this.automaticRecoveryRunning = true;
+    try {
+      // Periodic reconciliation catches edits made while closed, missed events, and sync recovery.
+      if (!this.lastAutomaticReconcileAt || Date.now() - this.lastAutomaticReconcileAt >= 300000) {
+        this.lastAutomaticReconcileAt = Date.now();
+        await this.analyzeAll({ background: true, silent: true });
+      } else {
+        for (const [date, pending] of Object.entries(this.runtime.pendingDates || {})) {
+          if (this.unloaded || !this.settings.autoAnalyze || Date.now() < this.groqBlockedUntil) break;
+          if (Date.parse(pending.retryAt) <= Date.now()) await this.analyzeDate(date, { background: true, legacySources: pending.legacySources });
+        }
+      }
+    } catch { /* Retain pending work; next scheduled pass can recover storage/network errors. */ }
+    finally { this.automaticRecoveryRunning = false; }
   }
 
   async analyzeDateNow(date, options = {}) {
@@ -526,6 +597,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return skipRecovery(Boolean(this.settings.enableGroq && needsGroq && (!this.apiKey() || !options.forceGroq && Date.now() < this.groqBlockedUntil)));
     }
     const gathered = options.legacySources ? await this.gatherLegacyDate(date) : await this.gatherDate(date);
+    if (this.unloaded) return false;
     if (!gathered || recovering && gathered.analysisText.length < this.settings.minimumCharacters) {
       return skipRecovery(Boolean(recovering && this.settings.enableGroq && previous?.status === "complete" && previous.analysisSource !== "groq"));
     }
@@ -535,13 +607,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const pendingDuringPause = this.settings.enableGroq && !options.forceGroq && Date.now() < this.groqBlockedUntil &&
       (options.force || previous?.contentHash !== gathered.contentHash || previous?.dateBasis !== dateBasis || previous?.status === "complete" && previous?.analysisSource !== "groq");
     if (pendingDuringPause) {
+      this.markDatePending(date, options, "paused");
       if (options.runStats) options.runStats.pending += 1;
+      await this.savePluginData();
       return false;
     }
     if (!options.force && !retryNonGroqResult && previous?.contentHash === gathered.contentHash) {
-      if (previous.dateBasis === dateBasis) return false;
+      if (previous.dateBasis === dateBasis) { await this.clearDatePending(date); return false; }
       previous.dateBasis = dateBasis;
       await this.savePluginData();
+      await this.clearDatePending(date);
       this.refreshRenderers();
       return true;
     }
@@ -576,11 +651,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (canTryGroq) {
         try {
           analysis = await this.analyzeWithGroq(date, gathered.analysisText, options);
+          if (this.unloaded) return false;
           analysisSource = "groq";
           model = this.settings.model;
           this.recordGroqSuccess();
         } catch (error) {
-          this.recordGroqFailure(error);
+          const issue = this.recordGroqFailure(error);
+          this.markDatePending(date, options, issue.kind);
           if (options.runStats) {
             options.runStats.failures += 1;
             options.runStats.pending += 1;
@@ -612,9 +689,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       analyzedAt: new Date().toISOString(),
       ...(previous?.entryPath ? { entryPath: previous.entryPath } : {})
     });
+    if (this.unloaded) return false;
     await this.writeEntryNote(record);
     this.records[date] = record;
-    await this.savePluginData();
+    try { await this.savePluginData(); } catch (error) {
+      if (previous) this.records[date] = previous; else delete this.records[date];
+      throw error;
+    }
+    await this.clearDatePending(date);
     this.refreshRenderers();
     if (options.runStats) {
       options.runStats[record.status === "insufficient" ? "insufficient" : record.analysisSource === "groq" ? "groq" : record.analysisSource === "local" ? "local" : "fallback"] += 1;
@@ -647,17 +729,18 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const runStats = { groq: 0, local: 0, fallback: 0, insufficient: 0, failures: 0, pending: 0, skipped: 0 };
     const dateOptions = { ...options, forceGroq: false, runStats };
     const targets = this.getAnalysisTargets(options);
-    new Notice(`Automatic Mood History: checking ${targets.length} history groups (${targets.filter((target) => target.legacySources).length} saved legacy sources)…`);
+    if (!options.silent) new Notice(`Automatic Mood History: checking ${targets.length} history groups (${targets.filter((target) => target.legacySources).length} saved legacy sources)…`);
     let changed = 0;
     for (const target of targets) {
+      if (this.unloaded || options.background && !this.settings.autoAnalyze && !this.settings.analyzeOnStartup) break;
       if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources })) changed += 1;
     }
     await this.ensureSupportFiles();
     await this.savePluginData();
-    const suffix = runStats.pending ? ` ${runStats.pending} groups remain pending Groq; existing results were kept. ${this.runtime.lastGroqIssue?.message || "Groq retries are paused."}` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
+    const suffix = runStats.pending ? ` ${runStats.pending} groups remain pending; existing results were kept. Check the dashboard for recovery status.` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
     const pendingFallbacks = this.fallbackRecords().length;
     const pending = this.settings.enableGroq && pendingFallbacks ? ` ${pendingFallbacks} saved local-fallback entries still await a successful Groq result.` : "";
-    new Notice(`Automatic Mood History: ${changed} history groups updated.${suffix}${pending}`, 9000);
+    if (!options.silent) new Notice(`Automatic Mood History: ${changed} history groups updated.${suffix}${pending}`, 9000);
     return { updated: changed, ...runStats, pendingFallbacks };
   }
 
@@ -706,6 +789,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   groqStatus() {
+    const pendingCount = Object.keys(this.runtime.pendingDates || {}).length;
+    if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups pending. Existing results are preserved. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
     if (!this.settings.enableGroq) return { kind: "local", text: "LOCAL MODE · Groq is disabled. Analysis stays on this device." };
     if (!this.apiKey()) return { kind: "warning", text: "GROQ KEY MISSING · Start Obsidian with GROQ_API_KEY in its environment." };
     if (this.checkingGroq) return { kind: "ready", text: "CHECKING GROQ · Sending fictional sample text." };
@@ -890,6 +975,9 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     groqButton.disabled = checkButton.disabled = !this.settings.enableGroq || Boolean(this.activeScan) || Boolean(this.checkingGroq);
     fallbackButton.disabled = groqButton.disabled || !this.fallbackRecords().length;
     changedButton.disabled = Boolean(this.activeScan) || Boolean(this.checkingGroq);
+    wrapper.createEl("p", { cls: "auto-mood-provenance", text: this.settings.autoAnalyze
+      ? "Automatic analysis: ON · changed notes, startup catch-up, and pending retries."
+      : "Automatic analysis: OFF · use Analyze changed, or enable automatic analysis in settings." });
     const status = this.groqStatus();
     const statusElement = wrapper.createDiv({ cls: "auto-mood-provider-status", text: status.text });
     statusElement.dataset.kind = status.kind;
@@ -1113,6 +1201,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           this.plugin.settings.autoAnalyze = value;
           await this.plugin.savePluginData();
+          this.plugin.refreshRenderers();
         }));
     new Setting(containerEl)
       .setName("Analyze on startup")

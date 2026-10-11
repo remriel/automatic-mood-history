@@ -58,7 +58,7 @@ const ANALYSIS_SCHEMA = {
       type: "array",
       minItems: 1,
       maxItems: 6,
-      items: { type: "string", enum: ALLOWED_EMOTIONS }
+      items: { type: "string", minLength: 1, maxLength: 48 }
     },
     summary: { type: "string" },
     drivers: {
@@ -268,8 +268,9 @@ function moodToValence(score) {
 function validateAnalysis(input) {
   const moodScore = clampScore(input.moodScore);
   const emotions = Array.from(new Set((input.emotions || [])
-    .map((value) => String(value).toLowerCase())
-    .filter((value) => ALLOWED_EMOTIONS.includes(value)))).slice(0, 6);
+    .filter((value) => typeof value === "string")
+    .map((value) => value.trim().toLowerCase())
+    .filter((value) => /^[\p{L}][\p{L}\p{M} -]{0,47}$/u.test(value)))).slice(0, 6);
   return {
     moodScore,
     energyScore: clampScore(input.energyScore),
