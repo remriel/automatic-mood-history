@@ -127,3 +127,9 @@ The release is complete and verified. No further implementation or publication r
 Legend buttons use aria-pressed and persist settings.hiddenChartSeries. chartSeriesViews tracks open charts; redraws reapply display state and disposeDashboard cleans controls. Hiding a series hides its points as well; all-hidden state is explicit. Saves roll back UI on failure. Personal chart daily/monthly marks share the same per-series choice. No score or source records are modified.
 
 RESUME HERE: finish interaction checks, native installation, and publication of 1.2.7.
+
+## Completed 1.2.7 — RESUME HERE
+
+https://github.com/remriel/automatic-mood-history/releases/tag/1.2.7 is published from commit 570a79c6eb099840d12de772cc17b2a8bae8df4b. CI and Release succeeded; all three downloaded assets match published hashes and their source-bound release-workflow attestations verify. Native checks confirmed all four toggles, persistence after reload, synchronized archive daily/monthly visibility, keyboard navigation through visible archive series, and unchanged mood/archive records.
+
+Controls use settings.hiddenChartSeries and chartSeriesViews; disposeDashboard cleans the registry. aria-disabled during saves preserves keyboard focus (native disabled was rejected by the interaction test because it loses focus). No analysis runs are triggered by toggles. Public and private bundles intentionally differ. Work complete.
