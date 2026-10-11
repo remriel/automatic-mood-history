@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.7
+
+Add persistent keyboard-accessible show/hide controls for Mood, Energy, Connection, and Intensity in the chart legend.
+
 ## 1.2.6
 
 Fix Groq emotion-label rejection, isolate unreadable/invalid date groups, and persist automatic retries with backoff and startup catch-up. Preserve prior results, global rate limits, and opt-in defaults. See `docs/RELEASE_NOTES_1.2.6.md`.

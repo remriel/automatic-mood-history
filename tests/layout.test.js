@@ -89,6 +89,38 @@ async function inspectLayout(page, label) {
       await inspectLayout(page, JSON.stringify(options));
     }
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
+    await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
+    const recordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
+    for (const [label, property] of [['Mood','moodScore'],['Energy','energyScore'],['Connection','connectionScore'],['Intensity','intensityScore']]) {
+      const button = page.getByRole('button', { name: label, exact: true });
+      await button.focus();
+      await page.keyboard.press('Space');
+      await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
+      assert.equal(await button.getAttribute('aria-pressed'), 'false');
+      assert.equal(await page.locator(`.auto-mood-svg [data-series="${property}"]:visible`).count(), 0, `${label} line and points hide together`);
+      assert(await button.evaluate(el => el === document.activeElement), 'toggling preserves keyboard focus');
+    }
+    assert(await page.locator('.auto-mood-chart-empty').isVisible(), 'all-hidden state explains how to restore series');
+    await inspectLayout(page, 'all four series hidden at narrow width');
+    await page.evaluate(() => { fixture.plugin.refreshRenderers(); document.getElementById('pane').style.width='480px'; });
+    await page.waitForTimeout(80);
+    assert.equal(await page.locator('.auto-mood-svg [data-series]:visible').count(), 0, 'visibility survives refresh and resize');
+    assert.equal(await page.evaluate(() => fixture.plugin.chartSeriesViews.size), 1, 'refresh disposes old chart controls');
+    for (const label of ['Mood','Energy','Connection','Intensity']) {
+      const button=page.getByRole('button', {name:label,exact:true});
+      await button.focus();await page.keyboard.press('Enter');
+      await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
+      assert.equal(await button.getAttribute('aria-pressed'), 'true');
+    }
+    assert.equal(await page.locator('.auto-mood-svg .series:visible').count(),4);
+    assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), recordsBefore, 'view toggles never alter saved scores or source records');
+    assert.equal(await page.evaluate(() => fixture.calls.analyze),0,'view toggles never run analysis');
+    await page.evaluate(() => { window.originalSave=fixture.plugin.savePluginData;fixture.plugin.savePluginData=async()=>{throw new Error('Fictional storage failure');}; });
+    await page.getByRole('button',{name:'Mood',exact:true}).click();
+    await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
+    assert.equal(await page.getByRole('button',{name:'Mood',exact:true}).getAttribute('aria-pressed'),'true','save failure restores the previous visibility');
+    await page.evaluate(() => { fixture.plugin.savePluginData=window.originalSave; });
+
     for (const [name, counter] of [["Analyze changed", "analyze"], ["Retry all with Groq", "retry"], ["Check Groq", "check"], ["Retry fallback entries", "recover"]]) {
       await page.getByRole("button", { name, exact: true }).click();
       await inspectLayout(page, `${name} busy state`);
@@ -108,6 +140,7 @@ async function inspectLayout(page, label) {
     await inspectLayout(page, "settings after toggle and typing input");
     await page.evaluate(() => { fixture.plugin.onunload(); });
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 0, "plugin unload disposes observers");
+    assert.strictEqual(await page.evaluate(() => fixture.plugin.chartSeriesViews.size), 0, "unload disposes series controls");
     assert.deepStrictEqual(errors, [], "no browser runtime errors");
     console.log("layout: light/dark 240–1440px panes, 200% text, long text, 365 days, empty/insufficient/one-day states, buttons, links, settings, and observer cleanup passed without horizontal overflow");
   } finally { await browser.close(); }

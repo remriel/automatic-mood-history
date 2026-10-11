@@ -148,3 +148,7 @@ The release tag must exactly match the version in `manifest.json`.
 The dashboard shows whether automatic analysis is enabled. With **Analyze note changes automatically** on, the plugin catches up at startup, retries failed date groups with increasing delays (up to one hour), and periodically checks for missed changes while Obsidian is open. Existing results remain visible until a replacement is saved. Use **Analyze changed** for an immediate date retry; account-wide Groq pauses still apply.
 
 If a cloud-only source note is unreadable, make it available locally and check the cloud sync client. That date stays pending without sending a partial source set; other readable dates continue. Valid natural emotion labels are accepted even when they are outside the local lexicon.
+
+### Chart series visibility
+
+Click a series label in the chart legend to show or hide its line and points. All four series start visible. The selected visibility is saved across refreshes and restarts; this changes only the chart, never scores or analysis. Keyboard users can Tab to each button and use Space or Enter.

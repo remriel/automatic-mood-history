@@ -121,3 +121,9 @@ Core, provider, lifecycle, timestamp grouping, legacy recovery, automatic retry,
 
 ## RESUME HERE — completed 1.2.6
 The release is complete and verified. No further implementation or publication remains. Preserve the per-date pending queue, provider-only behavior, opt-in defaults, private installed extensions, and source notes in future changes.
+
+## Chart visibility, 1.2.7 (in progress)
+
+Legend buttons use aria-pressed and persist settings.hiddenChartSeries. chartSeriesViews tracks open charts; redraws reapply display state and disposeDashboard cleans controls. Hiding a series hides its points as well; all-hidden state is explicit. Saves roll back UI on failure. Personal chart daily/monthly marks share the same per-series choice. No score or source records are modified.
+
+RESUME HERE: finish interaction checks, native installation, and publication of 1.2.7.

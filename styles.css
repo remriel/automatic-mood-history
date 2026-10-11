@@ -554,3 +554,20 @@
     transition: none;
   }
 }
+
+/* Series legend buttons retain keyboard focus while the plot updates. */
+.auto-mood-chart-legend .auto-mood-series-toggle {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  height: auto; min-height: 36px; max-width: 100%; padding: 6px 10px;
+  color: var(--amh-text); background: var(--amh-surface);
+  border: 2px solid var(--amh-frame); box-shadow: 2px 2px 0 var(--amh-shadow);
+  font: inherit; font-weight: 800; white-space: normal; cursor: pointer;
+}
+.auto-mood-chart-legend .auto-mood-series-toggle[aria-pressed="false"] {
+  border-style: dashed; box-shadow: none; text-decoration: line-through; opacity: .65;
+}
+.auto-mood-chart-legend .auto-mood-series-toggle:focus-visible {
+  outline: 3px solid var(--amh-series-mood); outline-offset: 3px;
+}
+.auto-mood-chart-empty { color: var(--amh-text); font-weight: 700; }
+.auto-mood-chart-empty[hidden] { display: none; }

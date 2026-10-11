@@ -939,6 +939,9 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
   }
 
   disposeDashboard(element) {
+    for (const [svg] of this.chartSeriesViews || []) {
+      if (!element || !svg.isConnected || element.contains(svg)) this.chartSeriesViews.delete(svg);
+    }
     for (const [svg, observer] of this.chartObservers || []) {
       if (!element || !svg.isConnected || element.contains(svg)) {
         observer.disconnect();
@@ -1014,6 +1017,56 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     provenance.setText(`Timestamp groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved and labeled legacy.${legacyFallbackCount ? ` ${legacyFallbackCount} legacy fallback entries can be recovered with Retry fallback entries.` : ""}`);
   }
 
+  installChartSeriesControls(svg, legend, series) {
+    const controls = [];
+    const empty = legend.parentElement.createEl("p", { cls: "auto-mood-chart-empty", text: "All lines are hidden. Select a series to show it.", attr: { role: "status" } });
+    empty.hidden = true;
+    Array.from(legend.children).forEach((item, index) => {
+      const [label, property] = series[index % series.length];
+      const content = Array.from(item.childNodes);
+      const button = item.createEl("button", { cls: "auto-mood-series-toggle", attr: { type: "button", "data-series": property } });
+      button.append(...content);
+      controls.push({ button, label, property });
+      button.addEventListener("click", async () => {
+        if (this.savingChartVisibility) return;
+        this.savingChartVisibility = true;
+        const previous = this.settings.hiddenChartSeries;
+        const hidden = new Set(Array.isArray(previous) ? previous : []);
+        if (hidden.has(property)) hidden.delete(property); else hidden.add(property);
+        this.settings.hiddenChartSeries = Array.from(hidden);
+        this.updateChartSeriesVisibility();
+        try { await this.savePluginData(); } catch {
+          this.settings.hiddenChartSeries = previous;
+          new Notice("Automatic Mood History: could not save chart visibility. Check vault storage and try again.");
+        } finally {
+          this.savingChartVisibility = false;
+          this.updateChartSeriesVisibility();
+        }
+      });
+    });
+    this.chartSeriesViews ||= new Map();
+    this.chartSeriesViews.set(svg, { controls, empty, series, description: svg.getAttribute("aria-label") });
+  }
+
+  updateChartSeriesVisibility() {
+    const hidden = new Set(Array.isArray(this.settings.hiddenChartSeries) ? this.settings.hiddenChartSeries : []);
+    for (const [svg, view] of this.chartSeriesViews || []) {
+      for (const { button, label, property } of view.controls) {
+        const visible = !hidden.has(property);
+        button.setAttribute("aria-pressed", String(visible));
+        button.setAttribute("title", `${visible ? "Hide" : "Show"} ${label.toLowerCase()}`);
+        button.setAttribute("aria-disabled", String(Boolean(this.savingChartVisibility)));
+      }
+      for (const mark of svg.querySelectorAll("[data-series]")) {
+        mark.style.display = hidden.has(mark.getAttribute("data-series")) ? "none" : "";
+      }
+      const visibleLabels = view.series.filter(([, property]) => !hidden.has(property)).map(([label]) => label);
+      view.empty.hidden = visibleLabels.length > 0;
+      svg.setAttribute("aria-label", `${view.description}. Visible series: ${visibleLabels.join(", ") || "none"}.`);
+    }
+  }
+
+
   renderTrendChart(parent, records) {
     const section = parent.createDiv({ cls: "auto-mood-section" });
     section.createEl("h3", { text: "TREND" });
@@ -1042,6 +1095,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       item.createEl("span", { text: label });
     }
 
+    this.installChartSeriesControls(svg, legend, series);
     let previousWidth = 0;
     const draw = (availableWidth) => {
       const width = Math.max(1, Math.floor(availableWidth));
@@ -1085,6 +1139,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       for (const index of indices) {
         make("text", { x: x(index), y: height - 10, class: "date-label", "text-anchor": records.length === 1 ? "middle" : index === 0 ? "start" : index === records.length - 1 ? "end" : "middle" }, records[index].date.slice(5));
       }
+      this.updateChartSeriesVisibility();
     };
     draw(chart.clientWidth || 640);
     if (typeof ResizeObserver !== "undefined") {
