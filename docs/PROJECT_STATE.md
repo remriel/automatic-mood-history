@@ -110,3 +110,14 @@ No implementation or publication work remains. Keep private archive code and res
 
 ## RESUME HERE — current
 1.2.6 implementation and synthetic verification are complete. Finish local integration, final diff review, CI, tag, release, and attestation verification. Earlier 1.2.5 completion sections describe the previous release.
+
+## Verified release completion
+
+1.2.6 is published: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.6
+
+Source/tag commit: 9d0f0a34437ecf3666ad2a3b44bae7af89e401d9. Main CI 38106375258 and Release 38106451316 both passed. All three downloaded assets match GitHub SHA-256 digests. Their attestations passed verification against this repository's release workflow, exact source commit, and refs/tags/1.2.6.
+
+Core, provider, lifecycle, timestamp grouping, legacy recovery, automatic retry, privacy audit, and responsive layout checks passed. Native integration confirmed recovered date groups, matching source hashes, enabled automatic operation, event debounce processing, and preservation of personal extensions and saved history.
+
+## RESUME HERE — completed 1.2.6
+The release is complete and verified. No further implementation or publication remains. Preserve the per-date pending queue, provider-only behavior, opt-in defaults, private installed extensions, and source notes in future changes.
