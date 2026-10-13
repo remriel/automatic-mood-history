@@ -62,3 +62,5 @@ The audited main baseline is `493f53c` (release 1.2.8). Earlier handoff document
 ## RESUME HERE
 
 Read this file, `docs/PROGRESS.md`, `docs/AUDIT_REPORT.md`, and `docs/SOL_6_1_PLAN.md`, then inspect Git status/diff and the actual code. The audit fixes are on `fix/audit-reliability-handoff`; do not redo them. Start the follow-up with persistence recovery, lifecycle completion, and settings/path validation as ordered in the Sol 6.1 plan. Preserve existing records, provider consent, legacy routing, and private installed extensions. Merge/release/native-install status must be verified from GitHub and the progress file; do not infer publication from the unchanged manifest version.
+
+Audit publication: PR #1 is open at https://github.com/remriel/automatic-mood-history/pull/1. Final implementation commit 74e251c833447ee842d94d0f3d924da9ff913989 passed GitHub CI run 38485124172 (Node 20 functional/privacy/layout). Later completion edits are documentation-only. No merge, new release, or native installation has occurred.
