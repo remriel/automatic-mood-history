@@ -27,12 +27,29 @@ const DEFAULT_SETTINGS = {
   enableGroq: false,
   model: "openai/gpt-oss-20b",
   outputFolder: "Mood History",
+  includeFolders: [],
+  excludeFolders: [],
   autoAnalyze: false,
   analyzeOnStartup: false,
   debounceMilliseconds: 5000,
   minimumCharacters: 40,
   maxCharactersPerDay: 60000
 };
+
+
+function normalizeFolderList(value) {
+  const entries = Array.isArray(value) ? value : typeof value === "string" ? value.split(/\r?\n/) : [];
+  return Array.from(new Set(entries
+    .filter((entry) => typeof entry === "string")
+    .map((entry) => entry.trim().replace(/\\/g, "/"))
+    .map((entry) => entry === "/" ? "/" : entry.replace(/^\/+|\/+$/g, ""))
+    .filter((entry) => entry && !entry.split("/").some((part) => part === "." || part === ".."))));
+}
+
+function folderContainsPath(folder, path) {
+  if (folder === "/") return !path.includes("/");
+  return path.startsWith(folder + "/");
+}
 
 class AutomaticMoodHistoryPlugin extends Plugin {
   async onload() {
@@ -43,6 +60,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.settings.apiKeyEnvironmentVariable = GROQ_API_KEY_ENV;
     delete this.settings.dailyFolder;
     delete this.settings.includeOutsideDailyFolder;
+    this.settings.includeFolders = normalizeFolderList(this.settings.includeFolders);
+    this.settings.excludeFolders = normalizeFolderList(this.settings.excludeFolders);
     this.records = loaded.records || {};
     for (const record of Object.values(this.records)) {
       if (record?.analysisSource === "assistant-backfill") record.analysisSource = "reviewed-backfill";
@@ -183,12 +202,28 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return `${this.outputFolder}/Entries`;
   }
 
+  isIncludedSourcePath(path) {
+    const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    const includes = normalizeFolderList(this.settings.includeFolders);
+    const excludes = normalizeFolderList(this.settings.excludeFolders);
+    return (!includes.length || includes.some((folder) => folderContainsPath(folder, normalizedPath))) &&
+      !excludes.some((folder) => folderContainsPath(folder, normalizedPath));
+  }
+
+  async updateFolderFilter(key, value) {
+    if (key !== "includeFolders" && key !== "excludeFolders") return;
+    this.settings[key] = normalizeFolderList(value);
+    await this.savePluginData();
+    this.refreshRenderers();
+  }
+
   getCreationDateForFile(file, path = file?.path) {
     if (!(file instanceof TFile) || file.extension.toLowerCase() !== "md") return null;
     const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
     const outputFolder = this.outputFolder;
     if ((outputFolder && (normalizedPath === outputFolder || normalizedPath.startsWith(`${outputFolder}/`))) ||
-      normalizedPath === ".trash" || normalizedPath.startsWith(".trash/")) return null;
+      normalizedPath === ".trash" || normalizedPath.startsWith(".trash/") ||
+      !this.isIncludedSourcePath(normalizedPath)) return null;
 
     const timestamp = file.stat?.ctime;
     if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
@@ -236,7 +271,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async gatherFiles(date, files) {
     const sourceTexts = [];
     const topics = [];
-    for (const file of files) {
+    // Excluded notes must never be read or sent to a remote provider.
+    const scopedFiles = files.filter((file) => this.getCreationDateForFile(file));
+    for (const file of scopedFiles) {
       let content;
       try { content = await this.app.vault.cachedRead(file); } catch {
         const error = new Error("A source note is not readable. Make cloud files available locally and check vault sync.");
@@ -249,7 +286,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     const combinedMarkdown = deduplicateParagraphs(sourceTexts);
     const analysisText = textForAnalysis(combinedMarkdown).slice(0, this.settings.maxCharactersPerDay);
-    const sourcePaths = files.map((file) => file.path);
+    const sourcePaths = scopedFiles.map((file) => file.path);
     return {
       date,
       sourcePaths,
@@ -892,9 +929,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async ensureSupportFiles() {
     await this.ensureFolder(this.outputFolder);
     await this.ensureFolder(this.entriesFolder);
-    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups every Markdown note by the local calendar day of its Obsidian creation timestamp, regardless of folder or filename. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
+    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by the local calendar day of their Obsidian creation timestamp. Include/exclude folder settings control which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
-const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEvery Markdown note in the vault is grouped by the local calendar day of its Obsidian creation timestamp, TFile.stat.ctime. Folder, filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates all Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key is read from the process environment and is never saved in this vault. Every completed entry records its analyzer.\n`;
+const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes are grouped by the local calendar day of their Obsidian creation timestamp, TFile.stat.ctime. Include/exclude folder settings determine eligibility; filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key is read from the process environment and is never saved in this vault. Every completed entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, dashboard, false);
     await this.upgradeDashboardLayout();
     await this.writeTextFile(`${this.outputFolder}/Mood History.base`, base, false);
@@ -1224,11 +1261,11 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.classList.add("auto-mood-settings");
     containerEl.createEl("h2", { text: "Automatic Mood History" });
     containerEl.createEl("p", {
-      text: "Every Markdown note is grouped by the local date of its Obsidian creation timestamp, regardless of folder or filename. Local analysis is the default. When Groq is enabled, eligible analysis uses Groq only; failed or paused requests stay pending instead of switching to local scoring. Its key is read from GROQ_API_KEY in the Obsidian process environment and is never stored in this vault."
+      text: "Markdown notes are grouped by Obsidian creation date. Folder rules below control which notes are analyzed. All folders are included by default. Local analysis is the default. Optional Groq analysis uses GROQ_API_KEY from the process environment."
     });
     new Setting(containerEl)
       .setName("Enable Groq analysis")
-      .setDesc("When enabled, eligible analysis sends cleaned text from all notes created that date to Groq only. If Groq is unavailable or paused, the plugin keeps existing results and leaves new work pending. This setting is off by default.")
+      .setDesc("Only text from notes allowed by folder rules is sent to Groq. Failed or paused requests remain pending. This setting is off by default.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.enableGroq)
         .onChange(async (value) => {
@@ -1248,6 +1285,27 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
           await this.plugin.savePluginData();
           this.plugin.refreshRenderers();
         }));
+    new Setting(containerEl)
+      .setName("Include folders")
+      .setDesc("Optional allowlist. One vault-relative folder per line. Empty includes all folders; subfolders are included automatically. / means root-level notes.")
+      .addTextArea((area) => area
+        .setPlaceholder("Journal\nDaily Notes")
+        .setValue(this.plugin.settings.includeFolders.join("\n"))
+        .onChange(async (value) => {
+          await this.plugin.updateFolderFilter("includeFolders", value);
+        }));
+    new Setting(containerEl)
+      .setName("Exclude folders")
+      .setDesc("One vault-relative folder per line. Excludes subfolders and overrides the include list. / means root-level notes.")
+      .addTextArea((area) => area
+        .setPlaceholder("Work\nPrivate")
+        .setValue(this.plugin.settings.excludeFolders.join("\n"))
+        .onChange(async (value) => {
+          await this.plugin.updateFolderFilter("excludeFolders", value);
+        }));
+    containerEl.createEl("p", {
+      text: "Folder changes apply to future scans and reanalysis. Saved history is preserved; Analyze changed recalculates eligible dates. Remove older entries manually if you want to delete their previous results."
+    });
     new Setting(containerEl)
       .setName("Analyze note changes automatically")
       .setDesc("Reanalyze the note's creation-date group after any included note changes.")
