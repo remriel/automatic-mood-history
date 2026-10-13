@@ -12,10 +12,10 @@ function fixtureHTML() {
     body { margin:0; background:var(--background-primary); color:var(--text-normal); font-family:var(--font-interface); }
     body.theme-light { --text-normal:#171717; --background-primary:#fffdf4; --background-secondary:#fff; --link-color:#6831ad; }
     #pane { width:100%; max-width:100%; box-sizing:border-box; padding:8px; margin-inline:auto; }
-    button,input { font:inherit; } button { cursor:pointer; } button:disabled { cursor:not-allowed; } strong { color:var(--text-normal); } a { color:var(--link-color); }
+    button,input,textarea { font:inherit; } button { cursor:pointer; } button:disabled { cursor:not-allowed; } strong { color:var(--text-normal); } a { color:var(--link-color); }
     .setting-item { display:flex; align-items:center; gap:20px; padding:18px 0; border-bottom:1px solid #675b71; }
     .setting-item-info { flex:1; } .setting-item-name { font-weight:800; } .setting-item-description { font-size:.85rem; line-height:1.6; margin-top:5px; }
-    .setting-item-control { display:flex; gap:8px; } .setting-item-control input { width:230px; padding:8px; box-sizing:border-box; } .setting-item-control button { padding:8px 12px; }
+    .setting-item-control { display:flex; gap:8px; } .setting-item-control input, .setting-item-control textarea { width:230px; padding:8px; box-sizing:border-box; } .setting-item-control button { padding:8px 12px; }
     ${css}
   </style></head><body class="theme-dark"><main id="pane"><div id="dashboard"></div><div id="settings" hidden></div></main>
   <script>(() => {
@@ -29,13 +29,14 @@ function fixtureHTML() {
       setDesc(text){this.info.createDiv({cls:'setting-item-description',text});return this;}
       addToggle(callback){const el=this.control.createEl('button',{text:'Off',attr:{role:'switch','aria-label':this.name}});const api={setValue(v){el.textContent=v?'On':'Off';el.setAttribute('aria-checked',String(v));return api;},onChange(fn){el.addEventListener('click',()=>{const v=el.getAttribute('aria-checked')!=='true';api.setValue(v);void fn(v);});return api;}};callback(api);return this;}
       addText(callback){const el=this.control.createEl('input',{attr:{type:'text','aria-label':this.name}});const api={setValue(v){el.value=v;return api;},onChange(fn){el.addEventListener('input',()=>void fn(el.value));return api;}};callback(api);return this;}
+      addTextArea(callback){const el=this.control.createEl('textarea',{attr:{'aria-label':this.name,rows:'4'}});const api={setPlaceholder(v){el.placeholder=v;return api;},setValue(v){el.value=v;return api;},onChange(fn){el.addEventListener('input',()=>void fn(el.value));return api;}};callback(api);return this;}
       addButton(callback){const el=this.control.createEl('button');const api={setButtonText(t){el.textContent=t;return api;},setCta(){return api;},onClick(fn){el.addEventListener('click',fn);return api;}};callback(api);return this;}
     }
     const module={exports:{}};
     const require=(name)=>{if(name==='obsidian')return {Component:class{},Notice:class{},Plugin:class{},PluginSettingTab:class{},Setting:FixtureSetting,TFile:class{},TFolder:class{},requestUrl:async()=>{throw new Error('Network disabled in layout fixture');}};throw new Error(name);};
     ${bundle}
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
-    plugin.settings={outputFolder:'Mood History',enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
+    plugin.settings={outputFolder:'Mood History',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
     const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};
     let statusText='SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';
     plugin.groqStatus=()=>({kind:plugin.settings.enableGroq?'ready':'local',text:plugin.activeScan?'Analyzing fictional fixture records':plugin.checkingGroq?'Checking with fictional fixture text':statusText});
