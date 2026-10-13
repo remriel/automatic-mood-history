@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node scripts/build.js",
     "check": "node --check src/main.js && node --check src/sentiment-core.js && node --check main.js",
-    "test": "npm run build && npm run check && node tests/core.test.js && node tests/bundle-load.test.js && node tests/onload.test.js && node tests/timestamp-grouping.test.js && node tests/folder-filter.test.js && node tests/groq-fallback.test.js && node tests/groq-recovery.test.js && node tests/dashboard-migration.test.js && node tests/legacy-fallback-recovery.test.js && node tests/automatic-recovery.test.js && node tests/audit-regressions.test.js && node tests/storage-recovery.test.js && node tests/lifecycle-cancellation.test.js && node tests/settings-validation.test.js && node tests/cache-discovery.test.js && node tests/history-identity.test.js",
+    "test": "npm run build && npm run check && node tests/core.test.js && node tests/bundle-load.test.js && node tests/onload.test.js && node tests/timestamp-grouping.test.js && node tests/folder-filter.test.js && node tests/groq-fallback.test.js && node tests/groq-recovery.test.js && node tests/dashboard-migration.test.js && node tests/legacy-fallback-recovery.test.js && node tests/automatic-recovery.test.js && node tests/audit-regressions.test.js && node tests/storage-recovery.test.js && node tests/lifecycle-cancellation.test.js && node tests/settings-validation.test.js && node tests/cache-discovery.test.js && node tests/history-identity.test.js && node tests/narrative-policy.test.js",
     "test:layout": "node tests/layout.test.js",
     "audit:release": "node scripts/audit-release.js"
   },

@@ -173,12 +173,12 @@ test("owned updates and new entries still write successfully", async () => {
   p.app.vault.process = async (_file, transform) => { content = transform(content); };
   const record = { date, ...valid, sourcePaths: [] };
   await p.writeEntryNote(record);
-  assert(content.includes(valid.summary));
+  assert(content.includes(require("../src/sentiment-core").plainNarrative(valid.summary)));
   assert.equal(record.entryPath, path);
   p.app.vault.getAbstractFileByPath = () => null;
   p.app.vault.create = async (createdPath, value) => { assert.equal(createdPath, path); content = value; };
   await p.writeEntryNote(record);
-  assert(content.includes(valid.summary));
+  assert(content.includes(require("../src/sentiment-core").plainNarrative(valid.summary)));
 });
 
 test("create collision preserves the competing note", async () => {

@@ -1,0 +1,12 @@
+const assert = require("node:assert/strict");
+const core = require("../src/sentiment-core");
+const { fixture, valid, date, priorRecord } = require("./reliability-fixture");
+const hostile = '[fictional](https://example.invalid/path) ![image](https://example.invalid/image.png) ![[Fictional]] <img src="https://example.invalid/pixel"> <script>fictional</script>\n- injected item\n```html\n# heading\n```';
+const markdown = core.buildEntryMarkdown({ ...priorRecord(), summary: hostile, drivers: [hostile], confidenceReason: hostile });
+assert(!markdown.includes('<img')); assert(!markdown.includes('<script>')); assert(!markdown.includes('![image]')); assert(!markdown.includes('![[Fictional]]'));
+assert(markdown.includes('&#91;fictional&#93;')); assert(!markdown.includes('\n- injected item'));
+const bounded = core.validateAnalysis({ ...valid, drivers: ['x'.repeat(10000)], summary: 'x'.repeat(10000), confidenceReason: 'x'.repeat(10000) });
+assert.equal(bounded.drivers[0].length, 250); assert.equal(bounded.summary.length, 500); assert.equal(bounded.confidenceReason.length, 500);
+for (const image of ['![calm and happy](photo.png)', '![calm](https://example.invalid/photo.png)', '![calm][photo]', '<img src="photo.png" alt="calm">', '![[photo.png]]', '\uFEFF---\ntopic: happy\n---']) assert.equal(core.textForAnalysis(image), '', image);
+const { p } = fixture(); assert.throws(()=>p.parseGroqAnalysis({choices:[{message:{content:'x'.repeat(100001)}}]}), /oversized/);
+console.log("PASS bounded plain narrative serialization and image/frontmatter-only evidence");

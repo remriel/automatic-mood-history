@@ -24,7 +24,7 @@ const CREATED_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
 const LOCAL_ANALYZER_VERSION = "deterministic-lexicon-v1";
 const GROQ_PROMPT_VERSION = "creation-date-prompt-v1";
-const TEXT_PIPELINE_VERSION = "markdown-text-v1";
+const TEXT_PIPELINE_VERSION = "markdown-text-v2";
 
 const DEFAULT_SETTINGS = {
   enableGroq: false,
@@ -714,6 +714,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     const raw = choice?.message?.content;
     if (typeof raw !== "string" || !raw.trim()) throw new Error("Groq returned no analysis content.");
+    if (raw.length > 100000) throw new Error("Groq returned an oversized analysis response.");
     // Do not accept JSON in a reasoning section as a final answer.
     const finalText = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     const start = finalText.indexOf("{");

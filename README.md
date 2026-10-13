@@ -4,6 +4,10 @@ Analysis caching uses a versioned fingerprint covering the source hash, text pip
 
 Full scans build a temporary date-to-files index once. Source eligibility, file identity and metadata are checked again before reads and requests; changed scope cancels the scan. The index retains file references and paths only, and is discarded after each scan. It does not cache note text or reduce provider latency.
 
+Generated provider summaries, drivers and confidence explanations are bounded plain text. Markdown punctuation is serialized as literal characters and line breaks are collapsed, so narrative fields cannot create links, images, embeds or HTML. Intended source-note links remain available separately. Summaries and confidence explanations are limited to 500 characters; each of up to four drivers is limited to 250 characters. Native Obsidian 1.14.4 synthetic checks verify literal readable output with no narrative link/image/embed/script elements.
+
+Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Local scoring remains a simple English word-pattern estimate: it does not implement the Groq prompt's attribution, quotation or negation reasoning, and its confidence remains low.
+
 ![Automatic Mood History for Obsidian: mood and energy trends presented in a colorful dashboard-style graphic with illustrative data.](assets/readme-banner.svg)
 
 **[Download the latest Obsidian plugin files](https://github.com/remriel/automatic-mood-history/releases/latest)** · [Installation](#installation) · [Privacy](#privacy)

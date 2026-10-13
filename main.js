@@ -179,12 +179,15 @@ function countTerms(text, terms, counts) {
 }
 
 function stripFrontmatter(text) {
-  return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
+  return text.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "");
 }
 
 function textForAnalysis(text) {
   return stripFrontmatter(text)
     .replace(/!\[\[[^\]]+\]\]/g, " ")
+    .replace(/!\[[^\]]*\]\([^\n]*?\)/g, " ")
+    .replace(/!\[[^\]]*\]\[[^\]]*\]/g, " ")
+    .replace(/<img\b[^>]*>/gi, " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/^#.*$/gm, " ")
@@ -290,7 +293,7 @@ function validateAnalysis(input) {
       : moodToValence(moodScore),
     emotions: emotions.length ? emotions : [moodScore < 3 ? "sad" : moodScore > 3 ? "hopeful" : "confused"],
     summary: String(input.summary || "Sentiment inferred from the notes created that day.").slice(0, 500),
-    drivers: (input.drivers || []).map(String).filter(Boolean).slice(0, 4),
+    drivers: (input.drivers || []).map(value => String(value).slice(0, 250)).filter(Boolean).slice(0, 4),
     confidence: ["low", "medium", "high"].includes(input.confidence) ? input.confidence : "low",
     confidenceReason: String(input.confidenceReason || "Limited or mixed evidence in the source text.").slice(0, 500)
   };
@@ -362,6 +365,13 @@ function escapeYaml(value) {
   return JSON.stringify(String(value));
 }
 
+function plainNarrative(value, maximum = 500) {
+  // Keep narrative as readable text. Entity tokens protect punctuation from
+  // Markdown links, embeds, HTML, formatting and automatic URL recognition.
+  return String(value || "").slice(0, maximum).replace(/[\x00-\x1f\x7f\s]+/g, " ").trim()
+    .replace(/[\\`*_{}\[\]()<>#+\-.!|~^:$@%&/]/g, character => `&#${character.codePointAt(0)};`);
+}
+
 function buildEntryMarkdown(record) {
   const lines = [
     "---",
@@ -409,24 +419,24 @@ function buildEntryMarkdown(record) {
       `- **Energy:** ${record.energyScore}/5`,
       `- **Connection:** ${record.connectionScore}/5`,
       `- **Intensity:** ${record.intensityScore}/5`,
-      `- **Emotions:** ${(record.emotions || []).join(", ") || "none"}`,
-      `- **Confidence:** ${record.confidence}`,
+      `- **Emotions:** ${plainNarrative((record.emotions || []).join(", ") || "none")}`,
+      `- **Confidence:** ${plainNarrative(record.confidence)}`,
       "",
-      record.summary || ""
+      plainNarrative(record.summary)
     );
   }
   if (record.drivers?.length) {
     lines.push("", "## Signals", "");
-    for (const driver of record.drivers) lines.push(`- ${driver}`);
+    for (const driver of record.drivers.slice(0, 4)) lines.push(`- ${plainNarrative(driver, 250)}`);
   }
   if (record.providerIssue?.message) {
-    lines.push("", "## Groq status", "", record.providerIssue.message);
+    lines.push("", "## Groq status", "", plainNarrative(record.providerIssue.message));
   }
   lines.push("", "## Sources", "");
   for (const path of record.sourcePaths || []) {
     lines.push(`- [[${path.replace(/\.md$/i, "")}|${PathBasename(path)}]]`);
   }
-  lines.push("", `_${record.confidenceReason || ""}_`, "");
+  lines.push("", `_${plainNarrative(record.confidenceReason)}_`, "");
   return lines.join("\n");
 }
 
@@ -452,7 +462,7 @@ const CREATED_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
 const LOCAL_ANALYZER_VERSION = "deterministic-lexicon-v1";
 const GROQ_PROMPT_VERSION = "creation-date-prompt-v1";
-const TEXT_PIPELINE_VERSION = "markdown-text-v1";
+const TEXT_PIPELINE_VERSION = "markdown-text-v2";
 
 const DEFAULT_SETTINGS = {
   enableGroq: false,
@@ -1142,6 +1152,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     const raw = choice?.message?.content;
     if (typeof raw !== "string" || !raw.trim()) throw new Error("Groq returned no analysis content.");
+    if (raw.length > 100000) throw new Error("Groq returned an oversized analysis response.");
     // Do not accept JSON in a reasoning section as a final answer.
     const finalText = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     const start = finalText.indexOf("{");
