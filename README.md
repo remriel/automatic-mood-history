@@ -1,5 +1,7 @@
 # Automatic Mood History
 
+![Automatic Mood History for Obsidian: mood and energy trends presented in a colorful dashboard-style graphic with illustrative data.](assets/readme-banner.svg)
+
 Automatic sentiment history for notes in [Obsidian](https://obsidian.md/).
 
 The plugin groups every Markdown note by the local calendar date of its Obsidian creation timestamp, consolidates notes created that day across all folders, and renders a native dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local analysis is the default. Groq analysis is optional and must be enabled explicitly.
