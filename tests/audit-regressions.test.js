@@ -27,6 +27,7 @@ function fixture() {
   p.savePluginData = p.ensureFolder = async () => {};
   p.refreshRenderers = () => {};
   p.writeEntryNote = async () => {};
+  p.resolveEntryPath = async record => record.entryPath || `Mood History/Entries/${record.date}.md`;
   const files = [new TFile("Journal/First.md"), new TFile("Private/Second.md")];
   p.app = { vault: { getMarkdownFiles: () => files, cachedRead: async () => text }, metadataCache: { getFileCache: () => ({}) } };
   return { p, files };

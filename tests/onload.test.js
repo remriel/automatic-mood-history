@@ -102,7 +102,7 @@ instance.onload().then(() => {
   assert.strictEqual(saveCalls, 1, "plugin data is saved before vault folder setup");
   assert.strictEqual(saved.runtime.lastLoadStatus, "loaded");
   assert.strictEqual(saved.runtime.version, instance.manifest.version);
-  assert.strictEqual(saved.records["2099-01-02"], existingRecord, "existing history is preserved");
+  assert.deepStrictEqual(saved.records["2099-01-02"], existingRecord, "existing history is preserved");
   assert.strictEqual(existingRecord.dateBasis, "legacy-note-date");
   assert.strictEqual(saved.settings.dailyFolder, undefined, "obsolete Daily-folder setting is removed");
   assert.strictEqual(saved.settings.includeOutsideDailyFolder, undefined, "obsolete folder-scope setting is removed");

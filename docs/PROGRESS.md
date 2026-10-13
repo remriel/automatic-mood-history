@@ -1,4 +1,27 @@
-# Audit and reliability fixes — execution state
+# Reliability follow-up — execution state
+
+## Current objective (2026-10-13)
+
+Execute the supplied Sol 6.1 plan in order, starting from clean audit branch `e01f1ed85c2beb776676d13481b7b15f1562bb21`. Public main remains `493f53cb35e28fe5893c9a6a8214d2a41f3ef075`; PR #1 is open and latest baseline CI run 38485326245 succeeded. Work is isolated in a fresh checkout; no installed plugin or personal vault is touched. No subagents are used.
+
+**Follow-up progress: 40% — all three P1 phases pass focused, functional and browser verification.**
+
+- [x] Read instructions, all handoff documents, source and tests; reconcile Git/PR/CI.
+- [x] Baseline npm ci, npm test, npm run test:layout, npm run audit:release pass.
+- [x] Durable prepared-result recovery and serialized JSON saves.
+- [x] Lifecycle/epoch cancellation and shared sample coordination.
+- [x] Fail-closed storage/settings/path validation.
+- [ ] Analysis fingerprints and measured per-scan discovery index.
+- [ ] Separate history identity and safe narrative commits.
+- [ ] Native synthetic verification where supported; full checks, GitHub synchronization and CI.
+
+Current implementation: version 1 prepared writes, JSON authority, content-hash recovery, detached serialized snapshots; see PERSISTENCE_PROTOCOL.md. Fault tests restart at six prepare/entry/commit boundaries and exercise user edits and concurrent saves. Lifecycle/epoch and settings/path suites pass; updated older mocks reflect immutable snapshots and records. Full npm test and test:layout pass. Native Obsidian access has not been established; no live provider check or release is claimed.
+
+Exact next steps: define cache semantics; measure/index discovery; implement reversible coexistence and text serialization as separate commits; establish isolated native QA; run all checks; push/update PR and verify CI; export final continuity documents.
+
+---
+
+The following section records the completed preceding audit, not the current follow-up percentage.
 
 ## Objective
 Audit release 1.2.8, fix verified defects, optimize safe hot paths, and provide an executable Sol 6.1 handoff.

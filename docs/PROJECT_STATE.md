@@ -1,5 +1,18 @@
 # Automatic Mood History — project state
 
+## Active follow-up (2026-10-13)
+
+Fresh clean checkout starts from audit head `e01f1ed85c2beb776676d13481b7b15f1562bb21`; public release remains 1.2.8 and PR #1 is open. Work alone, with synthetic data, without installed-plugin changes.
+
+- `runtime.pendingWrites`: version 1 prepared analysis results. JSON is committed authority; persist preparation, apply entry with content-hash comparison, commit record and clear retry/journal in one serialized save. See `PERSISTENCE_PROTOCOL.md`. Recovery needs no provider call once preparation survives restart. Edited owned notes receive a separate recovered entry; user edits remain intact.
+- `storageQueue` captures detached snapshots at dispatch and publishes record commits inside the queue. Previous record objects are never mutated before saving. Obsidian APIs provide neither cross-file transactions nor abort/fsync guarantees; rejected writes may already have completed and replay is idempotent.
+- `analysisEpoch` tracks analysis-relevant settings through a Proxy. Guards capture both epoch and values, including queued work. Startup-only background authorization is explicit (`startup: true`); continuous events/recovery require `autoAnalyze`. Sample checks share `analysisQueue`, preserving newer pauses. Cancellation counts are included in manual scan results.
+- Storage validation accepts boolean opt-ins only as actual true, bounds numbers, checks date/record/pending metadata and visibility arrays. Invalid loaded folder settings block analysis with a visible message; invalid UI edits retain the prior effective scope. Settings-save errors pause analysis and retain restrictive consent in memory. Unreadable plugin JSON is never overwritten with defaults.
+- `vaultPath`/`assertOutputPath` confine output writes, reject absolute/traversal/configuration/trash paths, normalize Windows/repeated separators, and recheck prepared/stored entry paths. Output folder is now repairable in settings.
+- Added focused `storage-recovery`, `lifecycle-cancellation`, and `settings-validation` tests plus shared `reliability-fixture`. Six restart boundaries, edited-note recovery, save serialization, unload at six await boundaries, away-and-back settings, queued sample rate limiting, startup-only authorization, corrupt settings and path confinement pass.
+
+RESUME HERE: P1 persistence/lifecycle/settings phases are implemented and pass functional/layout suites. Continue with explicit analysis fingerprint semantics, measured per-scan discovery, then separate history coexistence and narrative commits. Native verification still needs an isolated synthetic runtime. Read current PROGRESS before relying on the older audit state below.
+
 ## Current baseline and architecture
 
 Audit date: 2026-10-13. Public repository: https://github.com/remriel/automatic-mood-history.

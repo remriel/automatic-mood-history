@@ -36,7 +36,7 @@ function fixture() {
   requests.length = notices.length = 0;
   respond = () => success();
   const plugin = new MoodPlugin();
-  plugin.settings = { enableGroq: true, model: "openai/gpt-oss-20b", minimumCharacters: 40 };
+  plugin.settings = { outputFolder: "Mood History", enableGroq: true, model: "openai/gpt-oss-20b", minimumCharacters: 40 };
   plugin.records = {};
   plugin.runtime = {};
   plugin.groqBlockedUntil = 0;
@@ -45,6 +45,7 @@ function fixture() {
   plugin.gatherDate = async (date) => ({ date, analysisText: "A fictional writer feels calm, hopeful, and supported after a friendly conversation.", topic: "", contentHash: date, sourcePaths: [`Fictional/${date}.md`] });
   plugin.savePluginData = async () => {};
   plugin.writeEntryNote = async () => {};
+  plugin.resolveEntryPath = async record => record.entryPath || `Mood History/Entries/${record.date}.md`;
   plugin.ensureSupportFiles = async () => {};
   plugin.refreshRenderers = () => {};
   return plugin;

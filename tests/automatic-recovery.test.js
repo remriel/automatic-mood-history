@@ -10,7 +10,7 @@ function fixture(){
  const p=new Mood();p.settings={enableGroq:true,autoAnalyze:true,model:'fictional',minimumCharacters:40,outputFolder:'Mood History',maxCharactersPerDay:60000};
  p.runtime={};p.records={};p.groqBlockedUntil=0;p.getAllDates=()=>dates;p.apiKey=()=> 'fictional';
  p.gatherDate=async date=>({date,contentHash:date,sourcePaths:['Fictional/source.md'],analysisText:'Fictional writing describing a restful afternoon and a supportive friend.'});
- p.analyzeWithGroq=async()=>({...valid});p.writeEntryNote=p.savePluginData=p.ensureSupportFiles=async()=>{};p.refreshRenderers=()=>{};
+ p.resolveEntryPath=async record=>record.entryPath||`Mood History/Entries/${record.date}.md`;p.analyzeWithGroq=async()=>({...valid});p.writeEntryNote=p.savePluginData=p.ensureSupportFiles=async()=>{};p.refreshRenderers=()=>{};
  return p;
 }
 async function run(){
