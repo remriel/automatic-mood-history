@@ -745,6 +745,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
           this.recordGroqSuccess();
         } catch (error) {
           if (error.code === "analysis_cancelled") throw error;
+          assertGatheredCurrent();
           const issue = this.recordGroqFailure(error);
           this.markDatePending(date, options, issue.kind);
           if (options.runStats) {

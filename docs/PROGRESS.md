@@ -10,7 +10,7 @@ Audit release 1.2.8, fix verified defects, optimize safe hot paths, and provide 
 - [x] Implement scope/consent cancellation, atomic ownership checks, empty-scope preservation, and folder separator normalization.
 - [x] Optimize local scoring with exact parity and a measured synthetic speedup.
 - [x] Select release notes by manifest version; preserve the current version.
-- [x] Add 16 audit regressions and pass full functional/browser/privacy checks.
+- [x] Add 17 audit regressions and pass full functional/browser/privacy checks.
 - [x] Write `AUDIT_REPORT.md`, `SOL_6_1_PLAN.md`, and replace stale project intelligence with current facts.
 - [ ] Push review branch, create PR, and verify GitHub CI.
 - [ ] Export final audit and continuity documents for the user.
@@ -19,7 +19,7 @@ Audit release 1.2.8, fix verified defects, optimize safe hot paths, and provide 
 Branch: `fix/audit-reliability-handoff`. Manifest/package remain 1.2.8. Tracked `main.js` is rebuilt. Source behavior and handoff are complete for this bounded audit; broader architectural fixes are explicitly assigned in the Sol 6.1 plan. No production release or personal-vault installation was performed.
 
 ## Tests and verification
-- Baseline and updated `npm test`: pass. Updated suite includes 16 new synthetic regressions.
+- Baseline and updated `npm test`: pass. Updated suite includes 17 new synthetic regressions.
 - `npm run test:layout`: pass, light/dark 240–1440px panes, 200% text, long content, 365 records, interactions and cleanup.
 - `npm run audit:release`: pass; no sensitive paths/tokens/private artifacts detected.
 - `npm audit --json`: zero known vulnerabilities.

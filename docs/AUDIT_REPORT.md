@@ -4,7 +4,7 @@ Date: 2026-10-13. Baseline: `493f53c`. Branch: `fix/audit-reliability-handoff`.
 
 ## Outcome
 
-The baseline functional/layout tests passed but missed asynchronous scope and file-ownership races. This patch fixes verified failures, adds 16 regression cases, improves local scoring throughput without changing results, and repairs release-notes selection. No live notes or provider requests were used. The plugin version remains 1.2.8; this is a review branch, not a new production release.
+The baseline functional/layout tests passed but missed asynchronous scope and file-ownership races. This patch fixes verified failures, adds 17 regression cases, improves local scoring throughput without changing results, and repairs release-notes selection. No live notes or provider requests were used. The plugin version remains 1.2.8; this is a review branch, not a new production release.
 
 ## Fixed findings
 
@@ -42,7 +42,7 @@ Background work also checks current automatic-analysis settings when it reaches 
 
 - Baseline: `npm ci`, `npm test`, privacy audit, and full existing Playwright matrix passed.
 - Seven newly added initial cases failed against baseline, then passed after fixes.
-- Updated: `npm test` including 16 new cases passed; full `npm run test:layout` passed.
+- Updated: `npm test` including 17 new cases passed; full `npm run test:layout` passed.
 - `npm run audit:release` passed; `npm audit --json` reported zero known vulnerabilities.
 - `git diff --check` passed. Benchmark parity passed.
 - GitHub CI status and PR publication are recorded in `PROGRESS.md`.

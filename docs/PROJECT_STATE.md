@@ -39,7 +39,7 @@ The audited main baseline is `493f53c` (release 1.2.8). Earlier handoff document
 
 ## Relevant files and verification
 
-- `tests/audit-regressions.test.js`: 16 cases covering exclusion normalization, read/request cancellation, rename races, background opt-out, empty-date preservation, empty-note behavior, ownership races, successful writes, and create collisions. Seven initial cases failed against baseline before fixes.
+- `tests/audit-regressions.test.js`: 17 cases covering exclusion normalization, read/request cancellation, rename races, background opt-out, empty-date preservation, empty-note behavior, ownership races, successful writes, and create collisions. Seven initial cases failed against baseline before fixes.
 - Existing tests cover lifecycle, timestamp grouping, folder scope, provider retries, legacy recovery, pending dates, and dashboard migration.
 - `tests/layout.test.js` and `tests/layout-fixture.js`: bundled renderer and CSS under Playwright, light/dark 240–1440px panes, large text, 365 days, controls, links, and cleanup.
 - `scripts/benchmark-local.js`: seeded 512-sample exact parity against Git baseline plus seven alternating timing rounds. Local Node 24.19.0 result: median 229ms -> 172ms for 40 analyses of 60,000 characters (1.33x throughput). This is a microbenchmark, not whole-vault performance.

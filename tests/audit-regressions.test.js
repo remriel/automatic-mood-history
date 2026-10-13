@@ -132,6 +132,20 @@ test("rename while awaiting a provider reply prevents stale-text retries", async
   assert.equal(requests, 1);
 });
 
+test("a failed in-flight request after opt-out cannot restore provider error state", async () => {
+  const { p } = fixture();
+  let saves = 0;
+  p.savePluginData = async () => { saves++; };
+  p.requestGroq = async () => {
+    p.settings.enableGroq = false;
+    throw Object.assign(new Error("Synthetic rate limit"), { status: 429 });
+  };
+  await p.analyzeDate(date);
+  assert.equal(saves, 0);
+  assert.equal(p.runtime.lastGroqIssue, undefined);
+  assert.equal(p.groqBlockedUntil, 0);
+});
+
 test("entry ownership is checked atomically at write time", async () => {
   const { p } = fixture();
   delete p.writeEntryNote;
