@@ -458,6 +458,7 @@
   flex-wrap: wrap;
 }
 
+.auto-mood-settings textarea,
 .auto-mood-settings input[type="text"],
 .auto-mood-settings button {
   max-width: 100%;
