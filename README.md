@@ -2,6 +2,8 @@
 
 ![Automatic Mood History for Obsidian: mood and energy trends presented in a colorful dashboard-style graphic with illustrative data.](assets/readme-banner.svg)
 
+**[Download the latest Obsidian plugin files](https://github.com/remriel/automatic-mood-history/releases/latest)** · [Installation](#installation) · [Privacy](#privacy)
+
 Automatic sentiment history for notes in [Obsidian](https://obsidian.md/).
 
 The plugin groups every Markdown note by the local calendar date of its Obsidian creation timestamp, consolidates notes created that day across all folders, and renders a native dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local analysis is the default. Groq analysis is optional and must be enabled explicitly.
@@ -154,3 +156,8 @@ If a cloud-only source note is unreadable, make it available locally and check t
 ### Chart series visibility
 
 Click a series label in the chart legend to show or hide its line and points. All four series start visible. The selected visibility is saved across refreshes and restarts; this changes only the chart, never scores or analysis. Keyboard users can Tab to each button and use Space or Enter.
+
+## More Obsidian projects
+
+- [Untitled Auto Title](https://github.com/remriel/obsidian-untitled-auto-title): generate meaningful filenames from untitled Markdown notes.
+- [Acid Xerox](https://github.com/remriel/acid-xerox-theme): a colorful, 90s-inspired Obsidian theme.
