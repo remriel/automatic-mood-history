@@ -163,11 +163,18 @@ const CONNECTION_DOWN = [
   "disconnect", "wall", "closed system", "nobody", "no one", "rejected"
 ];
 
-function countTerms(text, terms) {
+const TERM_PATTERNS = new Map(Array.from(new Set([
+  ...POSITIVE_WORDS, ...NEGATIVE_WORDS, ...ENERGY_UP, ...ENERGY_DOWN,
+  ...CONNECTION_UP, ...CONNECTION_DOWN, ...Object.values(EMOTION_LEXICON).flat()
+])).map((term) => [term, new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")]));
+
+function countTerms(text, terms, counts) {
   return terms.reduce((total, term) => {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const matches = text.match(new RegExp(`\\b${escaped}\\b`, "gi"));
-    return total + (matches ? matches.length : 0);
+    if (!counts.has(term)) {
+      const matches = text.match(TERM_PATTERNS.get(term));
+      counts.set(term, matches ? matches.length : 0);
+    }
+    return total + counts.get(term);
   }, 0);
 }
 
@@ -291,8 +298,12 @@ function validateAnalysis(input) {
 
 function localSentiment(text, topic = "") {
   const normalized = text.toLowerCase();
-  const positive = countTerms(normalized, POSITIVE_WORDS);
-  const negative = countTerms(normalized, NEGATIVE_WORDS);
+  // Many words participate in both scores and emotion labels. Count each
+  // distinct term once per analysis, without retaining sensitive source text.
+  const counts = new Map();
+  const count = (terms) => countTerms(normalized, terms, counts);
+  const positive = count(POSITIVE_WORDS);
+  const negative = count(NEGATIVE_WORDS);
   const total = positive + negative;
   const ratio = total ? (positive - negative) / total : 0;
   let moodScore = 3;
@@ -301,14 +312,14 @@ function localSentiment(text, topic = "") {
   else if (ratio >= 0.5) moodScore = 5;
   else if (ratio > 0.15) moodScore = 4;
 
-  const energyUp = countTerms(normalized, ENERGY_UP);
-  const energyDown = countTerms(normalized, ENERGY_DOWN);
+  const energyUp = count(ENERGY_UP);
+  const energyDown = count(ENERGY_DOWN);
   let energyScore = 3;
   if (energyDown > energyUp * 1.5) energyScore = energyDown >= 6 ? 1 : 2;
   else if (energyUp > energyDown * 1.5) energyScore = energyUp >= 6 ? 5 : 4;
 
-  const connected = countTerms(normalized, CONNECTION_UP);
-  const disconnected = countTerms(normalized, CONNECTION_DOWN);
+  const connected = count(CONNECTION_UP);
+  const disconnected = count(CONNECTION_DOWN);
   let connectionScore = 3;
   if (disconnected > connected * 1.4) connectionScore = disconnected >= 5 ? 1 : 2;
   else if (connected > disconnected * 1.4) connectionScore = connected >= 5 ? 5 : 4;
@@ -319,7 +330,7 @@ function localSentiment(text, topic = "") {
   const intensityScore = emotionDensity >= 12 ? 5 : emotionDensity >= 7 ? 4 : emotionDensity >= 3 ? 3 : emotionDensity >= 1 ? 2 : 1;
 
   const ranked = Object.entries(EMOTION_LEXICON)
-    .map(([emotion, terms]) => [emotion, countTerms(normalized, terms)])
+    .map(([emotion, terms]) => [emotion, count(terms)])
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
@@ -458,7 +469,7 @@ function normalizeFolderList(value) {
   const entries = Array.isArray(value) ? value : typeof value === "string" ? value.split(/\r?\n/) : [];
   return Array.from(new Set(entries
     .filter((entry) => typeof entry === "string")
-    .map((entry) => entry.trim().replace(/\\/g, "/"))
+    .map((entry) => entry.trim().replace(/\\/g, "/").replace(/\/{2,}/g, "/"))
     .map((entry) => entry === "/" ? "/" : entry.replace(/^\/+|\/+$/g, ""))
     .filter((entry) => entry && !entry.split("/").some((part) => part === "." || part === ".."))));
 }
@@ -686,30 +697,62 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async gatherFiles(date, files) {
+    const assertCurrent = this.analysisGuard();
     const sourceTexts = [];
     const topics = [];
     // Excluded notes must never be read or sent to a remote provider.
     const scopedFiles = files.filter((file) => this.getCreationDateForFile(file));
+    const sourcePaths = scopedFiles.map((file) => file.path);
+    const assertSourcesCurrent = () => {
+      assertCurrent();
+      if (scopedFiles.some((file, index) => file.path !== sourcePaths[index] || !this.getCreationDateForFile(file))) this.cancelAnalysis();
+    };
     for (const file of scopedFiles) {
+      assertCurrent();
+      if (!this.getCreationDateForFile(file)) this.cancelAnalysis();
       let content;
       try { content = await this.app.vault.cachedRead(file); } catch {
         const error = new Error("A source note is not readable. Make cloud files available locally and check vault sync.");
         error.code = "source_read";
         throw error;
       }
+      assertCurrent();
       if (textForAnalysis(content).length > 0) sourceTexts.push(content);
       const topic = this.topicForFile(file);
       if (topic) topics.push(topic);
     }
     const combinedMarkdown = deduplicateParagraphs(sourceTexts);
     const analysisText = textForAnalysis(combinedMarkdown).slice(0, this.settings.maxCharactersPerDay);
-    const sourcePaths = scopedFiles.map((file) => file.path);
+    assertSourcesCurrent();
     return {
       date,
       sourcePaths,
       analysisText,
       topic: Array.from(new Set(topics)).join(" / "),
+      assertCurrent: assertSourcesCurrent,
       contentHash: sha256(JSON.stringify({ sourcePaths, analysisText }))
+    };
+  }
+
+  cancelAnalysis() {
+    const error = new Error("Analysis cancelled because its settings or source scope changed.");
+    error.code = "analysis_cancelled";
+    throw error;
+  }
+
+  analysisGuard(options = {}) {
+    // Compare values, not array identity: settings can change while awaiting
+    // source reads or provider replies. Never retry with stale consent/scope.
+    const signature = () => JSON.stringify([
+      this.settings.includeFolders, this.settings.excludeFolders,
+      this.settings.outputFolder, this.settings.enableGroq, this.settings.model,
+      this.settings.minimumCharacters, this.settings.maxCharactersPerDay,
+      ...(options.background ? [this.settings.autoAnalyze, this.settings.analyzeOnStartup] : [])
+    ]);
+    const initial = signature();
+    return () => {
+      if (this.unloaded || signature() !== initial ||
+        options.background && !this.settings.autoAnalyze && !this.settings.analyzeOnStartup) this.cancelAnalysis();
     };
   }
 
@@ -902,6 +945,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeWithGroq(date, text, options = {}) {
+    const request = (payload) => {
+      if (this.unloaded || !this.settings.enableGroq) this.cancelAnalysis();
+      options.assertCurrent?.();
+      return this.requestGroq(payload);
+    };
     if (!this.apiKey()) {
       const error = new Error(`Environment variable ${GROQ_API_KEY_ENV} is missing.`);
       error.code = "missing_key";
@@ -962,13 +1010,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     for (const attempt of attempts) {
       try {
         try {
-          return this.parseGroqAnalysis(await this.requestGroq(attempt.payload));
+          return this.parseGroqAnalysis(await request(attempt.payload));
         } catch (error) {
           if (error.code !== "completion_limit" || retriedCompletionLimit) throw error;
           retriedCompletionLimit = true;
-          return this.parseGroqAnalysis(await this.requestGroq({ ...attempt.payload, max_completion_tokens: 8192 }));
+          return this.parseGroqAnalysis(await request({ ...attempt.payload, max_completion_tokens: 8192 }));
         }
       } catch (error) {
+        if (error.code === "analysis_cancelled") throw error;
         lastFailure = error;
         failures.push({ mode: attempt.name, status: error.status || 422, code: error.code || "invalid_output" });
         if (error.status && ![400, 422].includes(error.status)) throw error;
@@ -991,6 +1040,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         return false;
       }
       try { return await this.analyzeDateNow(date, options); } catch (error) {
+        if (error.code === "analysis_cancelled") {
+          if (options.runStats) options.runStats.skipped += 1;
+          return false;
+        }
         this.markDatePending(date, options, error.code === "source_read" ? "source" : "storage");
         if (options.runStats) { options.runStats.failures += 1; options.runStats.pending += 1; }
         try { await this.savePluginData(); } catch { /* Keep in memory until storage recovers. */ }
@@ -1036,6 +1089,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeDateNow(date, options = {}) {
+    const assertCurrent = this.analysisGuard(options);
+    assertCurrent();
     const previous = this.records[date];
     const recovering = Boolean(options.onlyFallbacks || options.legacySources);
     const dateBasis = options.legacySources ? LEGACY_DATE_BASIS : CREATED_DATE_BASIS;
@@ -1051,7 +1106,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return skipRecovery(Boolean(this.settings.enableGroq && needsGroq && (!this.apiKey() || !options.forceGroq && Date.now() < this.groqBlockedUntil)));
     }
     const gathered = options.legacySources ? await this.gatherLegacyDate(date) : await this.gatherDate(date);
-    if (this.unloaded) return false;
+    assertCurrent();
+    const assertGatheredCurrent = () => { assertCurrent(); gathered?.assertCurrent?.(); };
+    // A deleted/moved/excluded last source is not an empty source note.
+    // Preserve history, matching scans which no longer discover this date.
+    if (gathered && !gathered.sourcePaths.length) {
+      await this.clearDatePending(date);
+      return skipRecovery();
+    }
     if (!gathered || recovering && gathered.analysisText.length < this.settings.minimumCharacters) {
       return skipRecovery(Boolean(recovering && this.settings.enableGroq && previous?.status === "complete" && previous.analysisSource !== "groq"));
     }
@@ -1104,12 +1166,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       }
       if (canTryGroq) {
         try {
-          analysis = await this.analyzeWithGroq(date, gathered.analysisText, options);
-          if (this.unloaded) return false;
+          analysis = await this.analyzeWithGroq(date, gathered.analysisText, { ...options, assertCurrent: assertGatheredCurrent });
+          assertGatheredCurrent();
           analysisSource = "groq";
           model = this.settings.model;
           this.recordGroqSuccess();
         } catch (error) {
+          if (error.code === "analysis_cancelled") throw error;
           const issue = this.recordGroqFailure(error);
           this.markDatePending(date, options, issue.kind);
           if (options.runStats) {
@@ -1310,13 +1373,29 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async writeEntryNote(record) {
     await this.ensureFolder(this.entriesFolder);
     const path = await this.resolveEntryPath(record);
+    const content = buildEntryMarkdown(record);
+    const existing = this.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) {
+      await this.app.vault.process(existing, (current) => {
+        if (!this.isOwnedEntryContent(current, record.date)) {
+          throw new Error("Entry ownership changed before writing; existing text was preserved.");
+        }
+        return content;
+      });
+    } else {
+      // create fails safely if another file appears at this path meanwhile.
+      await this.app.vault.create(path, content);
+    }
     record.entryPath = path;
-    await this.writeTextFile(path, buildEntryMarkdown(record), true);
   }
 
   async isOwnedEntry(file, date) {
     if (!(file instanceof TFile)) return false;
     const content = await this.app.vault.cachedRead(file);
+    return this.isOwnedEntryContent(content, date);
+  }
+
+  isOwnedEntryContent(content, date) {
     const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
     if (!match) return false;
     const fields = new Set(match[1].split(/\r?\n/).map((line) => line.trim()));

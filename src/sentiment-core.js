@@ -161,11 +161,18 @@ const CONNECTION_DOWN = [
   "disconnect", "wall", "closed system", "nobody", "no one", "rejected"
 ];
 
-function countTerms(text, terms) {
+const TERM_PATTERNS = new Map(Array.from(new Set([
+  ...POSITIVE_WORDS, ...NEGATIVE_WORDS, ...ENERGY_UP, ...ENERGY_DOWN,
+  ...CONNECTION_UP, ...CONNECTION_DOWN, ...Object.values(EMOTION_LEXICON).flat()
+])).map((term) => [term, new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")]));
+
+function countTerms(text, terms, counts) {
   return terms.reduce((total, term) => {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const matches = text.match(new RegExp(`\\b${escaped}\\b`, "gi"));
-    return total + (matches ? matches.length : 0);
+    if (!counts.has(term)) {
+      const matches = text.match(TERM_PATTERNS.get(term));
+      counts.set(term, matches ? matches.length : 0);
+    }
+    return total + counts.get(term);
   }, 0);
 }
 
@@ -289,8 +296,12 @@ function validateAnalysis(input) {
 
 function localSentiment(text, topic = "") {
   const normalized = text.toLowerCase();
-  const positive = countTerms(normalized, POSITIVE_WORDS);
-  const negative = countTerms(normalized, NEGATIVE_WORDS);
+  // Many words participate in both scores and emotion labels. Count each
+  // distinct term once per analysis, without retaining sensitive source text.
+  const counts = new Map();
+  const count = (terms) => countTerms(normalized, terms, counts);
+  const positive = count(POSITIVE_WORDS);
+  const negative = count(NEGATIVE_WORDS);
   const total = positive + negative;
   const ratio = total ? (positive - negative) / total : 0;
   let moodScore = 3;
@@ -299,14 +310,14 @@ function localSentiment(text, topic = "") {
   else if (ratio >= 0.5) moodScore = 5;
   else if (ratio > 0.15) moodScore = 4;
 
-  const energyUp = countTerms(normalized, ENERGY_UP);
-  const energyDown = countTerms(normalized, ENERGY_DOWN);
+  const energyUp = count(ENERGY_UP);
+  const energyDown = count(ENERGY_DOWN);
   let energyScore = 3;
   if (energyDown > energyUp * 1.5) energyScore = energyDown >= 6 ? 1 : 2;
   else if (energyUp > energyDown * 1.5) energyScore = energyUp >= 6 ? 5 : 4;
 
-  const connected = countTerms(normalized, CONNECTION_UP);
-  const disconnected = countTerms(normalized, CONNECTION_DOWN);
+  const connected = count(CONNECTION_UP);
+  const disconnected = count(CONNECTION_DOWN);
   let connectionScore = 3;
   if (disconnected > connected * 1.4) connectionScore = disconnected >= 5 ? 1 : 2;
   else if (connected > disconnected * 1.4) connectionScore = connected >= 5 ? 5 : 4;
@@ -317,7 +328,7 @@ function localSentiment(text, topic = "") {
   const intensityScore = emotionDensity >= 12 ? 5 : emotionDensity >= 7 ? 4 : emotionDensity >= 3 ? 3 : emotionDensity >= 1 ? 2 : 1;
 
   const ranked = Object.entries(EMOTION_LEXICON)
-    .map(([emotion, terms]) => [emotion, countTerms(normalized, terms)])
+    .map(([emotion, terms]) => [emotion, count(terms)])
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
