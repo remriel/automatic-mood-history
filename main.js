@@ -473,6 +473,7 @@ function validDate(value) {
   const parsed = new Date(`${value}T12:00:00Z`);
   return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }
+const dateFromKey = key => typeof key === "string" && /^(?:created:|legacy:)?\d{4}-\d{2}-\d{2}$/.test(key) ? key.slice(-10) : "";
 
 function vaultPath(value) {
   if (typeof value !== "string" || !value.trim()) throw new Error("Use a nonempty vault-relative path.");
@@ -527,6 +528,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (record && !record.dateBasis) record.dateBasis = LEGACY_DATE_BASIS;
     }
     this.runtime = this.validateRuntime(loaded.runtime);
+    this.runtime.historySchemaVersion = 2;
     if (!this.runtime.lastGroqIssue) delete this.runtime.lastGroqError;
     this.runtime.lastLoadedAt = new Date().toISOString();
     this.runtime.version = this.manifest.version;
@@ -676,8 +678,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const records = {};
     if (!isObject(saved)) return records;
     for (const [key, record] of Object.entries(saved)) {
-      if (!isObject(record) || !validDate(record.date) || !validDate(key) || !["complete", "insufficient"].includes(record.status)) continue;
-      if (record.date !== key) continue;
+      if (!isObject(record) || !validDate(record.date) || !validDate(dateFromKey(key)) || !["complete", "insufficient"].includes(record.status)) continue;
+      if (record.date !== dateFromKey(key) || key.startsWith("created:") && record.dateBasis !== CREATED_DATE_BASIS || key.startsWith("legacy:") && record.dateBasis !== LEGACY_DATE_BASIS) continue;
       if (record.sourcePaths !== undefined && (!Array.isArray(record.sourcePaths) || record.sourcePaths.some(path => typeof path !== "string"))) record.sourcePathsInvalid = true;
       if (record.sourcePaths !== undefined) record.sourcePaths = Array.isArray(record.sourcePaths) ? record.sourcePaths.filter(path => typeof path === "string") : [];
       if (record.emotions !== undefined) record.emotions = Array.isArray(record.emotions) ? record.emotions.filter(value => typeof value === "string").slice(0, 6) : [];
@@ -691,8 +693,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   validateRuntime(saved) {
     const runtime = isObject(saved) ? { ...saved } : {};
-    runtime.pendingDates = isObject(runtime.pendingDates) ? Object.fromEntries(Object.entries(runtime.pendingDates).filter(([key, value]) => validDate(key) && isObject(value) && Number.isFinite(Date.parse(value.retryAt))).map(([key, value]) => [key, { kind: ["source", "storage", "output", "paused", "configuration", "authentication", "rate-limit", "request", "service", "connection"].includes(value.kind) ? value.kind : "storage", attempts: Math.max(1, Math.min(10, Math.round(Number(value.attempts) || 1))), retryAt: new Date(Date.parse(value.retryAt)).toISOString(), legacySources: value.legacySources === true }])) : {};
-    runtime.pendingWrites = isObject(runtime.pendingWrites) ? Object.fromEntries(Object.entries(runtime.pendingWrites).filter(([key, value]) => validDate(key) && isObject(value) && value.version === 1 && this.validateRecords({ [key]: value.record })[key] && typeof value.outputFolder === "string" && (value.expectedHash === null || /^[a-f0-9]{64}$/.test(value.expectedHash)))) : {};
+    runtime.pendingDates = isObject(runtime.pendingDates) ? Object.fromEntries(Object.entries(runtime.pendingDates).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && Number.isFinite(Date.parse(value.retryAt))).map(([key, value]) => [key, { kind: ["source", "storage", "output", "paused", "configuration", "authentication", "rate-limit", "request", "service", "connection"].includes(value.kind) ? value.kind : "storage", attempts: Math.max(1, Math.min(10, Math.round(Number(value.attempts) || 1))), retryAt: new Date(Date.parse(value.retryAt)).toISOString(), legacySources: value.legacySources === true }])) : {};
+    runtime.pendingWrites = isObject(runtime.pendingWrites) ? Object.fromEntries(Object.entries(runtime.pendingWrites).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && value.version === 1 && this.validateRecords({ [key]: value.record })[key] && typeof value.outputFolder === "string" && (value.expectedHash === null || typeof value.expectedHash === "string" && /^[a-f0-9]{64}$/.test(value.expectedHash)))) : {};
     if (!isObject(runtime.lastGroqIssue) || typeof runtime.lastGroqIssue.message !== "string") delete runtime.lastGroqIssue;
     return runtime;
   }
@@ -895,8 +897,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return this.gatherFiles(date, this.filesForDate(date, index));
   }
 
-  async gatherLegacyDate(date) {
-    const previous = this.records[date];
+  async gatherLegacyDate(date, key = this.recordKey(date, true)) {
+    const previous = this.records[key];
     const paths = Array.from(new Set(previous?.sourcePaths || []));
     if (!paths.length || previous.sourcePathsInvalid || previous.dateBasis !== LEGACY_DATE_BASIS) return null;
     const files = paths.map((path) => typeof path === "string" ? this.app.vault.getAbstractFileByPath(path) : null);
@@ -988,17 +990,31 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return Object.values(this.records || {}).filter((record) => record.dateBasis === LEGACY_DATE_BASIS);
   }
 
+  recordKey(date, legacySources = false) {
+    const basis = legacySources ? LEGACY_DATE_BASIS : CREATED_DATE_BASIS;
+    for (const key of [date, `${legacySources ? "legacy" : "created"}:${date}`]) {
+      const record = this.records?.[key];
+      if (record && (record.dateBasis || LEGACY_DATE_BASIS) === basis) return key;
+    }
+    return this.records?.[date] ? `${legacySources ? "legacy" : "created"}:${date}` : date;
+  }
+
   getAnalysisTargets(options = {}) {
     const targets = new Map();
     if (!options.onlyFallbacks) {
-      for (const date of this.getAllDates(options.dateIndex)) targets.set(date, { date, legacySources: false });
+      for (const date of this.getAllDates(options.dateIndex)) {
+        const recordKey = this.recordKey(date);
+        targets.set(recordKey, { date, recordKey, legacySources: false });
+      }
     }
     if (this.settings.enableGroq && this.apiKey()) {
       const recordsToRetry = options.onlyFallbacks ? this.fallbackRecords() : this.legacyRecords();
       for (const record of recordsToRetry) {
         // Retain the original legacy source set and date even if a current
         // creation-date group happens to use the same date key.
-        targets.set(record.date, { date: record.date, legacySources: record.dateBasis === LEGACY_DATE_BASIS });
+        const legacySources = record.dateBasis === LEGACY_DATE_BASIS;
+        const recordKey = this.recordKey(record.date, legacySources);
+        targets.set(recordKey, { date: record.date, recordKey, legacySources });
       }
     }
     return Array.from(targets.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -1256,10 +1272,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeDate(date, options = {}) {
+    options = { ...options, recordKey: options.recordKey || this.recordKey(date, options.legacySources) };
     const assertQueuedCurrent = options.assertCurrent || this.analysisGuard(options);
     // Serialize scans, active-note commands, and debounced note events.
     const task = (this.analysisQueue || Promise.resolve()).then(async () => {
-      const pending = this.runtime?.pendingDates?.[date];
+      const pending = this.runtime?.pendingDates?.[options.recordKey];
       if (options.background && pending && Date.parse(pending.retryAt) > Date.now()) {
         if (options.runStats) options.runStats.pending += 1;
         return false;
@@ -1283,9 +1300,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   markDatePending(date, options = {}, kind = "output") {
     this.runtime ||= {};
     this.runtime.pendingDates ||= {};
-    const attempts = Math.min(10, (this.runtime.pendingDates[date]?.attempts || 0) + 1);
+    const key = options.recordKey || this.recordKey(date, options.legacySources);
+    const attempts = Math.min(10, (this.runtime.pendingDates[key]?.attempts || 0) + 1);
     const retryAt = new Date(Math.max(Date.now() + Math.min(3600000, 60000 * 2 ** (attempts - 1)), this.groqBlockedUntil || 0)).toISOString();
-    this.runtime.pendingDates[date] = { kind, attempts, retryAt, legacySources: Boolean(options.legacySources) };
+    this.runtime.pendingDates[key] = { kind, attempts, retryAt, legacySources: Boolean(options.legacySources) };
   }
 
   async clearDatePending(date) {
@@ -1304,9 +1322,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         this.lastAutomaticReconcileAt = Date.now();
         await this.analyzeAll({ background: true, silent: true });
       } else {
-        for (const [date, pending] of Object.entries(this.runtime.pendingDates || {})) {
+        for (const [key, pending] of Object.entries(this.runtime.pendingDates || {})) {
           if (this.unloaded || !this.settings.autoAnalyze || Date.now() < this.groqBlockedUntil) break;
-          if (Date.parse(pending.retryAt) <= Date.now()) await this.analyzeDate(date, { background: true, legacySources: pending.legacySources });
+          if (Date.parse(pending.retryAt) <= Date.now()) await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
         }
       }
     } catch { /* Retain pending work; next scheduled pass can recover storage/network errors. */ }
@@ -1324,7 +1342,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return true;
     }
     if (options.recoveryOnly) return false;
-    const previous = this.records[date];
+    const previous = this.records[key];
     const recovering = Boolean(options.onlyFallbacks || options.legacySources);
     const dateBasis = options.legacySources ? LEGACY_DATE_BASIS : CREATED_DATE_BASIS;
     const skipRecovery = (pending = false) => {
@@ -1338,13 +1356,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       const needsGroq = options.force || !previous || previous.status === "complete" && previous.analysisSource !== "groq";
       return skipRecovery(Boolean(this.settings.enableGroq && needsGroq && (!this.apiKey() || !options.forceGroq && Date.now() < this.groqBlockedUntil)));
     }
-    const gathered = options.legacySources ? await this.gatherLegacyDate(date) : await this.gatherDate(date, options.dateIndex);
+    const gathered = options.legacySources ? await this.gatherLegacyDate(date, key) : await this.gatherDate(date, options.dateIndex);
     assertCurrent();
     const assertGatheredCurrent = () => { assertCurrent(); gathered?.assertCurrent?.(); };
     // A deleted/moved/excluded last source is not an empty source note.
     // Preserve history, matching scans which no longer discover this date.
     if (gathered && !gathered.sourcePaths.length) {
-      await this.clearDatePending(date);
+      await this.clearDatePending(key);
       return skipRecovery();
     }
     if (!gathered || recovering && gathered.analysisText.length < this.settings.minimumCharacters) {
@@ -1364,10 +1382,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return false;
     }
     if (!options.force && !retryNonGroqResult && !localSemanticsChanged && previous?.contentHash === gathered.contentHash) {
-      if (previous.dateBasis === dateBasis) { await this.clearDatePending(date); return false; }
+      if (previous.dateBasis === dateBasis) { await this.clearDatePending(key); return false; }
       const promoted = { ...previous, dateBasis };
-      const pending = await this.prepareRecord(date, promoted, assertGatheredCurrent);
-      await this.commitPreparedRecord(date, pending, assertGatheredCurrent);
+      const pending = await this.prepareRecord(key, promoted, assertGatheredCurrent);
+      await this.commitPreparedRecord(key, pending, assertGatheredCurrent);
       this.refreshRenderers();
       return true;
     }
@@ -1437,6 +1455,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
     Object.assign(record, {
       dateBasis,
+      recordIdentity: `v2:${dateBasis}:${date}`,
       analysisFingerprint: fingerprint,
       contentHash: gathered.contentHash,
       sourcePaths: gathered.sourcePaths,
@@ -1444,8 +1463,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       ...(previous?.entryPath ? { entryPath: previous.entryPath } : {})
     });
     assertGatheredCurrent();
-    const pending = await this.prepareRecord(date, record, assertGatheredCurrent);
-    await this.commitPreparedRecord(date, pending, assertGatheredCurrent);
+    const pending = await this.prepareRecord(key, record, assertGatheredCurrent);
+    await this.commitPreparedRecord(key, pending, assertGatheredCurrent);
     this.refreshRenderers();
     if (options.runStats) {
       options.runStats[record.status === "insufficient" ? "insufficient" : record.analysisSource === "groq" ? "groq" : record.analysisSource === "local" ? "local" : "fallback"] += 1;
@@ -1485,7 +1504,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     let changed = 0;
     for (const [index, target] of targets.entries()) {
       try { assertCurrent(); } catch { runStats.cancelled += targets.length - index; break; }
-      if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources })) changed += 1;
+      if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources, recordKey: target.recordKey })) changed += 1;
     }
     try {
       assertCurrent();
@@ -1660,7 +1679,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         if (options.pending && sha256(current) !== options.pending.expectedHash) {
           throw new Error("Entry changed during recovery; existing text was preserved.");
         }
-        if (!this.isOwnedEntryContent(current, record.date)) {
+        if (!this.isOwnedEntryContent(current, record.date, record.dateBasis)) {
           throw new Error("Entry ownership changed before writing; existing text was preserved.");
         }
         return content;
@@ -1680,16 +1699,17 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     throw new Error("Could not find an unused entry path for recovery.");
   }
 
-  async isOwnedEntry(file, date) {
+  async isOwnedEntry(file, date, dateBasis) {
     if (!(file instanceof TFile)) return false;
     const content = await this.app.vault.cachedRead(file);
-    return this.isOwnedEntryContent(content, date);
+    return this.isOwnedEntryContent(content, date, dateBasis);
   }
 
-  isOwnedEntryContent(content, date) {
+  isOwnedEntryContent(content, date, dateBasis) {
     const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
     if (!match) return false;
     const fields = new Set(match[1].split(/\r?\n/).map((line) => line.trim()));
+    if (dateBasis && !(fields.has(`date_basis: ${JSON.stringify(dateBasis)}`) || dateBasis === LEGACY_DATE_BASIS && !Array.from(fields).some(field => field.startsWith("date_basis: ")))) return false;
     const hasPluginType = fields.has(`type: ${JSON.stringify("automatic-mood-entry")}`);
     const hasDate = fields.has(`date: ${JSON.stringify(date)}`);
     const hasOwnershipMarker = fields.has("automatic_mood_history: true");
@@ -1705,13 +1725,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       try { storedPath = this.assertOutputPath(record.entryPath, true); } catch { /* Never follow unsafe stored paths. */ }
     }
     const existing = this.app.vault.getAbstractFileByPath(storedPath);
-    if (!existing || await this.isOwnedEntry(existing, record.date)) return storedPath;
+    if (!existing || await this.isOwnedEntry(existing, record.date, record.dateBasis)) return storedPath;
 
     for (let suffix = 1; suffix <= 1000; suffix += 1) {
       const label = suffix === 1 ? "" : " " + suffix;
       const candidate = `${this.entriesFolder}/${record.date} (Automatic Mood History${label}).md`;
       const candidateFile = this.app.vault.getAbstractFileByPath(candidate);
-      if (!candidateFile || await this.isOwnedEntry(candidateFile, record.date)) return candidate;
+      if (!candidateFile || await this.isOwnedEntry(candidateFile, record.date, record.dateBasis)) return candidate;
     }
     throw new Error(`Could not find a safe entry filename for ${record.date}.`);
   }

@@ -15,6 +15,8 @@ RESUME HERE: P1 persistence/lifecycle/settings phases are implemented and pass f
 
 Fingerprint/discovery follow-up: results include analysisFingerprint v1 with source hash, date basis, text/scorer/prompt/model versions, thresholds and local topic. Changed local semantics refresh on the next scan; unchanged remote semantics require an explicit force command. Old records without fingerprints retain provenance and skip unchanged sources. Per-scan indexing stores file references/paths, never text; guards recheck paths, file identity, eligibility and stat metadata around reads/requests. Scope rules cache only normalized paths and invalidate with the settings epoch. Synthetic three-round medians against e01f1ed: 1,000 notes/100 dates, 101 -> 1 enumerations, 162 -> 45ms; 10,000 notes/365 dates, 366 -> 1 enumerations, 6,016 -> 797ms. Reads remain 1,000/10,000 respectively, with exact source/hash parity. This measures discovery/gathering, not network time.
 
+History schema 2 is additive: existing date keys remain; second-basis collisions use created:<date> or legacy:<date>. recordKey routes scans, active commands, pending writes and retries; ownership checks include date basis. No legacy record is promoted or replaced by a current group. Original paths/labels/links are retained; rollback uses a saved pre-upgrade JSON snapshot while archiving schema 2 additions. See HISTORY_IDENTITY.md and history-identity.test.js for collision interruption/restart and rollback evidence. Version 1 cannot losslessly represent collisions; do not downgrade and analyze schema 2 data.
+
 ## Current baseline and architecture
 
 Audit date: 2026-10-13. Public repository: https://github.com/remriel/automatic-mood-history.
