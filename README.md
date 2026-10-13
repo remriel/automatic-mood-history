@@ -6,11 +6,12 @@
 
 Automatic sentiment history for notes in [Obsidian](https://obsidian.md/).
 
-The plugin groups every Markdown note by the local calendar date of its Obsidian creation timestamp, consolidates notes created that day across all folders, and renders a native dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local analysis is the default. Groq analysis is optional and must be enabled explicitly.
+The plugin groups eligible Markdown notes by the local calendar date of their Obsidian creation timestamp, consolidates permitted notes across folders, and renders a native dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local analysis is the default. Groq analysis is optional and must be enabled explicitly.
 
 ## Features
 
-- Optional automatic analysis after any note changes
+- Optional automatic analysis after changes to included notes
+- Folder include/exclude lists, with subfolder support and exclusions taking precedence
 - One consolidated result per calendar date
 - Optional Groq structured-output analysis with a validated three-stage JSON fallback
 - Local deterministic analysis that works without a network connection or API key
@@ -23,7 +24,7 @@ The plugin groups every Markdown note by the local calendar date of its Obsidian
 
 ## Privacy
 
-This plugin can transmit cleaned text from all Markdown notes created on a selected day to Groq for analysis **only after you enable Groq analysis in the plugin settings**.
+This plugin can transmit cleaned text from eligible Markdown notes created on a selected day to Groq for analysis **only after you enable Groq analysis in the plugin settings**. Folder filters restrict which notes can be read and sent.
 
 - The API key is read only from the `GROQ_API_KEY` environment variable.
 - The API key is never written to the vault or plugin data.
@@ -80,7 +81,19 @@ Use the command palette:
 
 **Check Groq** sends a fictional sample instead of vault notes and shows whether the configured model returns valid analysis. The dashboard shows connection status, the last valid response, or a specific failure category. **Analyze changed** retries eligible local or fallback results with Groq and includes legacy-date records. **Retry all with Groq** bypasses an old pause once; a new rate limit pauses the remaining requests in that run and leaves them pending. Rate-limit pauses follow Groq's `Retry-After` header when supplied.
 
-Every Markdown note is assigned to the local calendar day of `TFile.stat.ctime`, Obsidian's file creation timestamp. Folder, filename, frontmatter dates, and aliases do not change the assigned day. Notes without a valid creation timestamp are skipped. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
+Every eligible Markdown note is assigned to the local calendar day of `TFile.stat.ctime`, Obsidian's file creation timestamp. Folder, filename, frontmatter dates, and aliases do not change the assigned day. Notes without a valid creation timestamp are skipped. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
+
+### Folder scope
+
+In **Settings → Automatic Mood History**, specify **Include folders** and **Exclude folders**, one vault-relative path per line:
+
+- Empty include list means all folders and root-level notes.
+- Each included folder matches its own notes and all subfolders.
+- Exclusions take priority. For example, include `Journal` and exclude `Journal/Private`.
+- Use `/` for notes located directly at the vault root. Folder names are case-sensitive.
+- The generated Mood History directory and Obsidian trash are excluded automatically. Filter rules also apply to legacy Groq recovery.
+
+Changes affect future analysis and what may be transmitted to Groq. Older generated history is preserved. Run **Analyze changed** to recompute days that still have eligible notes; remove older records manually when all their sources are excluded.
 
 ### Pane-responsive dashboard
 
@@ -120,6 +133,7 @@ This is a reflective journaling tool. It is not a clinical, diagnostic, crisis-d
 
 - Disable **Analyze note changes automatically** to stop automatic refreshes.
 - Disable **Enable Groq analysis** to keep subsequent analysis local.
+- Set **Include folders** and **Exclude folders** to restrict future analysis and remote requests. Old records remain until you remove them.
 - Delete `Mood History/` to remove generated Markdown and Base files.
 - Disable the plugin before deleting its `data.json` if you want to reset cached history.
 - Generated entry files carry an ownership marker. If an expected entry path contains an unrelated note, the plugin creates a conflict-safe file instead of overwriting it.
