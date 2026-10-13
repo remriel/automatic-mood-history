@@ -43,7 +43,7 @@ plugin.app = {
   metadataCache: { getFileCache: () => ({}) }
 };
 const date = "2031-02-03";
-assert.deepStrictEqual(plugin.filesForDate(date).map((f) => f.path), files.slice(0, 5).map((f) => f.path));
+assert.deepStrictEqual(plugin.filesForDate(date).map((f) => f.path), ["Journal/Day.md", "Journal/Private/Secret.md", "Journalism/Separate.md", "Root.md", "Work/Report.md"]);
 plugin.settings.includeFolders = ["Journal"];
 assert.deepStrictEqual(plugin.filesForDate(date).map((f) => f.path), ["Journal/Day.md", "Journal/Private/Secret.md"]);
 assert.strictEqual(plugin.getCreationDateForFile(files[2]), null, "prefix collisions are excluded");
