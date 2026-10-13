@@ -13,6 +13,8 @@ Fresh clean checkout starts from audit head `e01f1ed85c2beb776676d13481b7b15f156
 
 RESUME HERE: P1 persistence/lifecycle/settings phases are implemented and pass functional/layout suites. Continue with explicit analysis fingerprint semantics, measured per-scan discovery, then separate history coexistence and narrative commits. Native verification still needs an isolated synthetic runtime. Read current PROGRESS before relying on the older audit state below.
 
+Fingerprint/discovery follow-up: results include analysisFingerprint v1 with source hash, date basis, text/scorer/prompt/model versions, thresholds and local topic. Changed local semantics refresh on the next scan; unchanged remote semantics require an explicit force command. Old records without fingerprints retain provenance and skip unchanged sources. Per-scan indexing stores file references/paths, never text; guards recheck paths, file identity, eligibility and stat metadata around reads/requests. Scope rules cache only normalized paths and invalidate with the settings epoch. Synthetic three-round medians against e01f1ed: 1,000 notes/100 dates, 101 -> 1 enumerations, 162 -> 45ms; 10,000 notes/365 dates, 366 -> 1 enumerations, 6,016 -> 797ms. Reads remain 1,000/10,000 respectively, with exact source/hash parity. This measures discovery/gathering, not network time.
+
 ## Current baseline and architecture
 
 Audit date: 2026-10-13. Public repository: https://github.com/remriel/automatic-mood-history.

@@ -1,5 +1,9 @@
 # Automatic Mood History
 
+Analysis caching uses a versioned fingerprint covering the source hash, text pipeline, analyzer/prompt/model, evidence thresholds and local topic semantics. Local results with fingerprints refresh when those semantics change. Unchanged Groq results are preserved after model or prompt changes until you explicitly choose **Retry all with Groq** or analyze the active note; a model change alone does not spend provider quota. Changed source text is analyzed during the next authorized scan. Records without fingerprints keep their historical provenance and result until source changes or explicit reanalysis; no missing provenance is invented.
+
+Full scans build a temporary date-to-files index once. Source eligibility, file identity and metadata are checked again before reads and requests; changed scope cancels the scan. The index retains file references and paths only, and is discarded after each scan. It does not cache note text or reduce provider latency.
+
 ![Automatic Mood History for Obsidian: mood and energy trends presented in a colorful dashboard-style graphic with illustrative data.](assets/readme-banner.svg)
 
 **[Download the latest Obsidian plugin files](https://github.com/remriel/automatic-mood-history/releases/latest)** · [Installation](#installation) · [Privacy](#privacy)

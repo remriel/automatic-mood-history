@@ -450,6 +450,9 @@ const {
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
 const CREATED_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
+const LOCAL_ANALYZER_VERSION = "deterministic-lexicon-v1";
+const GROQ_PROMPT_VERSION = "creation-date-prompt-v1";
+const TEXT_PIPELINE_VERSION = "markdown-text-v1";
 
 const DEFAULT_SETTINGS = {
   enableGroq: false,
@@ -640,7 +643,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.analysisEpoch ||= 0;
     this.settings = new Proxy(this.settings, { set: (target, key, value) => {
       if (analysisKeys.has(key) && JSON.stringify(target[key]) !== JSON.stringify(value)) this.analysisEpoch++;
-      target[key] = value;
+      target[key] = ["includeFolders", "excludeFolders"].includes(key) && Array.isArray(value) ? Object.freeze(value.slice()) : value;
       return true;
     } });
   }
@@ -786,9 +789,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (this.settingsValidationError || this.settingsSaveFailed) return false;
     const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
     let includes, excludes;
-    try { includes = checkedFolderList(this.settings.includeFolders); excludes = checkedFolderList(this.settings.excludeFolders); } catch { return false; }
+    try { ({ includes, excludes } = this.sourceScope()); } catch { return false; }
     return (!includes.length || includes.some((folder) => folderContainsPath(folder, normalizedPath))) &&
       !excludes.some((folder) => folderContainsPath(folder, normalizedPath));
+  }
+
+  sourceScope() {
+    const cached = this.cachedSourceScope;
+    if (cached && cached.includeInput === this.settings.includeFolders && cached.excludeInput === this.settings.excludeFolders && cached.outputInput === this.settings.outputFolder && cached.epoch === (this.analysisEpoch || 0)) return cached;
+    return this.cachedSourceScope = { includeInput: this.settings.includeFolders, excludeInput: this.settings.excludeFolders, outputInput: this.settings.outputFolder, epoch: this.analysisEpoch || 0,
+      includes: checkedFolderList(this.settings.includeFolders), excludes: checkedFolderList(this.settings.excludeFolders), outputFolder: this.outputFolder };
   }
 
   async updateFolderFilter(key, value) {
@@ -826,7 +836,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (this.settingsValidationError || this.settingsSaveFailed || this.storageReadFailed) return null;
     if (!(file instanceof TFile) || file.extension.toLowerCase() !== "md") return null;
     const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
-    const outputFolder = this.outputFolder;
+    let outputFolder;
+    try { outputFolder = this.sourceScope().outputFolder; } catch { return null; }
     if ((outputFolder && (normalizedPath === outputFolder || normalizedPath.startsWith(`${outputFolder}/`))) ||
       normalizedPath === ".trash" || normalizedPath.startsWith(".trash/") ||
       !this.isIncludedSourcePath(normalizedPath)) return null;
@@ -847,20 +858,41 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return typeof topic === "string" ? topic.trim() : "";
   }
 
-  getAllDates() {
+  buildDateIndex() {
+    const index = new Map();
+    const paths = new Map();
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      const date = this.getCreationDateForFile(file);
+      if (!date) continue;
+      if (!index.has(date)) index.set(date, []);
+      index.get(date).push(file);
+      paths.set(file, file.path);
+    }
+    for (const files of index.values()) files.sort((a, b) => a.path.localeCompare(b.path));
+    return { filesByDate: index, paths, assertCurrent: this.analysisGuard() };
+  }
+
+  getAllDates(index) {
+    if (index) { index.assertCurrent(); return Array.from(index.filesByDate.keys()).sort(); }
     return Array.from(new Set(
       this.app.vault.getMarkdownFiles().map((file) => this.getCreationDateForFile(file)).filter(Boolean)
     )).sort();
   }
 
-  filesForDate(date) {
+  filesForDate(date, index) {
+    if (index) {
+      index.assertCurrent();
+      const files = index.filesByDate.get(date) || [];
+      if (files.some(file => file.path !== index.paths.get(file) || this.app.vault.getAbstractFileByPath(file.path) !== file || this.getCreationDateForFile(file) !== date)) this.cancelAnalysis();
+      return files;
+    }
     return this.app.vault.getMarkdownFiles()
       .filter((file) => this.getCreationDateForFile(file) === date)
       .sort((a, b) => a.path.localeCompare(b.path));
   }
 
-  async gatherDate(date) {
-    return this.gatherFiles(date, this.filesForDate(date));
+  async gatherDate(date, index) {
+    return this.gatherFiles(date, this.filesForDate(date, index));
   }
 
   async gatherLegacyDate(date) {
@@ -881,12 +913,15 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // Excluded notes must never be read or sent to a remote provider.
     const scopedFiles = files.filter((file) => this.getCreationDateForFile(file));
     const sourcePaths = scopedFiles.map((file) => file.path);
+    const identities = scopedFiles.map(file => ({ file, ctime: file.stat?.ctime, mtime: file.stat?.mtime, size: file.stat?.size }));
     const assertSourcesCurrent = () => {
       assertCurrent();
-      if (scopedFiles.some((file, index) => file.path !== sourcePaths[index] || !this.getCreationDateForFile(file))) this.cancelAnalysis();
+      if (scopedFiles.some((file, index) => file.path !== sourcePaths[index] || !this.getCreationDateForFile(file) ||
+        this.app.vault.getAbstractFileByPath && this.app.vault.getAbstractFileByPath(file.path) !== file ||
+        ["ctime", "mtime", "size"].some(key => file.stat?.[key] !== identities[index][key]))) this.cancelAnalysis();
     };
     for (const file of scopedFiles) {
-      assertCurrent();
+      assertSourcesCurrent();
       if (!this.getCreationDateForFile(file)) this.cancelAnalysis();
       let content;
       try { content = await this.app.vault.cachedRead(file); } catch {
@@ -894,7 +929,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         error.code = "source_read";
         throw error;
       }
-      assertCurrent();
+      assertSourcesCurrent();
       if (textForAnalysis(content).length > 0) sourceTexts.push(content);
       const topic = this.topicForFile(file);
       if (topic) topics.push(topic);
@@ -910,6 +945,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       assertCurrent: assertSourcesCurrent,
       contentHash: sha256(JSON.stringify({ sourcePaths, analysisText }))
     };
+  }
+
+  analysisFingerprint(gathered, dateBasis) {
+    const insufficient = gathered.analysisText.length < this.settings.minimumCharacters;
+    return sha256(JSON.stringify({ version: 1, sourceHash: gathered.contentHash, dateBasis,
+      textPipeline: TEXT_PIPELINE_VERSION, minimumCharacters: this.settings.minimumCharacters,
+      maxCharactersPerDay: this.settings.maxCharactersPerDay, analyzer: insufficient ? "none" : this.settings.enableGroq ? "groq" : LOCAL_ANALYZER_VERSION,
+      model: this.settings.enableGroq && !insufficient ? this.settings.model : null,
+      prompt: this.settings.enableGroq && !insufficient ? GROQ_PROMPT_VERSION : null,
+      topic: this.settings.enableGroq || insufficient ? null : gathered.topic || "" }));
   }
 
   cancelAnalysis() {
@@ -946,7 +991,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   getAnalysisTargets(options = {}) {
     const targets = new Map();
     if (!options.onlyFallbacks) {
-      for (const date of this.getAllDates()) targets.set(date, { date, legacySources: false });
+      for (const date of this.getAllDates(options.dateIndex)) targets.set(date, { date, legacySources: false });
     }
     if (this.settings.enableGroq && this.apiKey()) {
       const recordsToRetry = options.onlyFallbacks ? this.fallbackRecords() : this.legacyRecords();
@@ -1293,7 +1338,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       const needsGroq = options.force || !previous || previous.status === "complete" && previous.analysisSource !== "groq";
       return skipRecovery(Boolean(this.settings.enableGroq && needsGroq && (!this.apiKey() || !options.forceGroq && Date.now() < this.groqBlockedUntil)));
     }
-    const gathered = options.legacySources ? await this.gatherLegacyDate(date) : await this.gatherDate(date);
+    const gathered = options.legacySources ? await this.gatherLegacyDate(date) : await this.gatherDate(date, options.dateIndex);
     assertCurrent();
     const assertGatheredCurrent = () => { assertCurrent(); gathered?.assertCurrent?.(); };
     // A deleted/moved/excluded last source is not an empty source note.
@@ -1305,6 +1350,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (!gathered || recovering && gathered.analysisText.length < this.settings.minimumCharacters) {
       return skipRecovery(Boolean(recovering && this.settings.enableGroq && previous?.status === "complete" && previous.analysisSource !== "groq"));
     }
+    const fingerprint = this.analysisFingerprint(gathered, dateBasis);
+    const localSemanticsChanged = !this.settings.enableGroq && previous?.analysisFingerprint && previous.analysisFingerprint !== fingerprint;
     const retryNonGroqResult = this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
       (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback"].includes(previous?.analysisSource)) &&
       (options.forceGroq || Date.now() >= this.groqBlockedUntil);
@@ -1316,7 +1363,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       await this.savePluginData();
       return false;
     }
-    if (!options.force && !retryNonGroqResult && previous?.contentHash === gathered.contentHash) {
+    if (!options.force && !retryNonGroqResult && !localSemanticsChanged && previous?.contentHash === gathered.contentHash) {
       if (previous.dateBasis === dateBasis) { await this.clearDatePending(date); return false; }
       const promoted = { ...previous, dateBasis };
       const pending = await this.prepareRecord(date, promoted, assertGatheredCurrent);
@@ -1377,7 +1424,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       } else {
         analysis = localSentiment(gathered.analysisText, gathered.topic);
         analysisSource = "local";
-        model = "deterministic-lexicon-v1";
+        model = LOCAL_ANALYZER_VERSION;
       }
       record = {
         date,
@@ -1390,6 +1437,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
     Object.assign(record, {
       dateBasis,
+      analysisFingerprint: fingerprint,
       contentHash: gathered.contentHash,
       sourcePaths: gathered.sourcePaths,
       analyzedAt: new Date().toISOString(),
@@ -1430,8 +1478,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (options.forceGroq) this.clearGroqPause();
     const assertCurrent = this.analysisGuard(options);
     const runStats = { groq: 0, local: 0, fallback: 0, insufficient: 0, failures: 0, pending: 0, skipped: 0, cancelled: 0 };
-    const dateOptions = { ...options, forceGroq: false, runStats, assertCurrent };
-    const targets = this.getAnalysisTargets(options);
+    const dateIndex = this.app?.vault?.getMarkdownFiles ? this.buildDateIndex() : undefined;
+    const dateOptions = { ...options, forceGroq: false, runStats, assertCurrent, dateIndex };
+    const targets = this.getAnalysisTargets({ ...options, dateIndex });
     if (!options.silent) new Notice(`Automatic Mood History: checking ${targets.length} history groups (${targets.filter((target) => target.legacySources).length} saved legacy sources)…`);
     let changed = 0;
     for (const [index, target] of targets.entries()) {
