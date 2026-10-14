@@ -161,21 +161,31 @@ const CONNECTION_DOWN = [
   "disconnect", "wall", "closed system", "nobody", "no one", "rejected"
 ];
 
-function countTerms(text, terms) {
+const TERM_PATTERNS = new Map(Array.from(new Set([
+  ...POSITIVE_WORDS, ...NEGATIVE_WORDS, ...ENERGY_UP, ...ENERGY_DOWN,
+  ...CONNECTION_UP, ...CONNECTION_DOWN, ...Object.values(EMOTION_LEXICON).flat()
+])).map((term) => [term, new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")]));
+
+function countTerms(text, terms, counts) {
   return terms.reduce((total, term) => {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const matches = text.match(new RegExp(`\\b${escaped}\\b`, "gi"));
-    return total + (matches ? matches.length : 0);
+    if (!counts.has(term)) {
+      const matches = text.match(TERM_PATTERNS.get(term));
+      counts.set(term, matches ? matches.length : 0);
+    }
+    return total + counts.get(term);
   }, 0);
 }
 
 function stripFrontmatter(text) {
-  return text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
+  return text.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "");
 }
 
 function textForAnalysis(text) {
   return stripFrontmatter(text)
     .replace(/!\[\[[^\]]+\]\]/g, " ")
+    .replace(/!\[[^\]]*\]\([^\n]*?\)/g, " ")
+    .replace(/!\[[^\]]*\]\[[^\]]*\]/g, " ")
+    .replace(/<img\b[^>]*>/gi, " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/^#.*$/gm, " ")
@@ -281,7 +291,7 @@ function validateAnalysis(input) {
       : moodToValence(moodScore),
     emotions: emotions.length ? emotions : [moodScore < 3 ? "sad" : moodScore > 3 ? "hopeful" : "confused"],
     summary: String(input.summary || "Sentiment inferred from the notes created that day.").slice(0, 500),
-    drivers: (input.drivers || []).map(String).filter(Boolean).slice(0, 4),
+    drivers: (input.drivers || []).map(value => String(value).slice(0, 250)).filter(Boolean).slice(0, 4),
     confidence: ["low", "medium", "high"].includes(input.confidence) ? input.confidence : "low",
     confidenceReason: String(input.confidenceReason || "Limited or mixed evidence in the source text.").slice(0, 500)
   };
@@ -289,8 +299,12 @@ function validateAnalysis(input) {
 
 function localSentiment(text, topic = "") {
   const normalized = text.toLowerCase();
-  const positive = countTerms(normalized, POSITIVE_WORDS);
-  const negative = countTerms(normalized, NEGATIVE_WORDS);
+  // Many words participate in both scores and emotion labels. Count each
+  // distinct term once per analysis, without retaining sensitive source text.
+  const counts = new Map();
+  const count = (terms) => countTerms(normalized, terms, counts);
+  const positive = count(POSITIVE_WORDS);
+  const negative = count(NEGATIVE_WORDS);
   const total = positive + negative;
   const ratio = total ? (positive - negative) / total : 0;
   let moodScore = 3;
@@ -299,14 +313,14 @@ function localSentiment(text, topic = "") {
   else if (ratio >= 0.5) moodScore = 5;
   else if (ratio > 0.15) moodScore = 4;
 
-  const energyUp = countTerms(normalized, ENERGY_UP);
-  const energyDown = countTerms(normalized, ENERGY_DOWN);
+  const energyUp = count(ENERGY_UP);
+  const energyDown = count(ENERGY_DOWN);
   let energyScore = 3;
   if (energyDown > energyUp * 1.5) energyScore = energyDown >= 6 ? 1 : 2;
   else if (energyUp > energyDown * 1.5) energyScore = energyUp >= 6 ? 5 : 4;
 
-  const connected = countTerms(normalized, CONNECTION_UP);
-  const disconnected = countTerms(normalized, CONNECTION_DOWN);
+  const connected = count(CONNECTION_UP);
+  const disconnected = count(CONNECTION_DOWN);
   let connectionScore = 3;
   if (disconnected > connected * 1.4) connectionScore = disconnected >= 5 ? 1 : 2;
   else if (connected > disconnected * 1.4) connectionScore = connected >= 5 ? 5 : 4;
@@ -317,7 +331,7 @@ function localSentiment(text, topic = "") {
   const intensityScore = emotionDensity >= 12 ? 5 : emotionDensity >= 7 ? 4 : emotionDensity >= 3 ? 3 : emotionDensity >= 1 ? 2 : 1;
 
   const ranked = Object.entries(EMOTION_LEXICON)
-    .map(([emotion, terms]) => [emotion, countTerms(normalized, terms)])
+    .map(([emotion, terms]) => [emotion, count(terms)])
     .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
@@ -347,6 +361,13 @@ function localSentiment(text, topic = "") {
 
 function escapeYaml(value) {
   return JSON.stringify(String(value));
+}
+
+function plainNarrative(value, maximum = 500) {
+  // Keep narrative as readable text. Entity tokens protect punctuation from
+  // Markdown links, embeds, HTML, formatting and automatic URL recognition.
+  return String(value || "").slice(0, maximum).replace(/[\x00-\x1f\x7f\s]+/g, " ").trim()
+    .replace(/[\\`*_{}\[\]()<>#+\-.!|~^:$@%&/]/g, character => `&#${character.codePointAt(0)};`);
 }
 
 function buildEntryMarkdown(record) {
@@ -396,24 +417,24 @@ function buildEntryMarkdown(record) {
       `- **Energy:** ${record.energyScore}/5`,
       `- **Connection:** ${record.connectionScore}/5`,
       `- **Intensity:** ${record.intensityScore}/5`,
-      `- **Emotions:** ${(record.emotions || []).join(", ") || "none"}`,
-      `- **Confidence:** ${record.confidence}`,
+      `- **Emotions:** ${plainNarrative((record.emotions || []).join(", ") || "none")}`,
+      `- **Confidence:** ${plainNarrative(record.confidence)}`,
       "",
-      record.summary || ""
+      plainNarrative(record.summary)
     );
   }
   if (record.drivers?.length) {
     lines.push("", "## Signals", "");
-    for (const driver of record.drivers) lines.push(`- ${driver}`);
+    for (const driver of record.drivers.slice(0, 4)) lines.push(`- ${plainNarrative(driver, 250)}`);
   }
   if (record.providerIssue?.message) {
-    lines.push("", "## Groq status", "", record.providerIssue.message);
+    lines.push("", "## Groq status", "", plainNarrative(record.providerIssue.message));
   }
   lines.push("", "## Sources", "");
   for (const path of record.sourcePaths || []) {
     lines.push(`- [[${path.replace(/\.md$/i, "")}|${PathBasename(path)}]]`);
   }
-  lines.push("", `_${record.confidenceReason || ""}_`, "");
+  lines.push("", `_${plainNarrative(record.confidenceReason)}_`, "");
   return lines.join("\n");
 }
 
@@ -428,6 +449,7 @@ module.exports = {
   deduplicateParagraphs,
   localSentiment,
   moodToValence,
+  plainNarrative,
   sha256,
   stripFrontmatter,
   textForAnalysis,

@@ -22,6 +22,9 @@ const {
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
 const CREATED_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
+const LOCAL_ANALYZER_VERSION = "deterministic-lexicon-v1";
+const GROQ_PROMPT_VERSION = "creation-date-prompt-v1";
+const TEXT_PIPELINE_VERSION = "markdown-text-v2";
 
 const DEFAULT_SETTINGS = {
   enableGroq: false,
@@ -36,12 +39,38 @@ const DEFAULT_SETTINGS = {
   maxCharactersPerDay: 60000
 };
 
+const isObject = value => value !== null && typeof value === "object" && !Array.isArray(value);
+function validDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T12:00:00Z`);
+  return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+}
+const dateFromKey = key => typeof key === "string" && /^(?:created:|legacy:)?\d{4}-\d{2}-\d{2}$/.test(key) ? key.slice(-10) : "";
+
+function vaultPath(value) {
+  if (typeof value !== "string" || !value.trim()) throw new Error("Use a nonempty vault-relative path.");
+  const path = value.trim().replace(/\\/g, "/").replace(/\/{2,}/g, "/").replace(/\/$/, "");
+  if (path.startsWith("/") || /[\x00-\x1f\x7f<>:"|?*]/.test(path) || path.split("/").some(part =>
+    !part || part === "." || part === ".." || /[. ]$/.test(part) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part))) {
+    throw new Error("Use a vault-relative path without dot segments, drive letters or invalid filename characters.");
+  }
+  return path;
+}
+
+function checkedFolderList(value) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) && typeof value !== "string") throw new Error("Folder rules must be a list or one folder per line.");
+  const entries = Array.isArray(value) ? value : value.split(/\r?\n/);
+  if (entries.some(entry => typeof entry !== "string")) throw new Error("Every folder rule must be text.");
+  return Array.from(new Set(entries.filter(entry => entry.trim()).map(entry => entry.trim() === "/" ? "/" : vaultPath(entry))));
+}
+
 
 function normalizeFolderList(value) {
   const entries = Array.isArray(value) ? value : typeof value === "string" ? value.split(/\r?\n/) : [];
   return Array.from(new Set(entries
     .filter((entry) => typeof entry === "string")
-    .map((entry) => entry.trim().replace(/\\/g, "/"))
+    .map((entry) => entry.trim().replace(/\\/g, "/").replace(/\/{2,}/g, "/"))
     .map((entry) => entry === "/" ? "/" : entry.replace(/^\/+|\/+$/g, ""))
     .filter((entry) => entry && !entry.split("/").some((part) => part === "." || part === ".."))));
 }
@@ -53,21 +82,25 @@ function folderContainsPath(folder, path) {
 
 class AutomaticMoodHistoryPlugin extends Plugin {
   async onload() {
-    const loaded = (await this.loadData()) || {};
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded.settings || {});
+    this.unloaded = false;
+    let loaded;
+    try { loaded = await this.loadData(); } catch { loaded = {}; this.storageReadFailed = true; }
+    loaded = isObject(loaded) ? loaded : {};
+    if (this.unloaded) return;
+    this.settings = this.validateSettings(loaded.settings);
     // Version 1.1.0 let synced vault data choose any process variable. Keep
     // reading only the one documented provider key after upgrading.
     this.settings.apiKeyEnvironmentVariable = GROQ_API_KEY_ENV;
     delete this.settings.dailyFolder;
     delete this.settings.includeOutsideDailyFolder;
-    this.settings.includeFolders = normalizeFolderList(this.settings.includeFolders);
-    this.settings.excludeFolders = normalizeFolderList(this.settings.excludeFolders);
-    this.records = loaded.records || {};
+    this.watchSettings();
+    this.records = this.validateRecords(loaded.records);
     for (const record of Object.values(this.records)) {
       if (record?.analysisSource === "assistant-backfill") record.analysisSource = "reviewed-backfill";
       if (record && !record.dateBasis) record.dateBasis = LEGACY_DATE_BASIS;
     }
-    this.runtime = loaded.runtime || {};
+    this.runtime = this.validateRuntime(loaded.runtime);
+    this.runtime.historySchemaVersion = 2;
     if (!this.runtime.lastGroqIssue) delete this.runtime.lastGroqError;
     this.runtime.lastLoadedAt = new Date().toISOString();
     this.runtime.version = this.manifest.version;
@@ -81,10 +114,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.lastGroqError = this.runtime.lastGroqIssue?.message || "";
     this.analysisQueue = Promise.resolve();
 
-    try { await this.savePluginData(); } catch {
+    try { if (this.storageReadFailed) throw new Error("Storage could not be read"); await this.savePluginData(); } catch {
       this.runtime.lastLoadStatus = "loaded-with-storage-error";
       new Notice("Automatic Mood History: settings storage is unavailable; commands remain available. Check vault sync.");
     }
+    if (this.unloaded) return;
+    if (this.settingsValidationError) new Notice(`Automatic Mood History: ${this.settingsValidationError}`, 9000);
 
     this.addRibbonIcon("activity", "Open Automatic Mood History", () => this.openDashboard());
     this.addCommand({
@@ -141,19 +176,25 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.addSettingTab(new AutomaticMoodHistorySettingTab(this.app, this));
 
     this.app.workspace.onLayoutReady(async () => {
+      if (this.unloaded) return;
       this.registerSourceEvents();
       const recoveryTimer = window.setInterval(() => { void this.runAutomaticRecovery(); }, 60000);
       this.register(() => window.clearInterval(recoveryTimer));
       try {
         await this.ensureSupportFiles();
+        if (this.unloaded) return;
+        await this.recoverPendingWrites();
+        if (this.unloaded) return;
         await this.savePluginData();
       } catch (error) {
+        if (this.unloaded || error.code === "analysis_cancelled") return;
         console.error("Automatic Mood History could not prepare its history files", error);
         new Notice(`Automatic Mood History loaded, but could not prepare its history files: ${error.message}`, 9000);
       }
       if (this.settings.analyzeOnStartup || this.settings.autoAnalyze) {
         const startupTimer = window.setTimeout(() => {
-          void this.analyzeAll({ force: false, forceGroq: false, background: true, silent: true }).catch(() => {
+          if (this.unloaded) return;
+          void this.analyzeAll({ force: false, forceGroq: false, background: true, startup: true, silent: true }).catch(() => {
             new Notice("Automatic Mood History: startup catch-up could not finish. Check vault sync; automatic recovery will retry.");
           });
         }, 1800);
@@ -164,24 +205,138 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   onunload() {
     this.unloaded = true;
-    for (const timer of this.debounceTimers.values()) window.clearTimeout(timer);
-    this.debounceTimers.clear();
+    this.analysisEpoch = (this.analysisEpoch || 0) + 1;
+    for (const timer of this.debounceTimers?.values() || []) window.clearTimeout(timer);
+    this.debounceTimers?.clear();
     this.disposeDashboard();
-    this.renderContainers.clear();
+    this.renderContainers?.clear();
+  }
+
+  watchSettings() {
+    const analysisKeys = new Set(["includeFolders", "excludeFolders", "outputFolder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
+    this.analysisEpoch ||= 0;
+    this.settings = new Proxy(this.settings, { set: (target, key, value) => {
+      if (analysisKeys.has(key) && JSON.stringify(target[key]) !== JSON.stringify(value)) this.analysisEpoch++;
+      target[key] = ["includeFolders", "excludeFolders"].includes(key) && Array.isArray(value) ? Object.freeze(value.slice()) : value;
+      return true;
+    } });
+  }
+
+  validateSettings(saved) {
+    const settings = { ...DEFAULT_SETTINGS, includeFolders: [], excludeFolders: [] };
+    if (!isObject(saved)) return settings;
+    for (const key of ["enableGroq", "autoAnalyze", "analyzeOnStartup"]) settings[key] = saved[key] === true;
+    for (const [key, minimum, maximum] of [["debounceMilliseconds", 250, 60000], ["minimumCharacters", 1, 10000], ["maxCharactersPerDay", 100, 200000]]) {
+      if (typeof saved[key] === "number" && Number.isFinite(saved[key])) settings[key] = Math.max(minimum, Math.min(maximum, Math.round(saved[key])));
+    }
+    if (typeof saved.model === "string" && /^[a-zA-Z0-9][a-zA-Z0-9/_.-]{0,199}$/.test(saved.model.trim())) settings.model = saved.model.trim();
+    try {
+      settings.outputFolder = saved.outputFolder === undefined ? DEFAULT_SETTINGS.outputFolder : vaultPath(saved.outputFolder);
+      if (settings.outputFolder === ".obsidian" || settings.outputFolder.startsWith(".obsidian/") || settings.outputFolder === ".trash" || settings.outputFolder.startsWith(".trash/")) throw new Error("Choose an output folder outside Obsidian configuration and trash.");
+      settings.includeFolders = checkedFolderList(saved.includeFolders);
+      settings.excludeFolders = checkedFolderList(saved.excludeFolders);
+    } catch (error) {
+      // Keep invalid raw rules visible and block analysis until explicitly fixed.
+      this.settingsValidationError = `${error.message} Fix folder settings before analyzing.`;
+      settings.includeFolders = Array.isArray(saved.includeFolders) ? saved.includeFolders.filter(value => typeof value === "string") : typeof saved.includeFolders === "string" ? saved.includeFolders.split(/\r?\n/) : [];
+      settings.excludeFolders = Array.isArray(saved.excludeFolders) ? saved.excludeFolders.filter(value => typeof value === "string") : typeof saved.excludeFolders === "string" ? saved.excludeFolders.split(/\r?\n/) : [];
+      if (saved.outputFolder !== undefined) settings.outputFolder = saved.outputFolder;
+    }
+    settings.hiddenChartSeries = Array.isArray(saved.hiddenChartSeries) ? Array.from(new Set(saved.hiddenChartSeries.filter(value => ["moodScore", "energyScore", "connectionScore", "intensityScore"].includes(value)))) : [];
+    return settings;
+  }
+
+  validateRecords(saved) {
+    const records = {};
+    if (!isObject(saved)) return records;
+    for (const [key, record] of Object.entries(saved)) {
+      if (!isObject(record) || !validDate(record.date) || !validDate(dateFromKey(key)) || !["complete", "insufficient"].includes(record.status)) continue;
+      if (record.date !== dateFromKey(key) || key.startsWith("created:") && record.dateBasis !== CREATED_DATE_BASIS || key.startsWith("legacy:") && record.dateBasis !== LEGACY_DATE_BASIS) continue;
+      if (record.sourcePaths !== undefined && (!Array.isArray(record.sourcePaths) || record.sourcePaths.some(path => typeof path !== "string"))) record.sourcePathsInvalid = true;
+      if (record.sourcePaths !== undefined) record.sourcePaths = Array.isArray(record.sourcePaths) ? record.sourcePaths.filter(path => typeof path === "string") : [];
+      if (record.emotions !== undefined) record.emotions = Array.isArray(record.emotions) ? record.emotions.filter(value => typeof value === "string").slice(0, 6) : [];
+      if (record.drivers !== undefined) record.drivers = Array.isArray(record.drivers) ? record.drivers.filter(value => typeof value === "string").slice(0, 4) : [];
+      for (const field of ["summary", "confidenceReason", "model", "contentHash", "analysisSource"]) if (record[field] !== undefined && typeof record[field] !== "string") delete record[field];
+      for (const field of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) if (!Number.isInteger(record[field]) || record[field] < 1 || record[field] > 5) record[field] = null;
+      records[key] = record;
+    }
+    return records;
+  }
+
+  validateRuntime(saved) {
+    const runtime = isObject(saved) ? { ...saved } : {};
+    runtime.pendingDates = isObject(runtime.pendingDates) ? Object.fromEntries(Object.entries(runtime.pendingDates).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && Number.isFinite(Date.parse(value.retryAt))).map(([key, value]) => [key, { kind: ["source", "storage", "output", "paused", "configuration", "authentication", "rate-limit", "request", "service", "connection"].includes(value.kind) ? value.kind : "storage", attempts: Math.max(1, Math.min(10, Math.round(Number(value.attempts) || 1))), retryAt: new Date(Date.parse(value.retryAt)).toISOString(), legacySources: value.legacySources === true }])) : {};
+    runtime.pendingWrites = isObject(runtime.pendingWrites) ? Object.fromEntries(Object.entries(runtime.pendingWrites).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && value.version === 1 && this.validateRecords({ [key]: value.record })[key] && typeof value.outputFolder === "string" && (value.expectedHash === null || typeof value.expectedHash === "string" && /^[a-f0-9]{64}$/.test(value.expectedHash)))) : {};
+    if (!isObject(runtime.lastGroqIssue) || typeof runtime.lastGroqIssue.message !== "string") delete runtime.lastGroqIssue;
+    return runtime;
   }
 
   async savePluginData() {
-    const settings = Object.assign({}, this.settings);
-    delete settings.apiKeyEnvironmentVariable;
-    await this.saveData({ settings, records: this.records, runtime: this.runtime });
+    const commit = arguments[0]?.commit;
+    const task = (this.storageQueue || Promise.resolve()).then(async () => {
+      if (this.unloaded) this.cancelAnalysis();
+      if (this.storageReadFailed) throw new Error("Plugin storage could not be read; reload after restoring storage access.");
+      const settings = Object.assign({}, this.settings);
+      delete settings.apiKeyEnvironmentVariable;
+      const snapshot = JSON.parse(JSON.stringify({ settings, records: this.records, runtime: this.runtime }));
+      if (commit) {
+        snapshot.records[commit.key] = commit.record;
+        delete snapshot.runtime.pendingWrites?.[commit.key];
+        delete snapshot.runtime.pendingDates?.[commit.key];
+      }
+      await this.saveData(snapshot);
+      if (commit) this.publishCommittedRecord(commit.key, commit.record);
+    });
+    this.storageQueue = task.catch(() => {});
+    return task;
+  }
+
+  publishCommittedRecord(key, record) {
+    this.records[key] = record;
+    delete this.runtime.pendingWrites?.[key];
+    delete this.runtime.pendingDates?.[key];
+  }
+
+  async commitPreparedRecord(key, pending, assertCurrent = this.analysisGuard()) {
+    assertCurrent();
+    if (pending.outputFolder !== this.outputFolder) throw new Error("Restore the pending entry's output folder before recovering it.");
+    await this.savePluginData();
+    assertCurrent();
+    await this.writeEntryNote(pending.record, { pending, key, assertCurrent });
+    assertCurrent();
+    await this.savePluginData({ commit: { key, record: pending.record } });
+    // Also supports adapters that wrap savePluginData for instrumentation.
+    this.publishCommittedRecord(key, pending.record);
+    return true;
+  }
+
+  async prepareRecord(key, record, assertCurrent) {
+    assertCurrent();
+    const path = await this.resolveEntryPath(record);
+    const file = this.app?.vault?.getAbstractFileByPath?.(path);
+    const content = file instanceof TFile ? await this.app.vault.cachedRead(file) : null;
+    assertCurrent();
+    record.entryPath = path;
+    const pending = { version: 1, outputFolder: this.outputFolder, record, expectedHash: content === null ? null : sha256(content) };
+    this.runtime.pendingWrites ||= {};
+    this.runtime.pendingWrites[key] = pending;
+    return pending;
+  }
+
+  async recoverPendingWrites() {
+    for (const key of Object.keys(this.runtime.pendingWrites || {})) {
+      if (this.unloaded) break;
+      await this.analyzeDate(this.runtime.pendingWrites[key].record.date, { recoveryOnly: true, recordKey: key });
+    }
   }
 
   registerSourceEvents() {
+    if (this.unloaded) return;
     this.registerEvent(this.app.vault.on("create", (file) => this.handleSourceEvent(file)));
     this.registerEvent(this.app.vault.on("modify", (file) => this.handleSourceEvent(file)));
     this.registerEvent(this.app.vault.on("delete", (file) => this.handleSourceEvent(file)));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
-      if (!this.settings.autoAnalyze || !(file instanceof TFile)) return;
+      if (this.unloaded || !this.settings.autoAnalyze || !(file instanceof TFile)) return;
       const affectedDates = new Set([
         this.getCreationDateForFile(file, oldPath),
         this.getCreationDateForFile(file)
@@ -191,7 +346,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   get outputFolder() {
-    return this.settings.outputFolder.replace(/^\/+|\/+$/g, "");
+    const path = vaultPath(this.settings.outputFolder);
+    if (path === ".obsidian" || path.startsWith(".obsidian/") || path === ".trash" || path.startsWith(".trash/")) throw new Error("Output must be outside configuration and trash.");
+    return path;
   }
 
   get dashboardPath() {
@@ -203,24 +360,58 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   isIncludedSourcePath(path) {
+    if (this.settingsValidationError || this.settingsSaveFailed) return false;
     const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
-    const includes = normalizeFolderList(this.settings.includeFolders);
-    const excludes = normalizeFolderList(this.settings.excludeFolders);
+    let includes, excludes;
+    try { ({ includes, excludes } = this.sourceScope()); } catch { return false; }
     return (!includes.length || includes.some((folder) => folderContainsPath(folder, normalizedPath))) &&
       !excludes.some((folder) => folderContainsPath(folder, normalizedPath));
   }
 
+  sourceScope() {
+    const cached = this.cachedSourceScope;
+    if (cached && cached.includeInput === this.settings.includeFolders && cached.excludeInput === this.settings.excludeFolders && cached.outputInput === this.settings.outputFolder && cached.epoch === (this.analysisEpoch || 0)) return cached;
+    return this.cachedSourceScope = { includeInput: this.settings.includeFolders, excludeInput: this.settings.excludeFolders, outputInput: this.settings.outputFolder, epoch: this.analysisEpoch || 0,
+      includes: checkedFolderList(this.settings.includeFolders), excludes: checkedFolderList(this.settings.excludeFolders), outputFolder: this.outputFolder };
+  }
+
   async updateFolderFilter(key, value) {
     if (key !== "includeFolders" && key !== "excludeFolders") return;
-    this.settings[key] = normalizeFolderList(value);
-    await this.savePluginData();
-    this.refreshRenderers();
+    return this.updateSetting(key, value);
+  }
+
+  async updateSetting(key, value) {
+    try {
+      if (["includeFolders", "excludeFolders"].includes(key)) value = checkedFolderList(value);
+      if (key === "outputFolder") value = vaultPath(value);
+    } catch (error) {
+      new Notice(`Automatic Mood History: ${error.message} The previous source scope is still active.`, 9000);
+      return false;
+    }
+    this.settings[key] = value;
+    if (["enableGroq", "model"].includes(key)) this.clearGroqPause();
+    try {
+      checkedFolderList(this.settings.includeFolders); checkedFolderList(this.settings.excludeFolders); void this.outputFolder;
+      this.settingsValidationError = "";
+      await this.savePluginData();
+      this.settingsSaveFailed = false;
+      this.refreshRenderers();
+      return true;
+    } catch {
+      this.settingsSaveFailed = true;
+      this.analysisEpoch = (this.analysisEpoch || 0) + 1;
+      new Notice("Automatic Mood History: settings could not be saved. Analysis is paused; save settings again or reload after restoring storage access. Disabled consent remains disabled.", 9000);
+      this.refreshRenderers();
+      return false;
+    }
   }
 
   getCreationDateForFile(file, path = file?.path) {
+    if (this.settingsValidationError || this.settingsSaveFailed || this.storageReadFailed) return null;
     if (!(file instanceof TFile) || file.extension.toLowerCase() !== "md") return null;
     const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
-    const outputFolder = this.outputFolder;
+    let outputFolder;
+    try { outputFolder = this.sourceScope().outputFolder; } catch { return null; }
     if ((outputFolder && (normalizedPath === outputFolder || normalizedPath.startsWith(`${outputFolder}/`))) ||
       normalizedPath === ".trash" || normalizedPath.startsWith(".trash/") ||
       !this.isIncludedSourcePath(normalizedPath)) return null;
@@ -241,26 +432,47 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return typeof topic === "string" ? topic.trim() : "";
   }
 
-  getAllDates() {
+  buildDateIndex() {
+    const index = new Map();
+    const paths = new Map();
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      const date = this.getCreationDateForFile(file);
+      if (!date) continue;
+      if (!index.has(date)) index.set(date, []);
+      index.get(date).push(file);
+      paths.set(file, file.path);
+    }
+    for (const files of index.values()) files.sort((a, b) => a.path.localeCompare(b.path));
+    return { filesByDate: index, paths, assertCurrent: this.analysisGuard() };
+  }
+
+  getAllDates(index) {
+    if (index) { index.assertCurrent(); return Array.from(index.filesByDate.keys()).sort(); }
     return Array.from(new Set(
       this.app.vault.getMarkdownFiles().map((file) => this.getCreationDateForFile(file)).filter(Boolean)
     )).sort();
   }
 
-  filesForDate(date) {
+  filesForDate(date, index) {
+    if (index) {
+      index.assertCurrent();
+      const files = index.filesByDate.get(date) || [];
+      if (files.some(file => file.path !== index.paths.get(file) || this.app.vault.getAbstractFileByPath(file.path) !== file || this.getCreationDateForFile(file) !== date)) this.cancelAnalysis();
+      return files;
+    }
     return this.app.vault.getMarkdownFiles()
       .filter((file) => this.getCreationDateForFile(file) === date)
       .sort((a, b) => a.path.localeCompare(b.path));
   }
 
-  async gatherDate(date) {
-    return this.gatherFiles(date, this.filesForDate(date));
+  async gatherDate(date, index) {
+    return this.gatherFiles(date, this.filesForDate(date, index));
   }
 
-  async gatherLegacyDate(date) {
-    const previous = this.records[date];
+  async gatherLegacyDate(date, key = this.recordKey(date, true)) {
+    const previous = this.records[key];
     const paths = Array.from(new Set(previous?.sourcePaths || []));
-    if (!paths.length || previous.dateBasis !== LEGACY_DATE_BASIS) return null;
+    if (!paths.length || previous.sourcePathsInvalid || previous.dateBasis !== LEGACY_DATE_BASIS) return null;
     const files = paths.map((path) => typeof path === "string" ? this.app.vault.getAbstractFileByPath(path) : null);
     // Never substitute unrelated creation-date notes or silently score a
     // partial set when a legacy record's original sources are unavailable.
@@ -269,30 +481,76 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async gatherFiles(date, files) {
+    const assertCurrent = this.analysisGuard();
     const sourceTexts = [];
     const topics = [];
     // Excluded notes must never be read or sent to a remote provider.
     const scopedFiles = files.filter((file) => this.getCreationDateForFile(file));
+    const sourcePaths = scopedFiles.map((file) => file.path);
+    const identities = scopedFiles.map(file => ({ file, ctime: file.stat?.ctime, mtime: file.stat?.mtime, size: file.stat?.size }));
+    const assertSourcesCurrent = () => {
+      assertCurrent();
+      if (scopedFiles.some((file, index) => file.path !== sourcePaths[index] || !this.getCreationDateForFile(file) ||
+        this.app.vault.getAbstractFileByPath && this.app.vault.getAbstractFileByPath(file.path) !== file ||
+        ["ctime", "mtime", "size"].some(key => file.stat?.[key] !== identities[index][key]))) this.cancelAnalysis();
+    };
     for (const file of scopedFiles) {
+      assertSourcesCurrent();
+      if (!this.getCreationDateForFile(file)) this.cancelAnalysis();
       let content;
       try { content = await this.app.vault.cachedRead(file); } catch {
         const error = new Error("A source note is not readable. Make cloud files available locally and check vault sync.");
         error.code = "source_read";
         throw error;
       }
+      assertSourcesCurrent();
       if (textForAnalysis(content).length > 0) sourceTexts.push(content);
       const topic = this.topicForFile(file);
       if (topic) topics.push(topic);
     }
     const combinedMarkdown = deduplicateParagraphs(sourceTexts);
     const analysisText = textForAnalysis(combinedMarkdown).slice(0, this.settings.maxCharactersPerDay);
-    const sourcePaths = scopedFiles.map((file) => file.path);
+    assertSourcesCurrent();
     return {
       date,
       sourcePaths,
       analysisText,
       topic: Array.from(new Set(topics)).join(" / "),
+      assertCurrent: assertSourcesCurrent,
       contentHash: sha256(JSON.stringify({ sourcePaths, analysisText }))
+    };
+  }
+
+  analysisFingerprint(gathered, dateBasis) {
+    const insufficient = gathered.analysisText.length < this.settings.minimumCharacters;
+    return sha256(JSON.stringify({ version: 1, sourceHash: gathered.contentHash, dateBasis,
+      textPipeline: TEXT_PIPELINE_VERSION, minimumCharacters: this.settings.minimumCharacters,
+      maxCharactersPerDay: this.settings.maxCharactersPerDay, analyzer: insufficient ? "none" : this.settings.enableGroq ? "groq" : LOCAL_ANALYZER_VERSION,
+      model: this.settings.enableGroq && !insufficient ? this.settings.model : null,
+      prompt: this.settings.enableGroq && !insufficient ? GROQ_PROMPT_VERSION : null,
+      topic: this.settings.enableGroq || insufficient ? null : gathered.topic || "" }));
+  }
+
+  cancelAnalysis() {
+    const error = new Error("Analysis cancelled because its settings or source scope changed.");
+    error.code = "analysis_cancelled";
+    throw error;
+  }
+
+  analysisGuard(options = {}) {
+    // Compare values, not array identity: settings can change while awaiting
+    // source reads or provider replies. Never retry with stale consent/scope.
+    const signature = () => JSON.stringify([
+      this.settings.includeFolders, this.settings.excludeFolders,
+      this.settings.outputFolder, this.settings.enableGroq, this.settings.model,
+      this.settings.minimumCharacters, this.settings.maxCharactersPerDay,
+      ...(options.background ? [this.settings.autoAnalyze, this.settings.analyzeOnStartup] : [])
+    ]);
+    const initial = signature();
+    const epoch = this.analysisEpoch || 0;
+    return () => {
+      if (this.unloaded || this.storageReadFailed || this.settingsValidationError || this.settingsSaveFailed || (this.analysisEpoch || 0) !== epoch || signature() !== initial ||
+        options.background && !this.settings.autoAnalyze && !(options.startup && this.settings.analyzeOnStartup)) this.cancelAnalysis();
     };
   }
 
@@ -304,29 +562,44 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return Object.values(this.records || {}).filter((record) => record.dateBasis === LEGACY_DATE_BASIS);
   }
 
+  recordKey(date, legacySources = false) {
+    const basis = legacySources ? LEGACY_DATE_BASIS : CREATED_DATE_BASIS;
+    for (const key of [date, `${legacySources ? "legacy" : "created"}:${date}`]) {
+      const record = this.records?.[key];
+      if (record && (record.dateBasis || LEGACY_DATE_BASIS) === basis) return key;
+    }
+    return this.records?.[date] ? `${legacySources ? "legacy" : "created"}:${date}` : date;
+  }
+
   getAnalysisTargets(options = {}) {
     const targets = new Map();
     if (!options.onlyFallbacks) {
-      for (const date of this.getAllDates()) targets.set(date, { date, legacySources: false });
+      for (const date of this.getAllDates(options.dateIndex)) {
+        const recordKey = this.recordKey(date);
+        targets.set(recordKey, { date, recordKey, legacySources: false });
+      }
     }
     if (this.settings.enableGroq && this.apiKey()) {
       const recordsToRetry = options.onlyFallbacks ? this.fallbackRecords() : this.legacyRecords();
       for (const record of recordsToRetry) {
         // Retain the original legacy source set and date even if a current
         // creation-date group happens to use the same date key.
-        targets.set(record.date, { date: record.date, legacySources: record.dateBasis === LEGACY_DATE_BASIS });
+        const legacySources = record.dateBasis === LEGACY_DATE_BASIS;
+        const recordKey = this.recordKey(record.date, legacySources);
+        targets.set(recordKey, { date: record.date, recordKey, legacySources });
       }
     }
     return Array.from(targets.values()).sort((a, b) => a.date.localeCompare(b.date));
   }
 
   handleSourceEvent(file) {
-    if (!this.settings.autoAnalyze || !(file instanceof TFile)) return;
+    if (this.unloaded || !this.settings.autoAnalyze || !(file instanceof TFile)) return;
     const date = this.getCreationDateForFile(file);
     if (date) this.scheduleDate(date);
   }
 
   scheduleDate(date) {
+    if (this.unloaded || !this.settings.autoAnalyze) return;
     const existing = this.debounceTimers.get(date);
     if (existing) window.clearTimeout(existing);
     const timer = window.setTimeout(async () => {
@@ -441,6 +714,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     const raw = choice?.message?.content;
     if (typeof raw !== "string" || !raw.trim()) throw new Error("Groq returned no analysis content.");
+    if (raw.length > 100000) throw new Error("Groq returned an oversized analysis response.");
     // Do not accept JSON in a reasoning section as a final answer.
     const finalText = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     const start = finalText.indexOf("{");
@@ -485,6 +759,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeWithGroq(date, text, options = {}) {
+    const request = (payload) => {
+      if (this.unloaded || !this.settings.enableGroq) this.cancelAnalysis();
+      options.assertCurrent?.();
+      return this.requestGroq(payload);
+    };
     if (!this.apiKey()) {
       const error = new Error(`Environment variable ${GROQ_API_KEY_ENV} is missing.`);
       error.code = "missing_key";
@@ -545,13 +824,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     for (const attempt of attempts) {
       try {
         try {
-          return this.parseGroqAnalysis(await this.requestGroq(attempt.payload));
+          return this.parseGroqAnalysis(await request(attempt.payload));
         } catch (error) {
           if (error.code !== "completion_limit" || retriedCompletionLimit) throw error;
           retriedCompletionLimit = true;
-          return this.parseGroqAnalysis(await this.requestGroq({ ...attempt.payload, max_completion_tokens: 8192 }));
+          return this.parseGroqAnalysis(await request({ ...attempt.payload, max_completion_tokens: 8192 }));
         }
       } catch (error) {
+        if (error.code === "analysis_cancelled") throw error;
         lastFailure = error;
         failures.push({ mode: attempt.name, status: error.status || 422, code: error.code || "invalid_output" });
         if (error.status && ![400, 422].includes(error.status)) throw error;
@@ -565,15 +845,20 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeDate(date, options = {}) {
+    options = { ...options, recordKey: options.recordKey || this.recordKey(date, options.legacySources) };
+    const assertQueuedCurrent = options.assertCurrent || this.analysisGuard(options);
     // Serialize scans, active-note commands, and debounced note events.
     const task = (this.analysisQueue || Promise.resolve()).then(async () => {
-      if (this.unloaded) return false;
-      const pending = this.runtime?.pendingDates?.[date];
+      const pending = this.runtime?.pendingDates?.[options.recordKey];
       if (options.background && pending && Date.parse(pending.retryAt) > Date.now()) {
         if (options.runStats) options.runStats.pending += 1;
         return false;
       }
-      try { return await this.analyzeDateNow(date, options); } catch (error) {
+      try { assertQueuedCurrent(); return await this.analyzeDateNow(date, options); } catch (error) {
+        if (this.unloaded || error.code === "analysis_cancelled") {
+          if (options.runStats) options.runStats.cancelled += 1;
+          return false;
+        }
         this.markDatePending(date, options, error.code === "source_read" ? "source" : "storage");
         if (options.runStats) { options.runStats.failures += 1; options.runStats.pending += 1; }
         try { await this.savePluginData(); } catch { /* Keep in memory until storage recovers. */ }
@@ -588,9 +873,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   markDatePending(date, options = {}, kind = "output") {
     this.runtime ||= {};
     this.runtime.pendingDates ||= {};
-    const attempts = Math.min(10, (this.runtime.pendingDates[date]?.attempts || 0) + 1);
+    const key = options.recordKey || this.recordKey(date, options.legacySources);
+    const attempts = Math.min(10, (this.runtime.pendingDates[key]?.attempts || 0) + 1);
     const retryAt = new Date(Math.max(Date.now() + Math.min(3600000, 60000 * 2 ** (attempts - 1)), this.groqBlockedUntil || 0)).toISOString();
-    this.runtime.pendingDates[date] = { kind, attempts, retryAt, legacySources: Boolean(options.legacySources) };
+    this.runtime.pendingDates[key] = { kind, attempts, retryAt, legacySources: Boolean(options.legacySources) };
   }
 
   async clearDatePending(date) {
@@ -609,9 +895,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         this.lastAutomaticReconcileAt = Date.now();
         await this.analyzeAll({ background: true, silent: true });
       } else {
-        for (const [date, pending] of Object.entries(this.runtime.pendingDates || {})) {
+        for (const [key, pending] of Object.entries(this.runtime.pendingDates || {})) {
           if (this.unloaded || !this.settings.autoAnalyze || Date.now() < this.groqBlockedUntil) break;
-          if (Date.parse(pending.retryAt) <= Date.now()) await this.analyzeDate(date, { background: true, legacySources: pending.legacySources });
+          if (Date.parse(pending.retryAt) <= Date.now()) await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
         }
       }
     } catch { /* Retain pending work; next scheduled pass can recover storage/network errors. */ }
@@ -619,7 +905,17 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeDateNow(date, options = {}) {
-    const previous = this.records[date];
+    const assertCurrent = this.analysisGuard(options);
+    assertCurrent();
+    const key = options.recordKey || date;
+    const prepared = this.runtime.pendingWrites?.[key];
+    if (prepared) {
+      await this.commitPreparedRecord(key, prepared, assertCurrent);
+      this.refreshRenderers();
+      return true;
+    }
+    if (options.recoveryOnly) return false;
+    const previous = this.records[key];
     const recovering = Boolean(options.onlyFallbacks || options.legacySources);
     const dateBasis = options.legacySources ? LEGACY_DATE_BASIS : CREATED_DATE_BASIS;
     const skipRecovery = (pending = false) => {
@@ -633,11 +929,20 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       const needsGroq = options.force || !previous || previous.status === "complete" && previous.analysisSource !== "groq";
       return skipRecovery(Boolean(this.settings.enableGroq && needsGroq && (!this.apiKey() || !options.forceGroq && Date.now() < this.groqBlockedUntil)));
     }
-    const gathered = options.legacySources ? await this.gatherLegacyDate(date) : await this.gatherDate(date);
-    if (this.unloaded) return false;
+    const gathered = options.legacySources ? await this.gatherLegacyDate(date, key) : await this.gatherDate(date, options.dateIndex);
+    assertCurrent();
+    const assertGatheredCurrent = () => { assertCurrent(); gathered?.assertCurrent?.(); };
+    // A deleted/moved/excluded last source is not an empty source note.
+    // Preserve history, matching scans which no longer discover this date.
+    if (gathered && !gathered.sourcePaths.length) {
+      await this.clearDatePending(key);
+      return skipRecovery();
+    }
     if (!gathered || recovering && gathered.analysisText.length < this.settings.minimumCharacters) {
       return skipRecovery(Boolean(recovering && this.settings.enableGroq && previous?.status === "complete" && previous.analysisSource !== "groq"));
     }
+    const fingerprint = this.analysisFingerprint(gathered, dateBasis);
+    const localSemanticsChanged = !this.settings.enableGroq && previous?.analysisFingerprint && previous.analysisFingerprint !== fingerprint;
     const retryNonGroqResult = this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
       (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback"].includes(previous?.analysisSource)) &&
       (options.forceGroq || Date.now() >= this.groqBlockedUntil);
@@ -649,11 +954,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       await this.savePluginData();
       return false;
     }
-    if (!options.force && !retryNonGroqResult && previous?.contentHash === gathered.contentHash) {
-      if (previous.dateBasis === dateBasis) { await this.clearDatePending(date); return false; }
-      previous.dateBasis = dateBasis;
-      await this.savePluginData();
-      await this.clearDatePending(date);
+    if (!options.force && !retryNonGroqResult && !localSemanticsChanged && previous?.contentHash === gathered.contentHash) {
+      if (previous.dateBasis === dateBasis) { await this.clearDatePending(key); return false; }
+      const promoted = { ...previous, dateBasis };
+      const pending = await this.prepareRecord(key, promoted, assertGatheredCurrent);
+      await this.commitPreparedRecord(key, pending, assertGatheredCurrent);
       this.refreshRenderers();
       return true;
     }
@@ -687,12 +992,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       }
       if (canTryGroq) {
         try {
-          analysis = await this.analyzeWithGroq(date, gathered.analysisText, options);
-          if (this.unloaded) return false;
+          analysis = await this.analyzeWithGroq(date, gathered.analysisText, { ...options, assertCurrent: assertGatheredCurrent });
+          assertGatheredCurrent();
           analysisSource = "groq";
           model = this.settings.model;
           this.recordGroqSuccess();
         } catch (error) {
+          if (error.code === "analysis_cancelled") throw error;
+          assertGatheredCurrent();
           const issue = this.recordGroqFailure(error);
           this.markDatePending(date, options, issue.kind);
           if (options.runStats) {
@@ -708,7 +1015,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       } else {
         analysis = localSentiment(gathered.analysisText, gathered.topic);
         analysisSource = "local";
-        model = "deterministic-lexicon-v1";
+        model = LOCAL_ANALYZER_VERSION;
       }
       record = {
         date,
@@ -721,19 +1028,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
     Object.assign(record, {
       dateBasis,
+      recordIdentity: `v2:${dateBasis}:${date}`,
+      analysisFingerprint: fingerprint,
       contentHash: gathered.contentHash,
       sourcePaths: gathered.sourcePaths,
       analyzedAt: new Date().toISOString(),
       ...(previous?.entryPath ? { entryPath: previous.entryPath } : {})
     });
-    if (this.unloaded) return false;
-    await this.writeEntryNote(record);
-    this.records[date] = record;
-    try { await this.savePluginData(); } catch (error) {
-      if (previous) this.records[date] = previous; else delete this.records[date];
-      throw error;
-    }
-    await this.clearDatePending(date);
+    assertGatheredCurrent();
+    const pending = await this.prepareRecord(key, record, assertGatheredCurrent);
+    await this.commitPreparedRecord(key, pending, assertGatheredCurrent);
     this.refreshRenderers();
     if (options.runStats) {
       options.runStats[record.status === "insufficient" ? "insufficient" : record.analysisSource === "groq" ? "groq" : record.analysisSource === "local" ? "local" : "fallback"] += 1;
@@ -742,6 +1046,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeAll(options = {}) {
+    if (this.unloaded) return;
     if (this.checkingGroq) {
       new Notice("Automatic Mood History: wait for the Groq connection check to finish.");
       return;
@@ -763,25 +1068,32 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // An explicit retry bypasses an old pause once. A new rate limit pauses
     // the remaining dates in the same run instead of hammering the provider.
     if (options.forceGroq) this.clearGroqPause();
-    const runStats = { groq: 0, local: 0, fallback: 0, insufficient: 0, failures: 0, pending: 0, skipped: 0 };
-    const dateOptions = { ...options, forceGroq: false, runStats };
-    const targets = this.getAnalysisTargets(options);
+    const assertCurrent = this.analysisGuard(options);
+    const runStats = { groq: 0, local: 0, fallback: 0, insufficient: 0, failures: 0, pending: 0, skipped: 0, cancelled: 0 };
+    const dateIndex = this.app?.vault?.getMarkdownFiles ? this.buildDateIndex() : undefined;
+    const dateOptions = { ...options, forceGroq: false, runStats, assertCurrent, dateIndex };
+    const targets = this.getAnalysisTargets({ ...options, dateIndex });
     if (!options.silent) new Notice(`Automatic Mood History: checking ${targets.length} history groups (${targets.filter((target) => target.legacySources).length} saved legacy sources)…`);
     let changed = 0;
-    for (const target of targets) {
-      if (this.unloaded || options.background && !this.settings.autoAnalyze && !this.settings.analyzeOnStartup) break;
-      if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources })) changed += 1;
+    for (const [index, target] of targets.entries()) {
+      try { assertCurrent(); } catch { runStats.cancelled += targets.length - index; break; }
+      if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources, recordKey: target.recordKey })) changed += 1;
     }
-    await this.ensureSupportFiles();
-    await this.savePluginData();
+    try {
+      assertCurrent();
+      await this.ensureSupportFiles();
+      assertCurrent();
+      await this.savePluginData();
+    } catch (error) { if (error.code !== "analysis_cancelled") throw error; }
     const suffix = runStats.pending ? ` ${runStats.pending} groups remain pending; existing results were kept. Check the dashboard for recovery status.` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
     const pendingFallbacks = this.fallbackRecords().length;
     const pending = this.settings.enableGroq && pendingFallbacks ? ` ${pendingFallbacks} saved local-fallback entries still await a successful Groq result.` : "";
-    if (!options.silent) new Notice(`Automatic Mood History: ${changed} history groups updated.${suffix}${pending}`, 9000);
+    if (!options.silent && !this.unloaded) new Notice(`Automatic Mood History: ${changed} history groups updated.${runStats.cancelled ? ` ${runStats.cancelled} groups cancelled; run again with your current settings.` : ""}${suffix}${pending}`, 9000);
     return { updated: changed, ...runStats, pendingFallbacks };
   }
 
   async checkGroqConnection() {
+    if (this.unloaded) return false;
     if (!this.settings.enableGroq) {
       new Notice("Automatic Mood History: enable Groq analysis in settings before checking the connection.");
       return false;
@@ -791,22 +1103,35 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return false;
     }
     this.checkingGroq = true;
+    const assertCurrent = this.analysisGuard();
+    const initialPause = this.groqBlockedUntil;
     this.refreshRenderers();
     new Notice("Automatic Mood History: checking Groq with sample text…");
-    try {
-      await this.analyzeWithGroq("2030-03-14", "This is a fictional connection-check sample. The writer feels calm, hopeful, and supported after a friendly conversation.", { forceGroq: true });
+    const task = (this.analysisQueue || Promise.resolve()).then(async () => {
+      try {
+      assertCurrent();
+      if (this.groqBlockedUntil !== initialPause && Date.now() < this.groqBlockedUntil) this.cancelAnalysis();
+      await this.analyzeWithGroq("2030-03-14", "This is a fictional connection-check sample. The writer feels calm, hopeful, and supported after a friendly conversation.", { forceGroq: true, assertCurrent });
+      assertCurrent();
       this.recordGroqSuccess();
       new Notice("Automatic Mood History: Groq connection works. No vault notes were sent.");
       return true;
     } catch (error) {
+      if (this.unloaded || error.code === "analysis_cancelled") return false;
+      try { assertCurrent(); } catch { return false; }
       const issue = this.recordGroqFailure(error);
       new Notice(`Automatic Mood History: connection check failed. ${issue.message}`, 9000);
       return false;
     } finally {
       this.checkingGroq = false;
-      await this.savePluginData();
+      if (!this.unloaded) {
+        try { assertCurrent(); await this.savePluginData(); } catch { /* Cancellation/storage cannot keep the provider queue stuck. */ }
+      }
       this.refreshRenderers();
     }
+    });
+    this.analysisQueue = task.catch(() => {});
+    return task;
   }
 
   async retryAllWithGroq() {
@@ -826,6 +1151,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   groqStatus() {
+    if (this.settingsValidationError || this.settingsSaveFailed || this.storageReadFailed) return { kind: "warning", text: this.settingsValidationError || "Analysis paused: restore plugin storage and save settings or reload." };
     const pendingCount = Object.keys(this.runtime.pendingDates || {}).length;
     if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups pending. Existing results are preserved. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
     if (!this.settings.enableGroq) return { kind: "local", text: "LOCAL MODE · Groq is disabled. Analysis stays on this device." };
@@ -845,8 +1171,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async ensureFolder(path) {
-    const normalized = path.replace(/^\/+|\/+$/g, "");
-    if (!normalized) return;
+    const assertCurrent = this.analysisGuard();
+    assertCurrent();
+    const normalized = vaultPath(path);
+    this.assertOutputPath(normalized);
 
     const folderExists = async (folderPath) => {
       const abstractFile = this.app.vault.getAbstractFileByPath(folderPath);
@@ -868,8 +1196,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const parts = normalized.split("/");
     let current = "";
     for (const part of parts) {
+      assertCurrent();
       current = current ? `${current}/${part}` : part;
       if (await folderExists(current)) continue;
+      assertCurrent();
       try {
         await this.app.vault.createFolder(current);
       } catch (error) {
@@ -882,6 +1212,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async writeTextFile(path, content, overwrite = false) {
+    this.analysisGuard()();
+    this.assertOutputPath(path);
     const existing = this.app.vault.getAbstractFileByPath(path);
     if (existing instanceof TFile) {
       if (overwrite) await this.app.vault.modify(existing, content);
@@ -890,19 +1222,67 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return this.app.vault.create(path, content);
   }
 
-  async writeEntryNote(record) {
+  async writeEntryNote(record, options = {}) {
+    const assertCurrent = options.assertCurrent || this.analysisGuard();
+    assertCurrent();
     await this.ensureFolder(this.entriesFolder);
-    const path = await this.resolveEntryPath(record);
+    assertCurrent();
+    let path = options.pending ? record.entryPath : await this.resolveEntryPath(record);
+    this.assertOutputPath(path, true);
+    const content = buildEntryMarkdown(record);
+    let existing = this.app.vault.getAbstractFileByPath(path);
+    if (options.pending && existing instanceof TFile) {
+      const current = await this.app.vault.cachedRead(existing);
+      assertCurrent();
+      if (current === content) return;
+      if (sha256(current) !== options.pending.expectedHash) {
+        path = await this.unusedEntryPath(record);
+        assertCurrent();
+        record.entryPath = path;
+        options.pending.expectedHash = null;
+        await this.savePluginData();
+        existing = null;
+      }
+    }
+    assertCurrent();
+    if (existing instanceof TFile) {
+      await this.app.vault.process(existing, (current) => {
+        assertCurrent();
+        if (options.pending && current === content) return current;
+        if (options.pending && sha256(current) !== options.pending.expectedHash) {
+          throw new Error("Entry changed during recovery; existing text was preserved.");
+        }
+        if (!this.isOwnedEntryContent(current, record.date, record.dateBasis)) {
+          throw new Error("Entry ownership changed before writing; existing text was preserved.");
+        }
+        return content;
+      });
+    } else {
+      // create fails safely if another file appears at this path meanwhile.
+      await this.app.vault.create(path, content);
+    }
     record.entryPath = path;
-    await this.writeTextFile(path, buildEntryMarkdown(record), true);
   }
 
-  async isOwnedEntry(file, date) {
+  async unusedEntryPath(record) {
+    for (let suffix = 1; suffix <= 1000; suffix += 1) {
+      const candidate = `${this.entriesFolder}/${record.date} (Recovered ${suffix}).md`;
+      if (!this.app.vault.getAbstractFileByPath(candidate)) return candidate;
+    }
+    throw new Error("Could not find an unused entry path for recovery.");
+  }
+
+  async isOwnedEntry(file, date, dateBasis) {
     if (!(file instanceof TFile)) return false;
     const content = await this.app.vault.cachedRead(file);
+    return this.isOwnedEntryContent(content, date, dateBasis);
+  }
+
+  isOwnedEntryContent(content, date, dateBasis) {
     const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
     if (!match) return false;
     const fields = new Set(match[1].split(/\r?\n/).map((line) => line.trim()));
+    if (dateBasis && !(fields.has(`date_basis: ${JSON.stringify(dateBasis)}`) || dateBasis === LEGACY_DATE_BASIS && !Array.from(fields).some(field => field.startsWith("date_basis: ")))) return false;
     const hasPluginType = fields.has(`type: ${JSON.stringify("automatic-mood-entry")}`);
     const hasDate = fields.has(`date: ${JSON.stringify(date)}`);
     const hasOwnershipMarker = fields.has("automatic_mood_history: true");
@@ -911,34 +1291,53 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async resolveEntryPath(record) {
+    if (!validDate(record.date)) throw new Error("Entry date is invalid.");
     const defaultPath = `${this.entriesFolder}/${record.date}.md`;
-    const storedPath = typeof record.entryPath === "string" &&
-      record.entryPath.startsWith(`${this.entriesFolder}/`) ? record.entryPath : defaultPath;
+    let storedPath = defaultPath;
+    if (typeof record.entryPath === "string") {
+      try { storedPath = this.assertOutputPath(record.entryPath, true); } catch { /* Never follow unsafe stored paths. */ }
+    }
     const existing = this.app.vault.getAbstractFileByPath(storedPath);
-    if (!existing || await this.isOwnedEntry(existing, record.date)) return storedPath;
+    if (!existing || await this.isOwnedEntry(existing, record.date, record.dateBasis)) return storedPath;
 
     for (let suffix = 1; suffix <= 1000; suffix += 1) {
       const label = suffix === 1 ? "" : " " + suffix;
       const candidate = `${this.entriesFolder}/${record.date} (Automatic Mood History${label}).md`;
       const candidateFile = this.app.vault.getAbstractFileByPath(candidate);
-      if (!candidateFile || await this.isOwnedEntry(candidateFile, record.date)) return candidate;
+      if (!candidateFile || await this.isOwnedEntry(candidateFile, record.date, record.dateBasis)) return candidate;
     }
     throw new Error(`Could not find a safe entry filename for ${record.date}.`);
   }
 
+  assertOutputPath(value, entry = false) {
+    const path = vaultPath(value);
+    const folder = entry ? this.entriesFolder : this.outputFolder;
+    if (!(path === folder && !entry || path.startsWith(`${folder}/`)) || entry && !/\.md$/i.test(path)) throw new Error("Write path is outside the configured history folder.");
+    return path;
+  }
+
   async ensureSupportFiles() {
+    const assertCurrent = this.analysisGuard();
+    assertCurrent();
     await this.ensureFolder(this.outputFolder);
+    assertCurrent();
     await this.ensureFolder(this.entriesFolder);
+    assertCurrent();
     const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by the local calendar day of their Obsidian creation timestamp. Include/exclude folder settings control which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
 const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes are grouped by the local calendar day of their Obsidian creation timestamp, TFile.stat.ctime. Include/exclude folder settings determine eligibility; filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key is read from the process environment and is never saved in this vault. Every completed entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, dashboard, false);
+    assertCurrent();
     await this.upgradeDashboardLayout();
+    assertCurrent();
     await this.writeTextFile(`${this.outputFolder}/Mood History.base`, base, false);
+    assertCurrent();
     await this.writeTextFile(`${this.outputFolder}/Methodology.md`, methodology, false);
   }
 
   async upgradeDashboardLayout() {
+    const assertCurrent = this.analysisGuard();
+    assertCurrent();
     const file = this.app.vault.getAbstractFileByPath(this.dashboardPath);
     if (!(file instanceof TFile)) return;
     const embed = `![[${this.outputFolder}/Mood History.base]]`;
@@ -947,17 +1346,21 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       return Boolean(frontmatter && /^type:\s*["']?mood-history-dashboard["']?\s*$/m.test(frontmatter[1]));
     };
     const content = await this.app.vault.cachedRead(file);
+    assertCurrent();
     if (!isOwnedDashboard(content) || !content.includes(embed)) return;
     // Only migrate this exact plugin-created embed. Atomic processing keeps
     // concurrent edits and every other line of the dashboard intact.
     await this.app.vault.process(file, (current) => {
+      assertCurrent();
       if (!isOwnedDashboard(current)) return current;
       return current.replace(embed, `[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.`);
     });
   }
 
   async openDashboard() {
+    if (this.unloaded) return;
     await this.ensureSupportFiles();
+    if (this.unloaded) return;
     const file = this.app.vault.getAbstractFileByPath(this.dashboardPath);
     if (!(file instanceof TFile)) return;
     const leaf = this.app.workspace.getLeaf(false);
@@ -966,6 +1369,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
   }
 
   refreshRenderers() {
+    if (this.unloaded) return;
     for (const element of Array.from(this.renderContainers)) {
       if (!element.isConnected) {
         this.disposeDashboard(element);
@@ -1022,6 +1426,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const statusElement = wrapper.createDiv({ cls: "auto-mood-provider-status", text: status.text });
     statusElement.dataset.kind = status.kind;
     statusElement.setAttribute("role", "status");
+    if (this.settingsValidationError || this.storageReadFailed) return;
 
     if (!records.length) {
       wrapper.createDiv({ cls: "auto-mood-empty", text: "No history yet. Run Analyze changed to build it." });
@@ -1269,10 +1674,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.enableGroq)
         .onChange(async (value) => {
-          this.plugin.settings.enableGroq = value;
-          this.plugin.clearGroqPause();
-          await this.plugin.savePluginData();
-          this.plugin.refreshRenderers();
+          await this.plugin.updateSetting("enableGroq", value);
         }));
     new Setting(containerEl)
       .setName("Groq model")
@@ -1280,11 +1682,13 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .addText((text) => text
         .setValue(this.plugin.settings.model)
         .onChange(async (value) => {
-          this.plugin.settings.model = value.trim() || DEFAULT_SETTINGS.model;
-          this.plugin.clearGroqPause();
-          await this.plugin.savePluginData();
-          this.plugin.refreshRenderers();
+          await this.plugin.updateSetting("model", value.trim() || DEFAULT_SETTINGS.model);
         }));
+    new Setting(containerEl)
+      .setName("Output folder")
+      .setDesc("A nonempty vault-relative folder for generated history files.")
+      .addText((text) => text.setValue(typeof this.plugin.settings.outputFolder === "string" ? this.plugin.settings.outputFolder : "")
+        .onChange(async value => { await this.plugin.updateSetting("outputFolder", value); }));
     new Setting(containerEl)
       .setName("Include folders")
       .setDesc("Optional allowlist. One vault-relative folder per line. Empty includes all folders; subfolders are included automatically. / means root-level notes.")
@@ -1312,9 +1716,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.autoAnalyze)
         .onChange(async (value) => {
-          this.plugin.settings.autoAnalyze = value;
-          await this.plugin.savePluginData();
-          this.plugin.refreshRenderers();
+          await this.plugin.updateSetting("autoAnalyze", value);
         }));
     new Setting(containerEl)
       .setName("Analyze on startup")
@@ -1322,8 +1724,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.analyzeOnStartup)
         .onChange(async (value) => {
-          this.plugin.settings.analyzeOnStartup = value;
-          await this.plugin.savePluginData();
+          await this.plugin.updateSetting("analyzeOnStartup", value);
         }));
     new Setting(containerEl)
       .setName("Analyze changed notes now")

@@ -89,16 +89,20 @@ plugin.gatherDate(firstDay).then(async (gathered) => {
     summary: "Preserved synthetic record."
   };
   plugin.records = { [firstDay]: legacyRecord };
+  plugin.runtime = {};
+  plugin.resolveEntryPath = async record => `Mood History/Entries/${record.date}.md`;
   let saveCalls = 0;
   plugin.savePluginData = async () => { saveCalls += 1; };
   plugin.refreshRenderers = () => {};
-  plugin.writeEntryNote = async () => { throw new Error("unchanged legacy analysis should not rewrite its note"); };
+  plugin.writeEntryNote = async () => {};
 
   const changed = await plugin.analyzeDate(firstDay);
-  assert.strictEqual(changed, true, "matching legacy data is promoted to the timestamp scope");
-  assert.strictEqual(legacyRecord.dateBasis, "created-at-local-date");
+  assert.strictEqual(changed, true, "matching legacy data coexists with the timestamp scope");
+  assert.strictEqual(legacyRecord.dateBasis, "legacy-note-date", "the previous committed object is not mutated");
+  assert.strictEqual(plugin.records[`created:${firstDay}`].dateBasis, "created-at-local-date");
+  assert.strictEqual(plugin.records[firstDay], legacyRecord, "legacy history keeps its original key and result");
   assert.strictEqual(legacyRecord.summary, "Preserved synthetic record.");
-  assert.strictEqual(saveCalls, 1);
+  assert.strictEqual(saveCalls, 2);
   console.log("all Markdown notes are grouped by creation timestamp; legacy records are preserved");
 }).catch((error) => {
   console.error(error);

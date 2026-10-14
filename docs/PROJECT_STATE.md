@@ -1,135 +1,83 @@
-# Automatic Mood History — Project State
+# Automatic Mood History — project state
 
-## Architecture
+## Active follow-up (2026-10-13)
 
-- This is an Obsidian desktop community plugin. `scripts/build.js` bundles `src/sentiment-core.js` and `src/main.js` into the self-contained `main.js` loaded by Obsidian.
-- `src/main.js` owns plugin lifecycle, date discovery, source events, settings, optional Groq requests, generated files, and the dashboard renderer.
-- Provider responses are parsed and validated before normalization. GPT-OSS uses low reasoning and a 4096-token budget, with one 8192-token retry on completion-limit exhaustion. Date analyses share a serialized queue; a forced scan clears a previous provider pause once, while a new rate limit pauses its remaining requests.
-- Groq-enabled mode is provider-only: valid Groq responses are saved; provider errors or pauses preserve existing records and leave new work pending. Local scoring is used only while Groq is disabled. Existing `local-fallback` records are historical results eligible for recovery, not a path new Groq-enabled scans use.
-- `runtime.lastGroqIssue` stores a safe failure category and retry timestamp. Provider error bodies are not logged or saved. Connection checks send fictional sample text and update connection status without creating mood records.
-- Intentional local analysis uses `analysisSource: local`; older provider fallback results use `local-fallback`. Unchanged local and fallback records are retried with Groq after a provider pause expires. Valid saved results survive failed retries.
-- `src/sentiment-core.js` owns text cleanup, duplicate paragraph removal, SHA-256 hashing, local lexicon scoring, result validation, and generated entry Markdown.
-- The analysis scope is every Markdown note in the vault. Each note is assigned to the local calendar day of Obsidian's `TFile.stat.ctime`; folder, filename, frontmatter dates, aliases, and later edits do not set that day.
-- Generated files under the configured `Mood History/` output folder and notes in `.trash/` are excluded. Notes without a valid creation timestamp are skipped.
-- Startup analysis, automatic note-change analysis, and Groq requests are off by default. Local scoring runs when a user requests analysis. Groq requires the settings opt-in and reads only `GROQ_API_KEY` from the Obsidian process environment.
-- No API key value is stored. The user-selected environment-variable setting from version 1.1.0 is ignored and omitted from saved settings.
-- Tagged releases attach version-specific notes and use GitHub Actions to attest the built `main.js`, `manifest.json`, and `styles.css` assets.
-- Generated files live under `Mood History/` by default. Entries contain an ownership marker. If a date path belongs to another note, the plugin picks a conflict-safe name and stores that path so dashboard links remain correct.
-- Existing records from prior filename/frontmatter grouping are retained with `dateBasis: legacy-note-date`; new or verified groups use `dateBasis: created-at-local-date`.
-- Mood scores are text-based inferences, not diagnoses or objective facts. Groq receives cleaned note text only after opt-in; file paths remain local.
-- Dark-mode styles use Obsidian theme colors for surfaces, text, and borders, with vivid series colors and a low-contrast decorative grid.
+Release candidate follows audit/follow-up head `26c7777dce67be52206bf1176d5ab7f7323a627c`; public main is still 1.2.8 until PR #1 merges. Candidate version 1.2.9 is prepared separately with release notes/changelog. All native tests use the isolated `work/native-qa/profile` and synthetic vault; no installed personal plugin is touched.
 
-## Design decisions and rationale
+- `runtime.pendingWrites`: version 1 prepared analysis results. JSON is committed authority; persist preparation, apply entry with content-hash comparison, commit record and clear retry/journal in one serialized save. See `PERSISTENCE_PROTOCOL.md`. Recovery needs no provider call once preparation survives restart. Edited owned notes receive a separate recovered entry; user edits remain intact.
+- `storageQueue` captures detached snapshots at dispatch and publishes record commits inside the queue. Previous record objects are never mutated before saving. Obsidian APIs provide neither cross-file transactions nor abort/fsync guarantees; rejected writes may already have completed and replay is idempotent.
+- `analysisEpoch` tracks analysis-relevant settings through a Proxy. Guards capture both epoch and values, including queued work. Startup-only background authorization is explicit (`startup: true`); continuous events/recovery require `autoAnalyze`. Sample checks share `analysisQueue`, preserving newer pauses. Cancellation counts are included in manual scan results.
+- Storage validation accepts boolean opt-ins only as actual true, bounds numbers, checks date/record/pending metadata and visibility arrays. Invalid loaded folder settings block analysis with a visible message; invalid UI edits retain the prior effective scope. Settings-save errors pause analysis and retain restrictive consent in memory. Unreadable plugin JSON is never overwritten with defaults.
+- `vaultPath`/`assertOutputPath` confine output writes, reject absolute/traversal/configuration/trash paths, normalize Windows/repeated separators, and recheck prepared/stored entry paths. Output folder is now repairable in settings.
+- Added focused `storage-recovery`, `lifecycle-cancellation`, and `settings-validation` tests plus shared `reliability-fixture`. Six restart boundaries, edited-note recovery, save serialization, unload at six await boundaries, away-and-back settings, queued sample rate limiting, startup-only authorization, corrupt settings and path confinement pass.
 
-- 1.2.3 started legacy fallback discovery. 1.2.4 includes every legacy-date record in Groq scans, regardless of its prior analyzer, and `gatherLegacyDate()` reads its exact saved source paths. The original legacy date basis and entry path are retained. Failed or paused requests preserve existing results and leave the group pending; no new local-fallback scores are written while Groq is enabled.
-- No-horizontal-scroll layout in 1.2.2 uses pane container queries, intrinsically shrinkable grids, full-width history cards, and a ResizeObserver-redrawn SVG with CSS-pixel-sized labels. It does not hide/clamp overflowing content or discard chart points. Chart observers are disposed on refresh and unload.
-- A dashboard's native Base embed independently caused overflow. New dashboards link to it instead. `upgradeDashboardLayout()` atomically replaces only the exact embed in an owned dashboard, checking ownership again during processing and retaining other writing; native Base tables remain separate optional views.
-- The source started this task with uncommitted 1.2.1 provider recovery changes. Preserve those changes and include them in 1.2.2; do not reset the working tree to published 1.2.0.
-- Preserve daily-note source text. The plugin reads notes and writes only its own history, methodology, Base, and dashboard files.
-- Keep local analysis usable without an API key or network access.
-- Require two deliberate choices for remote analysis: enable Groq and run analysis or enable automatic analysis.
-- Group all Markdown notes by creation timestamp, not folder or note title, because the user's intended day is when the note was made.
-- Preserve earlier records and label their old date basis instead of deleting or silently presenting them as timestamp-based.
-- Validate and label analyzer provenance. Empty or image-only days stay `insufficient`.
-- Treat generated history as sensitive. Exclude `data.json`, `.obsidian/`, and `Mood History/` from Git.
-- Use synthetic test fixtures only. The public repository must not contain note excerpts, generated mood entries, vault backups, absolute vault paths, or credentials.
+RESUME HERE: PR #1 contains P1 persistence/lifecycle/settings, fingerprint/index, additive history identity and safe narrative serialization. Its latest CI run 38487327796 passed. Candidate 1.2.9 version/note/changelog are being prepared; run release checks, push, verify CI, merge PR #1, and wait for the version-triggered release workflow. Read current PROGRESS for exact release status.
 
-## Important discoveries and constraints
+Fingerprint/discovery follow-up: results include analysisFingerprint v1 with source hash, date basis, text/scorer/prompt/model versions, thresholds and local topic. Changed local semantics refresh on the next scan; unchanged remote semantics require an explicit force command. Old records without fingerprints retain provenance and skip unchanged sources. Per-scan indexing stores file references/paths, never text; guards recheck paths, file identity, eligibility and stat metadata around reads/requests. Scope rules cache only normalized paths and invalidate with the settings epoch. Synthetic three-round medians against e01f1ed: 1,000 notes/100 dates, 101 -> 1 enumerations, 162 -> 45ms; 10,000 notes/365 dates, 366 -> 1 enumerations, 6,016 -> 797ms. Reads remain 1,000/10,000 respectively, with exact source/hash parity. This measures discovery/gathering, not network time.
 
-- The recurring 1.2.0 Groq error is a strict-schema HTTP 400: `uniqueItems` on the emotions array is rejected. Local validation already deduplicates emotions, so that field is unnecessary in the remote schema.
-- GPT-OSS supports `reasoning_effort: low` and `include_reasoning: false`; Groq's reasoning documentation says `reasoning_format` is unsupported for GPT-OSS. Completion-limit exhaustion must be handled separately from missing or malformed JSON.
-- The outer manual-retry flag previously bypassed only one cooldown check; the provider method still refused the request. A sticky previous error also produced failure notices on no-op scans, and the local scorer always claimed Groq was unavailable even when intentionally disabled.
+History schema 2 is additive: existing date keys remain; second-basis collisions use created:<date> or legacy:<date>. recordKey routes scans, active commands, pending writes and retries; ownership checks include date basis. No legacy record is promoted or replaced by a current group. Original paths/labels/links are retained; rollback uses a saved pre-upgrade JSON snapshot while archiving schema 2 additions. See HISTORY_IDENTITY.md and history-identity.test.js for collision interruption/restart and rollback evidence. Version 1 cannot losslessly represent collisions; do not downgrade and analyze schema 2 data.
 
-- Version 1.1.0 documentation promised opt-in Groq and bounded folder scope, but code defaults could scan on startup, analyze on note edits, and call Groq when the key existed. Version 1.1.1 aligns behavior with the privacy documentation.
-- Version 1.1.0 exposed an editable environment-variable name. This is now pinned to `GROQ_API_KEY` so synced plugin data cannot select another process secret.
-- An earlier test fixture contained a real-looking backfill date and derived mood values. It has been replaced with synthetic data.
-- A fresh 1.1.1 launch logged `Plugin failure: automatic-mood-history Error: Folder already exists.` The failure came from support-folder creation during `onload`. Version 1.1.2 moves setup after Obsidian's layout-ready event, checks adapter state, and accepts only confirmed existing folders after a creation race.
-- The user's corrected scope is all notes created on a day, using Obsidian creation timestamps. Version 1.2.0 implements local-day grouping from `TFile.stat.ctime`, no longer uses filenames/frontmatter/aliases/folder scope, and preserves old records as legacy.
-- The previous Groq-enabled path silently wrote local fallback scores after provider errors and for remaining targets after a pause. A passing sample connection check did not make earlier saved fallbacks update. Also, only legacy fallback records had been added to the staged recovery; legacy records with other analyzer labels were not selected.
-- Legacy records have saved `sourcePaths`. Recovery must read that complete saved set and retain the legacy date, rather than grouping the same notes by current creation date or substituting notes from another group. Current user vault metadata confirmed saved paths for the applicable legacy records; do not copy the record data or private note text into this public repository.
-- The release workflow validates that the pushed tag equals the manifest version and attaches `main.js`, `manifest.json`, and `styles.css`.
-- 1.2.4 fixes the release audit findings: the manifest description no longer says "Obsidian", the GitHub release body comes from `docs/RELEASE_NOTES_1.2.4.md`, and `actions/attest@v4` signs provenance for each release asset. CSS score colors and reduced-motion rules use scoped selector specificity; the `text-decoration-thickness` override was removed.
-- The source folder initially had no Git metadata or remote. It is now the public repository `https://github.com/remriel/automatic-mood-history`; all-note timestamp commit `5fd02b1c836245c3ce0a2e2190b18b7c41934e7e` is tagged `1.2.0`.
+## Current architecture
 
-## Failed approaches not to repeat
+Audit date: 2026-10-13. Public repository: https://github.com/remriel/automatic-mood-history.
+Audit baseline was `493f53c` (release 1.2.8). The follow-up candidate versions the completed reliability changes as 1.2.9. No release claim is final until the GitHub release workflow and assets are verified.
 
-- Fixed chart/table minimum widths and window-width media queries cannot fit narrow Obsidian split panes. Overflow hiding is not a fix: verify descendant bounds and scroll metrics, with large text and long unbroken content.
-- Do not send `uniqueItems` to Groq strict structured output, or send GPT-OSS the unsupported `reasoning_format` parameter.
-- Paid Groq usage does not guarantee every request succeeds; the provider still enforces account/model rate limits and can return HTTP 429. Provider-only mode must leave affected groups pending rather than fill them with local estimates.
-- Do not apply a fixed 15-minute pause to every provider error or use a saved error as evidence that the current scan failed.
+- Desktop Obsidian CommonJS plugin; `scripts/build.js` bundles `src/sentiment-core.js` and `src/main.js` into tracked `main.js` without a production dependency bundler.
+- `src/main.js`: lifecycle, settings, source discovery, serialized per-date analysis, optional Groq calls, pending-date recovery, generated Markdown, and dashboard.
+- `src/sentiment-core.js`: frontmatter/text cleanup, deduplication, SHA-256, deterministic English lexicon scoring, provider normalization, and Markdown serialization.
+- Notes group by local calendar date of `TFile.stat.ctime`. Folder names, filenames, aliases, and frontmatter dates do not define the date. Include/exclude folder rules shipped in 1.2.8; exclusions win, `/` means root-level notes. Output and trash folders always stay excluded.
+- Schema 2 history identity uses date basis plus date, retaining legacy source paths and separating same-date creation-date groups. Legacy recovery never scores a partial source set. See `HISTORY_IDENTITY.md`.
+- Groq is disabled by default. Manual-only operation is the default. Only `GROQ_API_KEY` is read from the process environment; never save it. Groq-enabled analysis is provider-only, preserving saved results on errors. Local scoring is available when Groq is disabled.
+- Strict structured output falls back to JSON object mode and plain JSON. Completion exhaustion gets one larger retry. Invalid output does not become a neutral score. Provider error bodies are never persisted.
+- Date operations share `analysisQueue`. Pending dates keep safe categories and backoff in plugin data; automatic recovery polls every minute with five-minute reconciliation.
+- Generated notes carry ownership fields. Conflicting unowned paths select a suffix. Dashboard migration changes only an exact embed in an owned dashboard using `vault.process`.
+- Charts show four series with saved visibility, accessible toggle state, narrow-pane container layout, and observer cleanup.
 
-- Do not publish the surrounding vault-work folder or its project notes. Publish only this sanitized plugin directory.
-- Do not use the projectless workspace path ending in the reserved Windows name `con`; use the actual plugin checkout folder.
-- Do not restore the old editable environment-variable setting or enable remote analysis for a fresh install by default.
+## Decisions and rationale
 
-## Relevant files
+1. Treat settings/scope changes during asynchronous work as cancellation, not provider failure. `analysisGuard` captures analysis-relevant settings; `gatherFiles` guards reads and retains a transient validator of original paths and eligibility. `analyzeWithGroq` checks before each request/retry and `analyzeDateNow` checks before accepting a result. Already dispatched requests cannot be recalled.
+2. Preserve saved history when a date has no eligible files. This matches full scans, which do not discover that date. A still-eligible note with empty text continues to yield `insufficient`.
+3. Recheck entry ownership inside `vault.process` immediately before replacing text. A conflicting create fails safely. Keep failures retryable rather than overwrite user content.
+4. Collapse repeated separators in folder rules so `Journal//Private` cannot accidentally miss `Journal/Private`.
+5. Precompile fixed lexicon expressions and count each distinct term once per local analysis. Cache only fixed regexes globally; do not retain note text or per-note counts. Preserve existing scores and emotion ordering.
+6. Resolve release notes from the manifest version and verify the file is nonempty in the release workflow. Native install and provider account tests stay separate.
 
-- `tests/layout-fixture.js`, `tests/layout.test.js` — actual bundled renderer/CSS with fictional data and an Obsidian DOM adapter, width/interaction/cleanup regressions; Playwright is development-only.
-- `tests/dashboard-migration.test.js` — owned embed migration, idempotence, and concurrent/unowned writing protection.
-- `docs/LAYOUT_QA.md` — acceptance inventory and native versus synthetic evidence boundaries.
-- `src/main.js` — plugin settings, scoped date discovery, opt-in Groq, conflict-safe entry writer, and dashboard links.
-- `src/sentiment-core.js` — local analysis and entry rendering.
-- `tests/groq-recovery.test.js` — strict-schema compatibility, completion exhaustion, partial-object rejection, forced retry, rate-limit headers, current-run notices, local provenance, privacy, result preservation, serialized requests, and connection checks.
-- `styles.css` — light styles and Obsidian-aware dark theme.
-- `manifest.json`, `versions.json`, `CHANGELOG.md` — plugin versioning.
-- `.github/workflows/ci.yml`, `.github/workflows/release.yml` — repository CI and tagged release.
-- `README.md`, `PRIVACY.md`, `SECURITY.md` — user guidance and disclosure.
+## Important constraints / failed approaches not to repeat
 
-## Known limitations and unresolved items
+- Never delegate to subagents unless explicitly requested. Use synthetic fixtures only.
+- The public plugin and a previously described personal installed plugin intentionally differ. Never overwrite private installed extensions or plugin data using this public bundle without a separate integration task.
+- Do not copy surrounding workspaces, vault notes, generated history, credentials, private paths, or native screenshots into this public repository.
+- Do not restore provider fallbacks in Groq-enabled mode, editable environment-variable names, or automatic opt-in defaults.
+- Groq strict schemas previously rejected `uniqueItems`; GPT-OSS requests use low reasoning and omit unsupported `reasoning_format`.
+- Preserve source-read isolation: one unreadable note blocks its whole date, not other dates. Never score a partial legacy set.
+- Do not solve layout overflow by hiding content or fixed chart minimum widths. Use actual pane bounds, 200% text, and long-content checks.
+- Startup folder existence must account for adapter/index races. `ensureFolder` accepts a creation race only after confirming a folder exists.
+- Mocked browser tests are not native Obsidian tests. No live Groq calls or private-vault inspection were performed in this audit.
 
-- Release `1.2.5` is published with version-specific notes, three attached assets, and verified build-provenance attestations. Main CI and the tagged release workflow both passed.
-- The local plugin already had version `1.2.4` from the earlier installation, but final `manifest.json` and `styles.css` release-audit fixes were not copied while Obsidian was running. Its `data.json` was not changed. If a future request asks to sync the exact release files locally, close Obsidian first.
-- The current user vault has legacy-date records with saved source paths, and Groq is enabled. Older local-fallback results still require a run of **Analyze changed notes** after Obsidian restarts.
-- Native 1.2.2 startup and day-card rendering have been inspected in the user's dark theme. Browser fixture checks cover the detailed 240–1440px narrow-pane/large-text matrix; native screenshots and user data are not published.
-- CI run `37059163020` and release workflow `37059296342` passed for 1.2.0.
-- The Groq service and configured model can change independently of this plugin; local analysis remains available.
+## Relevant files and verification
 
-## Intensity chart — 1.2.5
+- `tests/audit-regressions.test.js`: 17 cases covering exclusion normalization, read/request cancellation, rename races, background opt-out, empty-date preservation, empty-note behavior, ownership races, successful writes, and create collisions. Seven initial cases failed against baseline before fixes.
+- Existing tests cover lifecycle, timestamp grouping, folder scope, provider retries, legacy recovery, pending dates, and dashboard migration.
+- `tests/layout.test.js` and `tests/layout-fixture.js`: bundled renderer and CSS under Playwright, light/dark 240–1440px panes, large text, 365 days, controls, links, and cleanup.
+- `scripts/benchmark-local.js`: seeded 512-sample exact parity against Git baseline plus seven alternating timing rounds. Local Node 24.19.0 result: median 229ms -> 172ms for 40 analyses of 60,000 characters (1.33x throughput). This is a microbenchmark, not whole-vault performance.
+- `scripts/audit-release.js`: repository privacy checks. `npm audit` reported zero known dependency vulnerabilities in this audit; this is not a security certification.
+- `.github/workflows/ci.yml`: Node 20 functional, privacy, and browser checks. `.github/workflows/release.yml`: same checks, version matching, asset attestation, release publication.
+- `docs/AUDIT_REPORT.md`: findings, residual risks, evidence boundaries.
+- `docs/SOL_6_1_PLAN.md`: ordered implementation tasks with acceptance criteria.
 
-- Regular chart series now include intensityScore, using saved values on the same 1–5 scale. Missing scores are omitted using the existing finite-value filter.
-- Light theme intensity is #7041c4; dark theme is #be9aff. Its dash-dot pattern is distinct from mood, energy, and connection, including the legend swatch.
-- Data-series attributes identify traces and marks for regression checks. Accessible description and SVG title name all four series.
-- The build script import matcher accepts CRLF and LF, fixing Windows source checkouts.
-- Release notes live in docs/RELEASE_NOTES_1.2.5.md and are selected by the release workflow.
-- All local tests and release privacy audit pass. Only sanitized plugin source and synthetic test data belong in this repository.
+## Known remaining issues and architectural questions
+
+- Record JSON and generated Markdown are separate writes; a failed `saveData` can leave a newer Markdown entry than the rolled-back in-memory record. Ownership safety is improved; cross-file transactionality is not solved.
+- Unchanged-source skipping does not fingerprint model/scorer/prompt settings or the local topic field. Decide explicit reanalysis semantics before adding cache invalidation that may spend provider quota.
+- `getAllDates` and per-date `filesForDate` repeatedly enumerate the full vault; normalized folder rules also repeat per file. Large-vault discovery is O(notes x dates), and reconciliation rereads unchanged source text.
+- Lifecycle cleanup is incomplete: `analyzeAllNow` still prepares/saves support files after a loop stopped by unload. Sample connection checks do not share the complete date-analysis guard/queue.
+- Persisted settings/record shapes and output/entry paths lack comprehensive validation. Invalid include rules with dot segments are dropped; a wholly invalid allowlist may become an unrestricted empty allowlist. Needs fail-closed UX/schema design.
+- Raw provider narrative strings become Markdown; assess links/embeds, size bounds, and safe text serialization with native Obsidian behavior before defining impact.
+- Legacy/current groups with the same date compete for one record key. Existing legacy-source priority must be preserved until an explicit migration is designed.
+- Value snapshots cannot detect settings that change away and back between awaits. An epoch counter across all mutation paths is a future hardening option.
 
 ## RESUME HERE
 
-Automatic Mood History 1.2.5 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.2.5. Release tag/source commit: a2eb6b39a87c6016a5455a385643acd037acc303. Main CI 37657910548 and Release workflow 37658046595 passed. All three downloaded release assets passed gh attestation verify with .github/workflows/release.yml enforced as the signer. Published asset SHA-256 values match the downloads. Local core, provider, privacy, and responsive layout checks passed. The public trend chart includes Mood, Energy, Connection, and Intensity with existing saved scores; no analysis rerun is required.
+Read this file, `docs/PROGRESS.md`, `docs/AUDIT_REPORT.md`, and `docs/SOL_6_1_PLAN.md`, then inspect Git status/diff and the actual code. The audit fixes are on `fix/audit-reliability-handoff`; do not redo them. Start the follow-up with persistence recovery, lifecycle completion, and settings/path validation as ordered in the Sol 6.1 plan. Preserve existing records, provider consent, legacy routing, and private installed extensions. Merge/release/native-install status must be verified from GitHub and the progress file; do not infer publication from the unchanged manifest version.
 
-No implementation or publication work remains. Keep private archive code and results outside this repository. The installed personal plugin retains private archive support and has its intensity chart update verified locally. Future release work must preserve its saved data and private features.
-
-## 1.2.6 reliability update (in progress)
-
-- Groq strict mode can return HTTP 400 json_validate_failed; JSON modes can return complete responses with emotion labels outside the old enumeration. A closed emotion list rejected otherwise valid analyses. Provider labels now use bounded Unicode text validation; scores, required fields, and provenance remain strict.
-- One cloud-only source read previously aborted a whole scan. Source failures now preserve that date and permit other dates to proceed, without scoring a partial source set.
-- runtime.pendingDates persists safe failure category, attempts, retryAt, and legacy source routing. One-minute polling retries pending dates with exponential backoff up to an hour, and five-minute reconciliation catches missed events. Automatic mode catches up at startup; manual-only defaults stay unchanged.
-- Output/request failures are scoped to dates; global authentication, rate limits, connection/service failures, and missing models still pause provider work. Successful dates cannot erase other pending dates.
-- New tests: tests/automatic-recovery.test.js covers labels, safe errors, failed-source isolation, persistent recovery, backoff, opt-out, unload, storage rollback, and rate limits.
-- Public source and personal installed bundles intentionally differ. Preserve personal extensions and data in future local installs; publish only this sanitized repository.
-
-## RESUME HERE — current
-1.2.6 implementation and synthetic verification are complete. Finish local integration, final diff review, CI, tag, release, and attestation verification. Earlier 1.2.5 completion sections describe the previous release.
-
-## Verified release completion
-
-1.2.6 is published: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.6
-
-Source/tag commit: 9d0f0a34437ecf3666ad2a3b44bae7af89e401d9. Main CI 38106375258 and Release 38106451316 both passed. All three downloaded assets match GitHub SHA-256 digests. Their attestations passed verification against this repository's release workflow, exact source commit, and refs/tags/1.2.6.
-
-Core, provider, lifecycle, timestamp grouping, legacy recovery, automatic retry, privacy audit, and responsive layout checks passed. Native integration confirmed recovered date groups, matching source hashes, enabled automatic operation, event debounce processing, and preservation of personal extensions and saved history.
-
-## RESUME HERE — completed 1.2.6
-The release is complete and verified. No further implementation or publication remains. Preserve the per-date pending queue, provider-only behavior, opt-in defaults, private installed extensions, and source notes in future changes.
-
-## Chart visibility, 1.2.7 (in progress)
-
-Legend buttons use aria-pressed and persist settings.hiddenChartSeries. chartSeriesViews tracks open charts; redraws reapply display state and disposeDashboard cleans controls. Hiding a series hides its points as well; all-hidden state is explicit. Saves roll back UI on failure. Personal chart daily/monthly marks share the same per-series choice. No score or source records are modified.
-
-RESUME HERE: finish interaction checks, native installation, and publication of 1.2.7.
-
-## Completed 1.2.7 — RESUME HERE
-
-https://github.com/remriel/automatic-mood-history/releases/tag/1.2.7 is published from commit 570a79c6eb099840d12de772cc17b2a8bae8df4b. CI and Release succeeded; all three downloaded assets match published hashes and their source-bound release-workflow attestations verify. Native checks confirmed all four toggles, persistence after reload, synchronized archive daily/monthly visibility, keyboard navigation through visible archive series, and unchanged mood/archive records.
-
-Controls use settings.hiddenChartSeries and chartSeriesViews; disposeDashboard cleans the registry. aria-disabled during saves preserves keyboard focus (native disabled was rejected by the interaction test because it loses focus). No analysis runs are triggered by toggles. Public and private bundles intentionally differ. Work complete.
+Audit publication: PR #1 is open at https://github.com/remriel/automatic-mood-history/pull/1. Final implementation commit 74e251c833447ee842d94d0f3d924da9ff913989 passed GitHub CI run 38485124172 (Node 20 functional/privacy/layout). Later completion edits are documentation-only. No merge, new release, or native installation has occurred.

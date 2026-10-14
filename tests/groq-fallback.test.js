@@ -59,6 +59,7 @@ process.env.GROQ_API_KEY = "test-only-placeholder";
 const LoadedPlugin = require("../main.js");
 const instance = new LoadedPlugin();
 instance.settings = {
+  enableGroq: true,
   model: "openai/gpt-oss-20b"
 };
 instance.groqBlockedUntil = 0;
