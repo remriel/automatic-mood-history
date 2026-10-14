@@ -2,7 +2,7 @@
 
 ## Active follow-up (2026-10-13)
 
-Release candidate follows audit/follow-up head `26c7777dce67be52206bf1176d5ab7f7323a627c`; public main is still 1.2.8 until PR #1 merges. Candidate version 1.2.9 is prepared separately with release notes/changelog. All native tests use the isolated `work/native-qa/profile` and synthetic vault; no installed personal plugin is touched.
+Release 1.2.9 was published from merge commit `de5ecc7be405868cb0079fedd89456ca32712bec`; tag `1.2.9` points to that commit. PR #1 merged and both main CI and release workflows passed. Release URL: https://github.com/remriel/automatic-mood-history/releases/tag/1.2.9. All native tests used only the isolated `work/native-qa/profile` and synthetic vault; no installed personal plugin was touched.
 
 - `runtime.pendingWrites`: version 1 prepared analysis results. JSON is committed authority; persist preparation, apply entry with content-hash comparison, commit record and clear retry/journal in one serialized save. See `PERSISTENCE_PROTOCOL.md`. Recovery needs no provider call once preparation survives restart. Edited owned notes receive a separate recovered entry; user edits remain intact.
 - `storageQueue` captures detached snapshots at dispatch and publishes record commits inside the queue. Previous record objects are never mutated before saving. Obsidian APIs provide neither cross-file transactions nor abort/fsync guarantees; rejected writes may already have completed and replay is idempotent.
@@ -11,7 +11,7 @@ Release candidate follows audit/follow-up head `26c7777dce67be52206bf1176d5ab7f7
 - `vaultPath`/`assertOutputPath` confine output writes, reject absolute/traversal/configuration/trash paths, normalize Windows/repeated separators, and recheck prepared/stored entry paths. Output folder is now repairable in settings.
 - Added focused `storage-recovery`, `lifecycle-cancellation`, and `settings-validation` tests plus shared `reliability-fixture`. Six restart boundaries, edited-note recovery, save serialization, unload at six await boundaries, away-and-back settings, queued sample rate limiting, startup-only authorization, corrupt settings and path confinement pass.
 
-RESUME HERE: PR #1 contains P1 persistence/lifecycle/settings, fingerprint/index, additive history identity and safe narrative serialization. Its latest CI run 38487327796 passed. Candidate 1.2.9 version/note/changelog are being prepared; run release checks, push, verify CI, merge PR #1, and wait for the version-triggered release workflow. Read current PROGRESS for exact release status.
+RESUME HERE: release 1.2.9 and PR #1 are complete. The release workflow passed as run `38487759634`; main CI passed as run `38487759785`. Release assets have matching SHA-256 digests and verified GitHub provenance bound to `.github/workflows/release.yml`, source ref `refs/heads/main`, source commit `de5ecc7be405868cb0079fedd89456ca32712bec`. See PROGRESS for all three digests. No follow-up remains for this objective.
 
 Fingerprint/discovery follow-up: results include analysisFingerprint v1 with source hash, date basis, text/scorer/prompt/model versions, thresholds and local topic. Changed local semantics refresh on the next scan; unchanged remote semantics require an explicit force command. Old records without fingerprints retain provenance and skip unchanged sources. Per-scan indexing stores file references/paths, never text; guards recheck paths, file identity, eligibility and stat metadata around reads/requests. Scope rules cache only normalized paths and invalidate with the settings epoch. Synthetic three-round medians against e01f1ed: 1,000 notes/100 dates, 101 -> 1 enumerations, 162 -> 45ms; 10,000 notes/365 dates, 366 -> 1 enumerations, 6,016 -> 797ms. Reads remain 1,000/10,000 respectively, with exact source/hash parity. This measures discovery/gathering, not network time.
 
@@ -20,7 +20,7 @@ History schema 2 is additive: existing date keys remain; second-basis collisions
 ## Current architecture
 
 Audit date: 2026-10-13. Public repository: https://github.com/remriel/automatic-mood-history.
-Audit baseline was `493f53c` (release 1.2.8). The follow-up candidate versions the completed reliability changes as 1.2.9. No release claim is final until the GitHub release workflow and assets are verified.
+Audit baseline was `493f53c` (release 1.2.8). The follow-up reliability work shipped in 1.2.9. See the completed release link/status above.
 
 - Desktop Obsidian CommonJS plugin; `scripts/build.js` bundles `src/sentiment-core.js` and `src/main.js` into tracked `main.js` without a production dependency bundler.
 - `src/main.js`: lifecycle, settings, source discovery, serialized per-date analysis, optional Groq calls, pending-date recovery, generated Markdown, and dashboard.
