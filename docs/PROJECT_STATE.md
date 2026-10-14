@@ -2,7 +2,7 @@
 
 ## Active follow-up (2026-10-13)
 
-Fresh clean checkout starts from audit head `e01f1ed85c2beb776676d13481b7b15f1562bb21`; public release remains 1.2.8 and PR #1 is open. Work alone, with synthetic data, without installed-plugin changes.
+Release candidate follows audit/follow-up head `26c7777dce67be52206bf1176d5ab7f7323a627c`; public main is still 1.2.8 until PR #1 merges. Candidate version 1.2.9 is prepared separately with release notes/changelog. All native tests use the isolated `work/native-qa/profile` and synthetic vault; no installed personal plugin is touched.
 
 - `runtime.pendingWrites`: version 1 prepared analysis results. JSON is committed authority; persist preparation, apply entry with content-hash comparison, commit record and clear retry/journal in one serialized save. See `PERSISTENCE_PROTOCOL.md`. Recovery needs no provider call once preparation survives restart. Edited owned notes receive a separate recovered entry; user edits remain intact.
 - `storageQueue` captures detached snapshots at dispatch and publishes record commits inside the queue. Previous record objects are never mutated before saving. Obsidian APIs provide neither cross-file transactions nor abort/fsync guarantees; rejected writes may already have completed and replay is idempotent.
@@ -11,36 +11,36 @@ Fresh clean checkout starts from audit head `e01f1ed85c2beb776676d13481b7b15f156
 - `vaultPath`/`assertOutputPath` confine output writes, reject absolute/traversal/configuration/trash paths, normalize Windows/repeated separators, and recheck prepared/stored entry paths. Output folder is now repairable in settings.
 - Added focused `storage-recovery`, `lifecycle-cancellation`, and `settings-validation` tests plus shared `reliability-fixture`. Six restart boundaries, edited-note recovery, save serialization, unload at six await boundaries, away-and-back settings, queued sample rate limiting, startup-only authorization, corrupt settings and path confinement pass.
 
-RESUME HERE: P1 persistence/lifecycle/settings phases are implemented and pass functional/layout suites. Continue with explicit analysis fingerprint semantics, measured per-scan discovery, then separate history coexistence and narrative commits. Native verification still needs an isolated synthetic runtime. Read current PROGRESS before relying on the older audit state below.
+RESUME HERE: PR #1 contains P1 persistence/lifecycle/settings, fingerprint/index, additive history identity and safe narrative serialization. Its latest CI run 38487327796 passed. Candidate 1.2.9 version/note/changelog are being prepared; run release checks, push, verify CI, merge PR #1, and wait for the version-triggered release workflow. Read current PROGRESS for exact release status.
 
 Fingerprint/discovery follow-up: results include analysisFingerprint v1 with source hash, date basis, text/scorer/prompt/model versions, thresholds and local topic. Changed local semantics refresh on the next scan; unchanged remote semantics require an explicit force command. Old records without fingerprints retain provenance and skip unchanged sources. Per-scan indexing stores file references/paths, never text; guards recheck paths, file identity, eligibility and stat metadata around reads/requests. Scope rules cache only normalized paths and invalidate with the settings epoch. Synthetic three-round medians against e01f1ed: 1,000 notes/100 dates, 101 -> 1 enumerations, 162 -> 45ms; 10,000 notes/365 dates, 366 -> 1 enumerations, 6,016 -> 797ms. Reads remain 1,000/10,000 respectively, with exact source/hash parity. This measures discovery/gathering, not network time.
 
 History schema 2 is additive: existing date keys remain; second-basis collisions use created:<date> or legacy:<date>. recordKey routes scans, active commands, pending writes and retries; ownership checks include date basis. No legacy record is promoted or replaced by a current group. Original paths/labels/links are retained; rollback uses a saved pre-upgrade JSON snapshot while archiving schema 2 additions. See HISTORY_IDENTITY.md and history-identity.test.js for collision interruption/restart and rollback evidence. Version 1 cannot losslessly represent collisions; do not downgrade and analyze schema 2 data.
 
-## Current baseline and architecture
+## Current architecture
 
 Audit date: 2026-10-13. Public repository: https://github.com/remriel/automatic-mood-history.
-The audited main baseline is `493f53c` (release 1.2.8). Earlier handoff documents stopped at 1.2.7 and were stale. Manifest and package remain 1.2.8; these audit changes do not publish a new release.
+Audit baseline was `493f53c` (release 1.2.8). The follow-up candidate versions the completed reliability changes as 1.2.9. No release claim is final until the GitHub release workflow and assets are verified.
 
 - Desktop Obsidian CommonJS plugin; `scripts/build.js` bundles `src/sentiment-core.js` and `src/main.js` into tracked `main.js` without a production dependency bundler.
 - `src/main.js`: lifecycle, settings, source discovery, serialized per-date analysis, optional Groq calls, pending-date recovery, generated Markdown, and dashboard.
 - `src/sentiment-core.js`: frontmatter/text cleanup, deduplication, SHA-256, deterministic English lexicon scoring, provider normalization, and Markdown serialization.
 - Notes group by local calendar date of `TFile.stat.ctime`. Folder names, filenames, aliases, and frontmatter dates do not define the date. Include/exclude folder rules shipped in 1.2.8; exclusions win, `/` means root-level notes. Output and trash folders always stay excluded.
-- `records` is keyed only by date. Legacy records retain saved source paths and `legacy-note-date`; current records use `created-at-local-date`. Legacy recovery never scores a partial source set.
+- Schema 2 history identity uses date basis plus date, retaining legacy source paths and separating same-date creation-date groups. Legacy recovery never scores a partial source set. See `HISTORY_IDENTITY.md`.
 - Groq is disabled by default. Manual-only operation is the default. Only `GROQ_API_KEY` is read from the process environment; never save it. Groq-enabled analysis is provider-only, preserving saved results on errors. Local scoring is available when Groq is disabled.
 - Strict structured output falls back to JSON object mode and plain JSON. Completion exhaustion gets one larger retry. Invalid output does not become a neutral score. Provider error bodies are never persisted.
 - Date operations share `analysisQueue`. Pending dates keep safe categories and backoff in plugin data; automatic recovery polls every minute with five-minute reconciliation.
 - Generated notes carry ownership fields. Conflicting unowned paths select a suffix. Dashboard migration changes only an exact embed in an owned dashboard using `vault.process`.
 - Charts show four series with saved visibility, accessible toggle state, narrow-pane container layout, and observer cleanup.
 
-## Decisions and rationale from this audit
+## Decisions and rationale
 
 1. Treat settings/scope changes during asynchronous work as cancellation, not provider failure. `analysisGuard` captures analysis-relevant settings; `gatherFiles` guards reads and retains a transient validator of original paths and eligibility. `analyzeWithGroq` checks before each request/retry and `analyzeDateNow` checks before accepting a result. Already dispatched requests cannot be recalled.
 2. Preserve saved history when a date has no eligible files. This matches full scans, which do not discover that date. A still-eligible note with empty text continues to yield `insufficient`.
 3. Recheck entry ownership inside `vault.process` immediately before replacing text. A conflicting create fails safely. Keep failures retryable rather than overwrite user content.
 4. Collapse repeated separators in folder rules so `Journal//Private` cannot accidentally miss `Journal/Private`.
 5. Precompile fixed lexicon expressions and count each distinct term once per local analysis. Cache only fixed regexes globally; do not retain note text or per-note counts. Preserve existing scores and emotion ordering.
-6. Resolve release notes from the manifest version and verify the file is nonempty before release. No version bump, tag, merge, or personal-vault installation is part of this audit.
+6. Resolve release notes from the manifest version and verify the file is nonempty in the release workflow. Native install and provider account tests stay separate.
 
 ## Important constraints / failed approaches not to repeat
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.9 — 2026-10-13
+
+- Recover staged analysis results across Markdown/JSON storage interruptions; serialize plugin data saves and preserve concurrent user edits.
+- Complete lifecycle and epoch cancellation, coordinate provider sample checks, and report cancelled scan work.
+- Validate persisted settings and vault paths; invalid scope input now fails closed.
+- Fingerprint analyzer semantics and index vault discovery once per full scan.
+- Preserve legacy and creation-date histories together with additive identities.
+- Bound provider narrative text and prevent Markdown links, embeds, images and HTML from becoming active content.
+- Verify functional, responsive layout, synthetic interruption/restart and native Obsidian behavior. See `docs/RELEASE_NOTES_1.2.9.md`.
+
+## 1.2.8
+
+Add vault-relative include/exclude folder rules with exclusions taking precedence. Continue to group source notes by local creation timestamp and preserve earlier history. See `docs/RELEASE_NOTES_1.2.8.md`.
+
 ## 1.2.7
 
 Add persistent keyboard-accessible show/hide controls for Mood, Energy, Connection, and Intensity in the chart legend.
