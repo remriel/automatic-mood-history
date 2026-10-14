@@ -4,7 +4,7 @@
 
 Execute the supplied Sol 6.1 plan and publish version 1.2.9. PR #1 is open against public 1.2.8 main. Implementation is on the existing review branch; an isolated synthetic vault/profile was used for native checks. No installed personal plugin or vault is touched. No subagents are used.
 
-**Follow-up/release progress: 90% — implementation, synthetic/native QA and release candidate complete; publication is awaiting the release workflow.**
+**Progress: 100% — reliability follow-up, release 1.2.9, and provenance checks are complete.**
 
 - [x] Read instructions, all handoff documents, source and tests; reconcile Git/PR/CI.
 - [x] Baseline npm ci, npm test, npm run test:layout, npm run audit:release pass.
@@ -14,15 +14,25 @@ Execute the supplied Sol 6.1 plan and publish version 1.2.9. PR #1 is open again
 - [x] Analysis fingerprints and measured per-scan discovery index.
 - [x] Separate history identity and safe narrative commits.
 - [x] Native synthetic verification; functional/layout/privacy/dependency checks and PR CI pass.
-- [ ] Verify version 1.2.9 release assets, hashes and source-bound GitHub attestation.
+- [x] Verify version 1.2.9 release assets, hashes and source-bound GitHub attestation.
 
-Release candidate: manifest/package/package-lock/changelog/notes version 1.2.9 on `fix/audit-reliability-handoff`. PR #1 head `26c7777dce67be52206bf1176d5ab7f7323a627c`; GitHub CI run 38487327796 passed. Three-round benchmark and additive schema tests are documented in PROJECT_STATE. Native QA on Obsidian 1.14.4 used only an isolated synthetic vault/profile: local analysis and chart visibility controls passed; raw narrative created 2 images, 1 embed, 1 link, and 0 scripts; safe generated narrative rendered zero active images/embeds/links/scripts. No live provider or personal vault was accessed.
+Published: [Automatic Mood History 1.2.9](https://github.com/remriel/automatic-mood-history/releases/tag/1.2.9) from tag `1.2.9`, pointing at merge commit `de5ecc7be405868cb0079fedd89456ca32712bec`. [PR #1](https://github.com/remriel/automatic-mood-history/pull/1) merged successfully. Release workflow run [38487759634](https://github.com/remriel/automatic-mood-history/actions/runs/38487759634) passed, including tests, version match, GitHub asset attestation and release upload. Main CI run 38487759785 passed; versioned PR CI run 38487671938 passed.
 
-Exact next steps: run complete release checks, update PR #1 description and push the 1.2.9 candidate; wait for its CI; merge PR #1; verify the main-triggered release workflow creates versioned assets and provenance; verify API hashes and GitHub attestation; finish PROJECT_STATE/PROGRESS and respond with the published release URL.
+Release assets and SHA-256 digests were fetched and verified against both the GitHub release API and the signed provenance statement:
+
+- `main.js`: `ae477d5940753e1e9971798994595b55296c0f6c183b814ada7e69f65657c572`
+- `manifest.json`: `82cba2830a358b5cbb10a5a1546af27acc74562ac759a0a064db7cd03a940790`
+- `styles.css`: `8bd570ee2f4a405a948d6f9c1e0a962d590a692bbd3396990271def954e8272b`
+
+`gh attestation verify` succeeded with the expected repository release workflow, `refs/heads/main`, and source commit `de5ecc7be405868cb0079fedd89456ca32712bec`. Provenance run identity is `https://github.com/remriel/automatic-mood-history/.github/workflows/release.yml@refs/heads/main`; the attestation subject lists all three published assets and matching digests.
+
+Native QA on Obsidian 1.14.4 used only an isolated synthetic vault/profile: local analysis and chart visibility controls passed; raw narrative created two images, one embed, one link, and zero scripts; safe generated narrative rendered zero active images/embeds/links/scripts. No live provider or personal vault was accessed.
+
+Exact next steps: no release work remains. Keep the completed release evidence here. Any later release should start from current `main` and update the manifest, package and lock versions, changelog and versioned notes together.
 
 P1 commit b79adc2 is pushed; GitHub CI run 38486468029 passed. Fingerprint/discovery suite also passes. Benchmark against e01f1ed: 1,000 notes/100 dates: 101 -> 1 enumerations, identical 1,000 reads, median 162 -> 45ms. 10,000 notes/365 dates: 366 -> 1 enumerations, identical 10,000 reads, median 6,016 -> 797ms. Three rounds, exact source/hash parity; no network timing claim.
 
-Candidate 1.2.9 checks on the versioned tree: `npm test`, `npm run test:layout`, `npm run audit:release`, `npm audit` (zero advisories), and `git diff --check` pass. Native synthetic UI/Markdown checks passed on the same source bundle; version metadata only changed afterward. PR run 38487327796 is green on the source head; versioned candidate checks must finish on the next PR head. Final percentage remains 90% until release workflow assets and attestation verify.
+Candidate verification on the versioned tree: `npm ci`, `npm test`, `npm run test:layout`, `npm run audit:release`, `npm audit` (zero advisories), and `git diff --check` all pass. CI, native synthetic QA, asset hashes, and source-bound provenance have been verified. GitHub Actions reported Node.js 20/ubuntu-latest migration notices; these did not fail either workflow and do not change the release assets.
 
 ---
 
