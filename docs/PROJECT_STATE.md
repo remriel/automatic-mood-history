@@ -2,7 +2,7 @@
 
 ## Current objective and status (2026-10-15)
 
-Substantially redesign the emotional analysis algorithm, validate contextual inference and uncertainty, preserve reliability/privacy/compatibility, and publish release 1.3.0. Implementation and local verification are complete; GitHub review/CI/publication and provenance checks remain. Branch: feat/contextual-emotional-analysis. Baseline: aea50c20f4916592570876a0aaeb0c3dcf9940f0 (completed release 1.2.9).
+Substantially redesign the emotional analysis algorithm, validate contextual inference and uncertainty, preserve reliability/privacy/compatibility, and publish release 1.3.0. Release 1.3.0 is published and verified: https://github.com/remriel/automatic-mood-history/releases/tag/1.3.0. PR #3 merged; tag/source commit 29e6cee33f16132b02322f3c6c826ba1629df441. PR, main and release CI all passed. Baseline: aea50c20f4916592570876a0aaeb0c3dcf9940f0 (completed release 1.2.9).
 
 No subagents, private vault inspection, personal installed-plugin modifications or live provider calls were used. Only synthetic fixtures and attributed public-domain excerpts are in this repository.
 
@@ -42,6 +42,10 @@ No subagents, private vault inspection, personal installed-plugin modifications 
 - Existing Methodology notes are preserved on upgrade. README and EMOTIONAL_ENGINE.md describe the new engine. No new native Obsidian or live Groq semantic evaluation was performed.
 - Obsidian provides no cross-file transaction/fsync guarantee; the existing prepared-write replay protocol is the recovery mechanism. Already dispatched requests cannot be recalled after opt-out.
 
+## Published release evidence
+
+Release 1.3.0 was published at 2026-10-15T18:48:18Z and confirmed latest. Tag 1.3.0 points to 29e6cee33f16132b02322f3c6c826ba1629df441. PR #3: https://github.com/remriel/automatic-mood-history/pull/3. PR CI run 38788373265, source main CI run 38788530771 and release workflow run 38788530728 all passed. All three published assets were downloaded, byte-compared with the source tree, compared with GitHub API digests and individually verified with gh attestation verify using the expected release workflow, source ref refs/heads/main, source digest 29e6cee33f16132b02322f3c6c826ba1629df441, and denial of self-hosted runners. Digests and links are in PROGRESS.md and RELEASE_VERIFICATION_1.3.0.md.
+
 ## RESUME HERE
 
-Inspect Git status/diff and docs/PROGRESS.md. Source and local validation are complete for 1.3.0. Finish GitHub PR/CI, merge/publication, download and compare release assets, verify source-bound GitHub attestation, then replace this pending status with exact release evidence. Do not rebuild scope or redo the completed 1.2.9 reliability work. Keep final PROGRESS.md and PROJECT_STATE.md in the repository and provide output copies to the user.
+This objective is complete. Read PROGRESS.md, inspect actual Git status/diff and current source before a new task. Do not redo 1.2.9 reliability work or republish 1.3.0. Any future release must update all version metadata, rebuild/test, and verify assets/provenance again. Preserve history identity, provider consent, private installed extensions and the explicit quotation-storage privacy disclosure. Local comparison snapshots can become stale after earlier records change; reanalysis is explicit. No live-provider/native semantic verification or clinical-accuracy claim is implied by the completed engineering work.

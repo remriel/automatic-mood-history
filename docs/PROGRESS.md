@@ -4,7 +4,7 @@
 
 Replace weak emotional scoring/inference, benchmark contextual nuance and calibrated uncertainty, preserve compatibility/privacy/performance, and publish release 1.3.0. No subagents or private vaults are used.
 
-**Progress: 85% — source, benchmark, local functional/browser/privacy validation complete; GitHub publication remains.**
+**Progress: 100% — implementation, validation, publication, asset digests and source-bound provenance verified.**
 
 - [x] Read instructions and handoff; reconcile baseline main aea50c2 and completed 1.2.9 release.
 - [x] Critically replace the global word-frequency methodology with contextual evidence, independent axes and abstention.
@@ -14,13 +14,13 @@ Replace weak emotional scoring/inference, benchmark contextual nuance and calibr
 - [x] Verify 78 synthetic and eight source-checked public journal excerpts, counterfactuals and invariants.
 - [x] Pass full functional tests, expanded browser evidence/layout, dependency/privacy audits and diff checks.
 - [x] Bump manifest/package/lock/version map to 1.3.0, rebuild main.js and write release/design/privacy documentation.
-- [ ] Push branch, open PR, verify latest-head GitHub CI, merge.
-- [ ] Verify release workflow, tag, downloaded assets/digests and source-bound provenance.
-- [ ] Record publication evidence and deliver final continuity files.
+- [x] Push branch, open PR, verify latest-head GitHub CI, merge.
+- [x] Verify release workflow, tag, downloaded assets/digests and source-bound provenance.
+- [x] Record publication evidence and deliver final continuity files.
 
 ## Current state
 
-Branch feat/contextual-emotional-analysis. All implementation is complete; the public repository is not yet updated. The release workflow publishes from main when manifest.json changes, after functional/privacy/layout checks and asset attestation.
+Release 1.3.0 is published and marked latest: https://github.com/remriel/automatic-mood-history/releases/tag/1.3.0. PR #3 merged: https://github.com/remriel/automatic-mood-history/pull/3. Source/tag commit: 29e6cee33f16132b02322f3c6c826ba1629df441. The public repository is synchronized. All three downloaded release assets exactly match the source tree and GitHub API digests.
 
 Tests cover local context, source spans, independent/null axes, counterfactual attribution, negation, quoted/abstract/hypothetical text, intensity/repetition, provider omissions and fabricated evidence, direction conflicts, failure preservation, restarts and history compatibility. Existing reliability suites also pass. Local browser checks cover actual bundled code/CSS in light/dark 240–1440px, 200% text, expanded long evidence and inert hostile text. No new native or live-provider semantic test was performed.
 
@@ -28,12 +28,20 @@ Benchmark: baseline to new engine improves whole cases 7/78 → 78/78 synthetic 
 
 ## Blockers
 
-None. GitHub CI/publication/provenance must still be verified before claiming a published release.
+None. PR CI 38788373265, source main CI 38788530771 and release workflow 38788530728 all passed. Separate gh attestation verify checks passed for main.js, manifest.json and styles.css, constrained to the release workflow, refs/heads/main and source commit 29e6cee33f16132b02322f3c6c826ba1629df441. No self-hosted runner was accepted.
 
-## Exact ordered next steps
+## Publication evidence
 
-1. Final source/doc diff review and privacy/version checks; stage and commit only project files.
-2. Push the branch, open and attach a PR, wait for current-head CI.
-3. Merge the verified change; wait for main CI and release workflow without triggering a duplicate tag workflow.
-4. Confirm 1.3.0 is latest, tag matches source, download assets and compare hashes; verify GitHub attestation.
-5. Update these continuity files with exact publication evidence, synchronize the documentation, and copy final deliverables into outputs.
+- Release: https://github.com/remriel/automatic-mood-history/releases/tag/1.3.0
+- Merged PR: https://github.com/remriel/automatic-mood-history/pull/3
+- PR CI: https://github.com/remriel/automatic-mood-history/actions/runs/38788373265
+- Main CI: https://github.com/remriel/automatic-mood-history/actions/runs/38788530771
+- Release workflow: https://github.com/remriel/automatic-mood-history/actions/runs/38788530728
+- Published at 2026-10-15T18:48:18Z, normal release, tag 1.3.0, latest confirmed.
+- main.js SHA-256: 55dbe7d12a48a1a0ea580980daa1db49aca05032636ea2654d3a752538b0d83d
+- manifest.json SHA-256: 3726ae0c1caa36d4fe104d56ad6eb9dcb44b1156d1504f9c9801ef1f71f668c3
+- styles.css SHA-256: 8dfaf8866f1cda3301a1765cd3d6240ba803d0200fd042ea0e2f724b7edfc811
+
+## Exact next steps
+
+No implementation or release work remains for this objective. Future work starts from current main and these verified release assets. Keep benchmark limitations and quotation-storage privacy disclosures intact.
