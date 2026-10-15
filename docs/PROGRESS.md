@@ -1,3 +1,20 @@
+## Active follow-up: emotional content recall (2026-10-15)
+
+Objective: fix missing emotional/charged writing and verify the three user-reported dates in the installed plugin. Progress: 100% — verified locally and in Obsidian; completed code is synchronized in PR #4. This means ready for review, not a claim that a public 1.3.2 release exists.
+
+- [x] Reconcile clean upstream main, instructions, source and saved results.
+- [x] Inspect the three reported dates locally; no private text enters Git.
+- [x] Reproduce live 1.3.1 failures: fallback responses misplaced evidence containers; responses can also contradict supported score directions.
+- [x] Preserve charged textual evidence separately from personal mood; fix validation feedback/rechecks, numeric-axis isolation and missing grounded tags.
+- [x] Add synthetic regression tests; full functional, layout, release privacy and diff checks pass.
+- [x] Verify installed behavior on the reported dates, synchronize GitHub, and prepare continuity files and the installable bundle.
+
+Current state: version 1.3.2 is installed. The original 1.3.1 plugin, data and relevant generated entries are backed up outside Git. All three reported dates are persisted as complete Groq entries, with 5, 7 and 6 grounded signals respectively; none remains pending. One date required a later retry after the first installed attempt failed, and the successful retry used the existing completion-limit recovery. After plugin reload, the records still have the same status, evidence and timestamps. Native rendering produced three cards and three evidence panels, labeled textual charge, and zero active link/image/script/iframe elements within the evidence. All nine original source-file hashes are unchanged. All installed assets match the tested build. No private source text or provider output was committed.
+
+GitHub: https://github.com/remriel/automatic-mood-history/pull/4. Implementation commit ab751d5de1982dc5a4d11c7aeb1561be0b47b6b8 passed CI run 38802905129. Functional tests (including charged-content regressions), responsive layout, syntax, privacy audit and diff checks pass. Final continuity-only updates do not change the tested assets.
+
+Blockers: none. No implementation work remains. Exact next steps for a maintainer: review/merge PR #4 when desired; the existing main-branch version workflow then publishes 1.3.2. If publishing, verify release asset digests and provenance before claiming the release complete. Previously saved remote dates outside the three refreshed cases still require explicit reanalysis. Preserve current provider consent, source scope and private backups. Earlier completed-release sections below are historical.
+
 ## 1.3.1 recall correction (2026-10-15)
 
 The 1.3.0 abstention rules were too aggressive for personal reflective writing. Preserve blockquote prose and Mermaid mindmaps, and validate provider quote provenance without requiring the local English classifier to reproduce the inference. Do not equate analytical style, metaphor or unmet needs with emotional absence. One bounded semantic recheck handles empty provider evidence when personal signals are present. Tests use synthetic examples; private validation material is never committed. ENGINE_VERSION=contextual-evidence-v3, prompt=evidence-context-prompt-v3, pipeline=markdown-text-v4. Completed and published as 1.3.1: https://github.com/remriel/automatic-mood-history/releases/tag/1.3.1. Source commit a399e1c82046add8ce0e5fd8d5aa3b7bd183edd8; release workflow 38800867759 passed all functional/privacy/browser checks and attested the assets. Release API digests match all three tested files. Installed copy updated with prior files backed up, and a live user-authorized reanalysis successfully changed the reported insufficient entry to complete with quoted evidence. Private source text and identifying content were not committed. Progress: 100%; no fix/publication work remains. Earlier sections describe historical 1.3.0 behavior and are superseded by this recall correction.

@@ -53,6 +53,7 @@ function fixtureHTML() {
         if(options.evidence) {
           const record=plugin.records[date];record.connectionScore=null;
           record.insights={version:1,evidence:[{dimension:'mood',emotion:'anxious',direction:'negative',confidence:'medium',quote:'I feel anxious after vague feedback. '+('LongEvidenceWord'.repeat(10))}],observations:[{kind:'need',description:'An explicit need is stated; no hidden motive is inferred.',quotes:['I need some quiet. <img src="fictional"> ![[Fictional]]'],confidence:'low'}],limitations:[]};
+          record.insights.evidence.push({dimension:'intensity',basis:'textual',emotion:'indignation',direction:'negative',confidence:'medium',quote:'This fictional demand turns every independent choice into an offense.'});
           record.historyComparison={version:1,changes:[{dimension:'mood',delta:-1,sampleSize:3}],situations:[{context:'vague feedback',emotion:'anxious'}]};
         }
       }

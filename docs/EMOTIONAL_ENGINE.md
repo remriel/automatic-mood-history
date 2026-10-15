@@ -1,5 +1,15 @@
 # Emotional engine 1.3: design, evidence and limits
 
+## 1.3.2 recall and textual-charge correction
+
+The following changes supersede the earlier provider behavior below. Provider signals may add `basis: personal | textual`; absent basis remains compatible with historical personal evidence. Newly requested structured responses require the field. Textual basis is valid only for intensity. It describes the charge of a source passage, including commentary or clipped text, without attributing its feelings to the author. Entries and dashboard evidence label it explicitly. Historical numerical intensity comparisons require the same evidence-basis set. The deterministic local rules remain personal-evidence rules and do not gain semantic classification of arbitrary commentary.
+
+Source matching still requires exact contiguous text. Only a misplaced top-level observations/limitations container is relocated into insights, with shape/bounds validated afterward. Conflicting duplicates remain invalid. Numeric scores that oppose their retained evidence are set to null with an explicit limitation; other evidence survives. Nothing substitutes an invented score. Grounded labels missing from the top-level emotion array are retained within the existing six-label bound.
+
+Every first empty provider assessment receives one bounded semantic review, including indirect/second-person language outside local rules. A genuinely neutral review can abstain. If recognizable local personal signals are omitted again, the result remains pending and preserves history. Format retries receive bounded fixed validation guidance; provider bodies never become retry instructions. GPT-OSS reasoning effort is medium; model choice, completion caps, format fallbacks, consent, scope checks and cancellation are unchanged. Additional reasoning and semantic review can increase provider latency and token use.
+
+Regression coverage is in `tests/charged-content.test.js`, with complementary provider, persistence, history and layout checks. Three user-reported dates were also checked locally with the enabled provider. Private source text/responses are excluded from public fixtures. Exact-source checks verify provenance, not every interpretation. These tests do not establish general semantic recall or psychological accuracy.
+
 ## Critical assessment of 1.2.9
 
 Baseline commit: `aea50c20f4916592570876a0aaeb0c3dcf9940f0`.

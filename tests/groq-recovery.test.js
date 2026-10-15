@@ -60,14 +60,14 @@ async function run() {
   let plugin = fixture();
   respond = (payload) => {
     assert.strictEqual(payload.response_format.json_schema.schema.properties.emotions.uniqueItems, undefined);
-    assert.strictEqual(payload.reasoning_effort, "low");
+    assert.strictEqual(payload.reasoning_effort, "medium");
     assert.strictEqual(payload.include_reasoning, false);
     assert.strictEqual(payload.reasoning_format, undefined);
     assert.deepStrictEqual(payload.messages.map((message) => message.role), ["system", "user"]);
     return success({ ...valid, emotions: ["hopeful", "hopeful"] });
   };
   const result = await plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation.");
-  assert.deepStrictEqual(result.emotions, ["hopeful"], "local validation deduplicates without an unsupported remote constraint");
+  assert.deepStrictEqual(result.emotions, ["hopeful", "peaceful", "supported"], "validation deduplicates and retains every grounded evidence label within the tag limit");
   assert.strictEqual(requests.length, 1);
 
   plugin = fixture();

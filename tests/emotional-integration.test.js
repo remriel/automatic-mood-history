@@ -27,7 +27,11 @@ async function run() {
   }
   assert.throws(() => p.parseGroqAnalysis(reply(providerResult([evidence("mood", "A fabricated quotation", "sad")])), text), /source evidence/);
   const wrongDirection = providerResult([evidence("mood", "I feel sad", "sad")]); wrongDirection.moodScore = 5;
-  assert.throws(() => p.parseGroqAnalysis(reply(wrongDirection), text), /contradicts/);
+  const conflictingAxis = p.parseGroqAnalysis(reply(wrongDirection), text);
+  assert.equal(conflictingAxis.moodScore, null);
+  assert.equal(conflictingAxis.valence, "unknown");
+  assert.equal(conflictingAxis.insights.evidence.length, 1);
+  assert(conflictingAxis.insights.limitations.some(item => item.includes("conflicted")));
   assert.throws(() => p.parseGroqAnalysis(reply(providerResult([evidence("mood", "I feel sad", "bipolar disorder")])), text), /diagnostic/);
   assert.throws(() => p.parseGroqAnalysis(reply(valid), text), /grounded/);
   assert.equal(p.parseGroqAnalysis(reply(valid)).moodScore, valid.moodScore, "historical result parsing remains compatible");
