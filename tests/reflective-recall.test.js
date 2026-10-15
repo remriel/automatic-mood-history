@@ -29,7 +29,7 @@ async function run() {
   assert.equal(calls,2,"one semantic recheck, no repeated format retries");
   calls=0;
   await p.analyzeWithGroq("2030-01-01","I study love as a literary concept.");
-  assert.equal(calls,1,"unrelated abstract study may still abstain");
+  assert.equal(calls,2,"one semantic review precedes abstention even without local lexical matches");
   console.log("PASS reflective/indirect evidence, self-quotation, prose mindmaps, blockquotes and bounded empty-evidence recheck");
 }
 run().catch(error=>{console.error(error);process.exitCode=1;});

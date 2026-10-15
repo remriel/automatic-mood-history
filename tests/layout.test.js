@@ -144,6 +144,7 @@ async function inspectLayout(page, label) {
       assert.equal(await page.locator('.auto-mood-evidence img,.auto-mood-evidence a,.auto-mood-evidence script,.auto-mood-evidence iframe').count(),0,'evidence remains inert text');
       assert(await page.locator('.auto-mood-evidence').count()>=12,'unscored days retain needs and uncertainty evidence');
       assert((await page.locator('.auto-mood-day-scores').first().innerText()).includes('—'),'unknown connection is not a neutral score');
+      assert((await page.locator('.auto-mood-evidence').first().innerText()).includes('textual charge'),'textual intensity is distinguished from personal mood');
     }
     if(process.env.EMOTIONAL_LAYOUT_SCREENSHOT) {
       await page.evaluate(()=>fixture.configure({paneWidth:1000,evidence:true,count:3}));

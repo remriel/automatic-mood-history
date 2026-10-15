@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.2 — 2026-10-15
+
+- Retain emotionally charged commentary, second-person address and clipped material as explicitly labeled textual intensity without assigning personal mood, energy or connection from that material.
+- Recover misplaced evidence containers in JSON fallback without altering claims; give format retries validation guidance.
+- Leave contradictory numeric axes unscored while preserving other grounded evidence and explaining the omission.
+- Review every empty assessment once, including wording outside local English rules, and retain validated emotion labels omitted from the top-level list.
+- Use medium reasoning effort for supported GPT-OSS models; keep the selected model and existing request limits.
+- Add synthetic regressions, persistence/history isolation and responsive textual-evidence checks.
+
 ## 1.3.1 — 2026-10-15
 
 - Fix false emotional exclusions for reflective writing, indirect expression, blockquotes and prose mindmaps.

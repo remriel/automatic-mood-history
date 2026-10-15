@@ -1,3 +1,18 @@
+## Active follow-up: emotional content recall (2026-10-15)
+
+Objective: fix missing emotional/charged writing and verify the three user-reported dates in the installed plugin. Progress: 85% — implementation and local checks pass; final installed verification and GitHub synchronization are in progress.
+
+- [x] Reconcile clean upstream main, instructions, source and saved results.
+- [x] Inspect the three reported dates locally; no private text enters Git.
+- [x] Reproduce live 1.3.1 failures: fallback responses misplaced evidence containers; responses can also contradict supported score directions.
+- [x] Preserve charged textual evidence separately from personal mood; fix validation feedback/rechecks, numeric-axis isolation and missing grounded tags.
+- [x] Add synthetic regression tests; full functional, layout, release privacy and diff checks pass.
+- [ ] Verify installed behavior on the reported dates, synchronize GitHub, deliver continuity files.
+
+Current state: version 1.3.2 code is installed with the original 1.3.1 plugin, data and relevant generated entries backed up outside Git. All three dates succeeded in a read-only live probe. The first installed persistence run saved two; one invalid provider response is being retried. No private source content has been committed. Nine original source files have pre-change hashes for final comparison.
+
+Blockers: none. Exact next steps: finish the remaining installed date, verify persisted JSON/Markdown and source hashes, push/open a PR and confirm its CI, then deliver continuity documents and the installable bundle. The branch is intended for review; no 1.3.2 GitHub release is claimed. Earlier completed-release sections below are historical.
+
 ## 1.3.1 recall correction (2026-10-15)
 
 The 1.3.0 abstention rules were too aggressive for personal reflective writing. Preserve blockquote prose and Mermaid mindmaps, and validate provider quote provenance without requiring the local English classifier to reproduce the inference. Do not equate analytical style, metaphor or unmet needs with emotional absence. One bounded semantic recheck handles empty provider evidence when personal signals are present. Tests use synthetic examples; private validation material is never committed. ENGINE_VERSION=contextual-evidence-v3, prompt=evidence-context-prompt-v3, pipeline=markdown-text-v4. Completed and published as 1.3.1: https://github.com/remriel/automatic-mood-history/releases/tag/1.3.1. Source commit a399e1c82046add8ce0e5fd8d5aa3b7bd183edd8; release workflow 38800867759 passed all functional/privacy/browser checks and attested the assets. Release API digests match all three tested files. Installed copy updated with prior files backed up, and a live user-authorized reanalysis successfully changed the reported insufficient entry to complete with quoted evidence. Private source text and identifying content were not committed. Progress: 100%; no fix/publication work remains. Earlier sections describe historical 1.3.0 behavior and are superseded by this recall correction.

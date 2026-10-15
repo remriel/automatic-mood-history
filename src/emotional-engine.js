@@ -2,7 +2,7 @@
 // an absent signal is unknown, never evidence for the middle of a scale.
 const AXES = ["mood", "energy", "connection", "intensity"];
 const OBSERVATION_KINDS = ["change", "ambivalence", "contradiction", "coexistence", "sarcasm", "pattern", "need", "trigger"];
-const ENGINE_VERSION = "contextual-evidence-v3";
+const ENGINE_VERSION = "contextual-evidence-v4";
 const OBSERVATION_DESCRIPTIONS = {
   ambivalence: "Positive and painful feelings coexist in the quoted evidence; neither side cancels the other.",
   contradiction: "The quoted claims appear in tension. Their relationship is unresolved, not proof of dishonesty or a hidden feeling.",
@@ -103,6 +103,9 @@ function sourceEvidenceSpan(raw, text, masked) {
   for (let attempt = 0; attempt < 8; attempt++) {
     start = text.indexOf(quote, start + 1);
     if (start < 0) return -1;
+    // Textual charge is a property of the cited passage, not an assertion that
+    // the author personally feels an attributed or quoted emotion.
+    if (raw.basis === "textual" && raw.dimension === "intensity") return start;
     // Verify the quotation, not whether an English rule engine can reproduce
     // the model's interpretation. Reflective/metaphorical evidence is valid.
     const boundary = Math.max(text.lastIndexOf(".", start - 1), text.lastIndexOf("!", start - 1), text.lastIndexOf("?", start - 1), text.lastIndexOf(";", start - 1), text.lastIndexOf("\n", start - 1)) + 1;
@@ -132,14 +135,17 @@ function normalizeInsights(input, sourceText, options = {}) {
   const seen = new Set();
   for (const raw of Array.isArray(input.evidence) ? input.evidence.slice(0, 16) : []) {
     if (!raw || !AXES.includes(raw.dimension)) continue;
+    if (raw.basis !== undefined && !["personal", "textual"].includes(raw.basis)) continue;
+    if (raw.basis === "textual" && raw.dimension !== "intensity") continue;
     const quote = boundedText(raw.quote, 240);
     const start = maskedSource !== null ? sourceEvidenceSpan(raw, sourceText, maskedSource) : typeof sourceText === "string" ? sourceText.indexOf(quote) : raw.start;
     if (!quote || typeof sourceText === "string" && start < 0) continue;
     if (!["positive", "negative", "mixed", "neutral"].includes(raw.direction)) continue;
-    const key = `${raw.dimension}:${quote}:${raw.direction}`;
+    const key = `${raw.dimension}:${raw.basis || "personal"}:${quote}:${raw.direction}`;
     if (seen.has(key)) continue;
     seen.add(key);
     evidence.push({ dimension: raw.dimension, quote, direction: raw.direction,
+      ...(raw.basis ? { basis: raw.basis } : {}),
       emotion: boundedText(raw.emotion, 48).replace(/[^\p{L}\p{M} -]/gu, ""),
       confidence: capCertainty(raw.confidence),
       ...(Number.isInteger(start) && start >= 0 ? { start, end: start + quote.length } : {}) });
@@ -175,6 +181,8 @@ function assertProviderInsights(value) {
   const confidence = value => ["low", "medium", "high"].includes(value);
   if (!value || value.version !== 1 || !array(value.evidence, 16) || !array(value.observations, 8) || !array(value.limitations, 6) ||
       value.evidence.some(item => !item || !AXES.includes(item.dimension) || !text(item.quote, 240, 1) ||
+        item.basis !== undefined && !["personal", "textual"].includes(item.basis) ||
+        item.basis === "textual" && item.dimension !== "intensity" ||
         !["positive", "negative", "mixed", "neutral"].includes(item.direction) || !text(item.emotion, 48) || !confidence(item.confidence)) ||
       value.observations.some(item => !item || !OBSERVATION_KINDS.includes(item.kind) || !text(item.description, 300, 1) ||
         !array(item.quotes, 3) || !item.quotes.length || item.quotes.some(quote => !text(quote, 240, 1)) || !confidence(item.confidence)) ||
@@ -199,23 +207,37 @@ function groundedAnalysis(analysis, sourceText, options = {}) {
     const items = insights.evidence.filter(item => item.dimension === axis);
     const positive = items.some(item => item.direction === "positive");
     const negative = items.some(item => item.direction === "negative");
-    if (options.checkAttribution && Number.isFinite(output[`${axis}Score`]) && (positive && !negative && output[`${axis}Score`] < 3 || negative && !positive && output[`${axis}Score`] > 3))
-      throw new Error("Emotional score contradicts its cited evidence direction.");
+    if (options.checkAttribution && Number.isFinite(output[`${axis}Score`]) && (positive && !negative && output[`${axis}Score`] < 3 || negative && !positive && output[`${axis}Score`] > 3)) {
+      // A bad numeric axis does not invalidate the other grounded passages.
+      // Abstain on that axis; never silently invent a corrected score.
+      output[`${axis}Score`] = null;
+      insights.dimensionConfidence[axis] = "low";
+      insights.limitations.push(`${axis}: the proposed score conflicted with the cited direction and was left unscored.`);
+    }
     if (axis === "mood" && positive && negative) output.valence = "mixed";
   }
   if (output.moodScore === null) output.valence = "unknown";
-  output.emotions = (analysis.emotions || []).filter(emotion => insights.evidence.some(item => item.emotion.toLowerCase() === emotion.toLowerCase())).slice(0, 6);
+  output.emotions = [...new Set([
+    ...(analysis.emotions || []).filter(emotion => insights.evidence.some(item => item.emotion.toLowerCase() === emotion.toLowerCase())),
+    ...insights.evidence.map(item => item.emotion).filter(Boolean)
+  ].map(emotion => emotion.toLowerCase()))].slice(0, 6);
+  const textualCharge = insights.evidence.some(item => item.basis === "textual");
+  const personalEvidence = insights.evidence.some(item => item.basis !== "textual");
   if (options.checkAttribution) output.summary = output.emotions.length ?
     `Expressed states include ${output.emotions.join(", ")}. ${output.valence === "mixed" ? "The evidence retains mixed or competing feelings. " : ""}Only supported dimensions receive scores; see the quoted context.` :
     "Only the supported dimensions receive scores. See the quoted evidence for the expressed experience.";
+  if (options.checkAttribution && textualCharge) output.summary = personalEvidence ?
+    `Expressed states and charged material include ${output.emotions.join(", ") || "the cited signals"}. Textual intensity describes the writing; mood, energy and connection require personal evidence.` :
+    `The writing contains emotionally charged material${output.emotions.length ? ` (${output.emotions.join(", ")})` : ""}. Intensity describes the cited text; personal mood, energy and connection are not established.`;
   if (insights.evidence.length === 0) {
     output.summary = "The text does not provide enough grounded personal emotional evidence to assign scores.";
     output.drivers = [];
   } else {
     // Narrative drivers always carry their concrete anchor. Optional model prose
     // cannot replace a verified quotation as the explanation for a score.
-    output.drivers = insights.evidence.filter(item => item.dimension !== "intensity").slice(0, 4)
-      .map(item => `${item.dimension}: ${item.emotion || item.direction} — “${item.quote}”`.slice(0, 250));
+    const drivers = insights.evidence.filter(item => item.dimension !== "intensity" || item.basis === "textual");
+    output.drivers = (drivers.length ? drivers : insights.evidence).slice(0, 4)
+      .map(item => `${item.basis === "textual" ? "Textual charge" : item.dimension}: ${item.emotion || item.direction} — “${item.quote}”`.slice(0, 250));
   }
   output.confidence = insights.evidence.length && AXES.every(axis => insights.dimensionConfidence[axis] === "medium") ? "medium" : "low";
   output.confidenceReason = "Confidence describes textual support, not psychological certainty. Unsupported dimensions remain unscored; interpretations are tentative.";
@@ -403,7 +425,9 @@ function compareEmotionalHistory(current, records) {
   const changes = [];
   for (const axis of AXES) {
     const key = `${axis}Score`;
-    const prior = window.filter(record => Number.isFinite(record[key]) && record.insights.evidence.some(item => item.dimension === axis));
+    const basisFor = record => [...new Set(record.insights.evidence.filter(item => item.dimension === axis).map(item => item.basis || "personal"))].sort().join(",");
+    const prior = window.filter(record => Number.isFinite(record[key]) && record.insights.evidence.some(item => item.dimension === axis) &&
+      basisFor(record) === basisFor(current));
     if (!Number.isFinite(current[key]) || !prior.length) continue;
     const mean = prior.reduce((sum, record) => sum + record[key], 0) / prior.length;
     const delta = +(current[key] - mean).toFixed(2);

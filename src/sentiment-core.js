@@ -81,12 +81,13 @@ const ANALYSIS_SCHEMA = {
             type: "object", additionalProperties: false,
             properties: {
               dimension: { type: "string", enum: ["mood", "energy", "connection", "intensity"] },
+              basis: { type: "string", enum: ["personal", "textual"] },
               quote: { type: "string", minLength: 1, maxLength: 240 },
               direction: { type: "string", enum: ["positive", "negative", "mixed", "neutral"] },
               emotion: { type: "string", maxLength: 48 },
               confidence: { type: "string", enum: ["low", "medium", "high"] }
             },
-            required: ["dimension", "quote", "direction", "emotion", "confidence"]
+            required: ["dimension", "basis", "quote", "direction", "emotion", "confidence"]
           }
         },
         observations: {
@@ -318,7 +319,7 @@ function buildEntryMarkdown(record) {
   const insights = normalizeInsights(record.insights);
   if (insights) {
     lines.push("", "## Emotional evidence", "");
-    for (const item of insights.evidence) lines.push(`- **${item.dimension} · ${item.confidence}:** ${plainNarrative(item.emotion, 48)} — “${plainNarrative(item.quote, 240)}”`);
+    for (const item of insights.evidence) lines.push(`- **${item.dimension}${item.basis === "textual" ? " · textual charge" : ""} · ${item.confidence}:** ${plainNarrative(item.emotion, 48)} — “${plainNarrative(item.quote, 240)}”`);
     if (insights.observations.length) lines.push("", "## Context and complexity", "");
     for (const item of insights.observations) {
       lines.push(`- **${item.kind} · ${item.confidence}:** ${plainNarrative(item.description, 300)}`);
