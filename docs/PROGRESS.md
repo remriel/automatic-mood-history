@@ -1,17 +1,19 @@
 ## Active follow-up: emotional content recall (2026-10-15)
 
-Objective: fix missing emotional/charged writing and verify the three user-reported dates in the installed plugin. Progress: 85% — implementation and local checks pass; final installed verification and GitHub synchronization are in progress.
+Objective: fix missing emotional/charged writing and verify the three user-reported dates in the installed plugin. Progress: 100% — verified locally and in Obsidian; completed code is synchronized in PR #4. This means ready for review, not a claim that a public 1.3.2 release exists.
 
 - [x] Reconcile clean upstream main, instructions, source and saved results.
 - [x] Inspect the three reported dates locally; no private text enters Git.
 - [x] Reproduce live 1.3.1 failures: fallback responses misplaced evidence containers; responses can also contradict supported score directions.
 - [x] Preserve charged textual evidence separately from personal mood; fix validation feedback/rechecks, numeric-axis isolation and missing grounded tags.
 - [x] Add synthetic regression tests; full functional, layout, release privacy and diff checks pass.
-- [ ] Verify installed behavior on the reported dates, synchronize GitHub, deliver continuity files.
+- [x] Verify installed behavior on the reported dates, synchronize GitHub, and prepare continuity files and the installable bundle.
 
-Current state: version 1.3.2 code is installed with the original 1.3.1 plugin, data and relevant generated entries backed up outside Git. All three dates succeeded in a read-only live probe. The first installed persistence run saved two; one invalid provider response is being retried. No private source content has been committed. Nine original source files have pre-change hashes for final comparison.
+Current state: version 1.3.2 is installed. The original 1.3.1 plugin, data and relevant generated entries are backed up outside Git. All three reported dates are persisted as complete Groq entries, with 5, 7 and 6 grounded signals respectively; none remains pending. One date required a later retry after the first installed attempt failed, and the successful retry used the existing completion-limit recovery. After plugin reload, the records still have the same status, evidence and timestamps. Native rendering produced three cards and three evidence panels, labeled textual charge, and zero active link/image/script/iframe elements within the evidence. All nine original source-file hashes are unchanged. All installed assets match the tested build. No private source text or provider output was committed.
 
-Blockers: none. Exact next steps: finish the remaining installed date, verify persisted JSON/Markdown and source hashes, push/open a PR and confirm its CI, then deliver continuity documents and the installable bundle. The branch is intended for review; no 1.3.2 GitHub release is claimed. Earlier completed-release sections below are historical.
+GitHub: https://github.com/remriel/automatic-mood-history/pull/4. Implementation commit ab751d5de1982dc5a4d11c7aeb1561be0b47b6b8 passed CI run 38802905129. Functional tests (including charged-content regressions), responsive layout, syntax, privacy audit and diff checks pass. Final continuity-only updates do not change the tested assets.
+
+Blockers: none. No implementation work remains. Exact next steps for a maintainer: review/merge PR #4 when desired; the existing main-branch version workflow then publishes 1.3.2. If publishing, verify release asset digests and provenance before claiming the release complete. Previously saved remote dates outside the three refreshed cases still require explicit reanalysis. Preserve current provider consent, source scope and private backups. Earlier completed-release sections below are historical.
 
 ## 1.3.1 recall correction (2026-10-15)
 
