@@ -10,7 +10,12 @@ const valid = {
   valence: "positive", emotions: ["hopeful", "peaceful"],
   summary: "A fictional sample describes a calm and supportive conversation.",
   drivers: ["The fictional writer mentions support."], confidence: "medium",
-  confidenceReason: "The fictional sample has clear but limited evidence."
+  confidenceReason: "The fictional sample has clear but limited evidence.",
+  insights: { version: 1, observations: [], limitations: [], evidence: [
+    { dimension: "mood", quote: "hopeful", direction: "positive", emotion: "hopeful", confidence: "medium" },
+    { dimension: "mood", quote: "calm", direction: "positive", emotion: "peaceful", confidence: "medium" },
+    { dimension: "connection", quote: "supported", direction: "positive", emotion: "supported", confidence: "medium" }
+  ] }
 };
 const success = (analysis = valid) => ({ status: 200, json: { choices: [{ finish_reason: "stop", message: { content: JSON.stringify(analysis) } }] } });
 const originalLoad = Module._load;
@@ -42,7 +47,7 @@ function fixture() {
   plugin.groqBlockedUntil = 0;
   plugin.lastGroqError = "";
   plugin.getAllDates = () => dates;
-  plugin.gatherDate = async (date) => ({ date, analysisText: "A fictional writer feels calm, hopeful, and supported after a friendly conversation.", topic: "", contentHash: date, sourcePaths: [`Fictional/${date}.md`] });
+  plugin.gatherDate = async (date) => ({ date, analysisText: "I feel calm, hopeful, and supported after a friendly conversation.", topic: "", contentHash: date, sourcePaths: [`Fictional/${date}.md`] });
   plugin.savePluginData = async () => {};
   plugin.writeEntryNote = async () => {};
   plugin.resolveEntryPath = async record => record.entryPath || `Mood History/Entries/${record.date}.md`;
@@ -61,27 +66,27 @@ async function run() {
     assert.deepStrictEqual(payload.messages.map((message) => message.role), ["system", "user"]);
     return success({ ...valid, emotions: ["hopeful", "hopeful"] });
   };
-  const result = await plugin.analyzeWithGroq(dates[0], "Synthetic sample.");
+  const result = await plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation.");
   assert.deepStrictEqual(result.emotions, ["hopeful"], "local validation deduplicates without an unsupported remote constraint");
   assert.strictEqual(requests.length, 1);
 
   plugin = fixture();
   respond = (payload) => requests.length === 1 ? { status: 200, json: { choices: [{ finish_reason: "length", message: { content: "", reasoning: "unfinished synthetic reasoning" } }] } } : success();
-  await plugin.analyzeWithGroq(dates[0], "Synthetic sample.");
+  await plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation.");
   assert.strictEqual(requests.length, 2);
   assert.strictEqual(requests[1].max_completion_tokens, 8192);
   assert.deepStrictEqual(requests[0].response_format, requests[1].response_format, "length recovery keeps strict output");
 
   plugin = fixture();
   respond = () => success({});
-  await assert.rejects(plugin.analyzeWithGroq(dates[0], "Synthetic sample."), (error) => error.status === 422);
+  await assert.rejects(plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation."), (error) => error.status === 422);
   assert.strictEqual(requests.length, 3, "partial objects do not turn into invented neutral scores");
 
   plugin = fixture();
   plugin.groqBlockedUntil = Date.now() + 600000;
-  await assert.rejects(plugin.analyzeWithGroq(dates[0], "Synthetic sample."));
+  await assert.rejects(plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation."));
   assert.strictEqual(requests.length, 0);
-  await plugin.analyzeWithGroq(dates[0], "Synthetic sample.", { forceGroq: true });
+  await plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation.", { forceGroq: true });
   assert.strictEqual(requests.length, 1, "explicit retry reaches the provider despite an old cooldown");
 
   plugin = fixture();

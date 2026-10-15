@@ -50,6 +50,11 @@ function fixtureHTML() {
       for(let i=0;i<count;i++) {
         const date=new Date(Date.UTC(2099,0,i+1)).toISOString().slice(0,10);const insufficient=options.mode==='insufficient'||i%11===10;const legacy=i%7===6;
         plugin.records[date]={date,dateBasis:legacy?'legacy-note-date':'created-at-local-date',status:insufficient?'insufficient':'complete',moodScore:insufficient?null:1+i%5,energyScore:1+(i+2)%5,connectionScore:1+(i+3)%5,intensityScore:1+(i+1)%5,emotions:['curious','hopeful',...(options.longText?['VeryLongUnbrokenEmotionName'.repeat(10)]:[])],summary:insufficient?'There was not enough readable text to infer a score.':'A fictional day with thoughtful reflection, small achievements, and supportive conversations.'+(options.longText?' '+('WrappedEvidence'.repeat(45)):''),analysisSource:insufficient?'none':i%3===0?'groq':'local-fallback',entryPath:'Mood History/Entries/'+date+' (Automatic Mood History).md',providerIssue:i%3?{message:'Fictional provider issue'}:undefined};
+        if(options.evidence) {
+          const record=plugin.records[date];record.connectionScore=null;
+          record.insights={version:1,evidence:[{dimension:'mood',emotion:'anxious',direction:'negative',confidence:'medium',quote:'I feel anxious after vague feedback. '+('LongEvidenceWord'.repeat(10))}],observations:[{kind:'need',description:'An explicit need is stated; no hidden motive is inferred.',quotes:['I need some quiet. <img src="fictional"> ![[Fictional]]'],confidence:'low'}],limitations:[]};
+          record.historyComparison={version:1,changes:[{dimension:'mood',delta:-1,sampleSize:3}],situations:[{context:'vague feedback',emotion:'anxious'}]};
+        }
       }
       dashboard.hidden=Boolean(options.settingsView);tab.containerEl.hidden=!options.settingsView;plugin.renderDashboard(dashboard);if(options.settingsView)tab.display();
     }

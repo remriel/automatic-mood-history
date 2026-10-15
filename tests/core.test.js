@@ -2,7 +2,7 @@ const assert = require("assert");
 const core = require("../src/sentiment-core");
 
 const negative = core.localSentiment(
-  "The synthetic sample describes feeling drained, worried, isolated, and frustrated after a difficult week.",
+  "I feel drained, worried, isolated, and frustrated after a difficult week.",
   "Sample stress test"
 );
 assert(negative.moodScore <= 2);
@@ -11,7 +11,7 @@ assert(negative.emotions.includes("frustrated") || negative.emotions.includes("a
 assert.strictEqual(negative.confidence, "low");
 
 const positive = core.localSentiment(
-  "The fictional sample describes a calm day with close friends and renewed hope.",
+  "I feel calm and supported by close friends, with renewed hope.",
   "Sample positive reflection"
 );
 assert(positive.moodScore >= 4);

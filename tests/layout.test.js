@@ -138,6 +138,17 @@ async function inspectLayout(page, label) {
     assert.strictEqual(await page.evaluate(() => fixture.plugin.settings.enableGroq), false);
     await page.getByRole("textbox", { name: "Groq model", exact: true }).fill("long-fictional-model-name");
     await inspectLayout(page, "settings after toggle and typing input");
+    for (const options of [{paneWidth:240,evidence:true,count:12},{paneWidth:320,evidence:true,largeText:true,count:12}]) {
+      await page.evaluate(options => { fixture.configure(options);document.querySelectorAll('.auto-mood-evidence').forEach(element=>{element.open=true;}); },options);
+      await inspectLayout(page, 'expanded emotional evidence, unknown axes and historical comparisons');
+      assert.equal(await page.locator('.auto-mood-evidence img,.auto-mood-evidence a,.auto-mood-evidence script,.auto-mood-evidence iframe').count(),0,'evidence remains inert text');
+      assert(await page.locator('.auto-mood-evidence').count()>=12,'unscored days retain needs and uncertainty evidence');
+      assert((await page.locator('.auto-mood-day-scores').first().innerText()).includes('—'),'unknown connection is not a neutral score');
+    }
+    if(process.env.EMOTIONAL_LAYOUT_SCREENSHOT) {
+      await page.evaluate(()=>fixture.configure({paneWidth:1000,evidence:true,count:3}));
+      await page.screenshot({path:process.env.EMOTIONAL_LAYOUT_SCREENSHOT,fullPage:true});
+    }
     await page.evaluate(() => { fixture.plugin.onunload(); });
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 0, "plugin unload disposes observers");
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartSeriesViews.size), 0, "unload disposes series controls");

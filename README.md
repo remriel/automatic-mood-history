@@ -6,7 +6,19 @@ Full scans build a temporary date-to-files index once. Source eligibility, file 
 
 Generated provider summaries, drivers and confidence explanations are bounded plain text. Markdown punctuation is serialized as literal characters and line breaks are collapsed, so narrative fields cannot create links, images, embeds or HTML. Intended source-note links remain available separately. Summaries and confidence explanations are limited to 500 characters; each of up to four drivers is limited to 250 characters. Native Obsidian 1.14.4 synthetic checks verify literal readable output with no narrative link/image/embed/script elements.
 
-Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Local scoring remains a simple English word-pattern estimate: it does not implement the Groq prompt's attribution, quotation or negation reasoning, and its confidence remains low.
+Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Markdown blockquotes and inline/fenced code are excluded from analysis. Local analysis now uses contextual English rules for attribution, negation, hypothetical/abstract discussion, mixed feelings and explicit emotional evidence. Its confidence remains low because rule coverage is limited.
+
+## Emotional analysis in 1.3
+
+The local engine replaces global word counting with clause-level evidence. It distinguishes a personally felt state from other people's feelings, quotations, first-person intellectual discussion and wishes. Four dimensions are scored independently: fatigue does not imply sadness, solitude does not establish loneliness, and the presence of friends does not prove felt connection. Unsupported dimensions are `null` and appear as **— / Not evidenced**, rather than invented neutral scores. A long note without usable personal emotional signals can be marked **insufficient**.
+
+The engine retains competing feelings and explicitly marked changes within the writing. It records possible sarcasm without reversing sentiment automatically; explicit needs, event/feeling associations and self-reported recurrence have concrete quotation anchors. Activation and depletion can coexist. Intensity comes from the expressed state and modifiers, rather than profanity, punctuation or repeated words. Evidence and context are available in each entry and an expandable dashboard panel, including unscored entries.
+
+New Groq responses must supply source evidence. Quotations are checked against the submitted cleaned text, basic attribution and negation are checked locally, unsupported dimensions lose their scores, and scores that contradict cited directions are rejected. Explanations are built from validated signal labels, source quotations and bounded interpretation templates; unrestricted model summaries are not persisted as the explanation. Quotation matching cannot prove the interpretation is correct. Provider evidence confidence is capped at medium, ambiguities remain tentative, and local results remain low confidence.
+
+Comparisons across dates use only already saved evidence, locally, with matching source scope, analyzer generation, model, provider and date basis. Up to 14 earlier observed dates within 30 days can supply a numerical comparison. Repeated feelings and exact event/feeling wording require at least three observed dates. Gaps are not filled in and a recurring phrase is not a diagnosis, personality trait or proof of causation. Comparisons are snapshots taken when an entry is analyzed; reanalyze after changing earlier entries to refresh them. No earlier writing is added to a Groq request.
+
+Existing record identities, score field names, source links and historical provenance are preserved. Fingerprinted local results refresh on the next authorized scan. Unchanged remote results still require explicit reanalysis after a prompt/model change. Existing Methodology notes are preserved; consult this section and [the engine design and evaluation](docs/EMOTIONAL_ENGINE.md) for the new behavior. Local rules are English-focused and can miss subtle metaphor, indirect feeling, unfamiliar wording and cultural context. The included benchmark is an engineering evaluation, not clinical validation.
 
 ![Automatic Mood History for Obsidian: mood and energy trends presented in a colorful dashboard-style graphic with illustrative data.](assets/readme-banner.svg)
 
@@ -23,6 +35,7 @@ The plugin groups eligible Markdown notes by the local calendar date of their Ob
 - One consolidated result per calendar date
 - Optional Groq structured-output analysis with a validated three-stage JSON fallback
 - Local deterministic analysis that works without a network connection or API key
+- Evidence-backed independent scores, mixed emotions, contextual observations and local sparse-history comparisons
 - Native Markdown entry notes and an Obsidian Base
 - Mood, energy, connection, and intensity scores from 1–5, all plotted in the trend chart
 - Dominant-emotion history and day-by-day source links
