@@ -1,0 +1,706 @@
+{
+  "baselineRef": "aea50c2",
+  "engine": "contextual-evidence-v2",
+  "node": "v24.19.0",
+  "description": "Developer-authored text constraints, not clinical labels. Public-domain translated historical journals are a small external sanity check, not a held-out clinical validation set.",
+  "synthetic": {
+    "before": {
+      "cases": 78,
+      "passed": 7,
+      "abstentionCorrect": 0,
+      "abstentionTotal": 128,
+      "scoredCorrect": 27,
+      "scoredTotal": 54,
+      "failures": [
+        {
+          "id": "direct-negative",
+          "errors": [
+            "missing observation: trigger"
+          ]
+        },
+        {
+          "id": "calm-not-depleted",
+          "errors": [
+            "moodScore: 3, expected [4,5]",
+            "energyScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "pleasure-with-fatigue",
+          "errors": [
+            "moodScore: 3, expected [4,5]"
+          ]
+        },
+        {
+          "id": "activation-with-distress",
+          "errors": [
+            "moodScore: 3, expected [1,2]",
+            "energyScore: 3, expected [4,5]",
+            "intensityScore: 1, expected [4,5]"
+          ]
+        },
+        {
+          "id": "depletion-with-activation",
+          "errors": [
+            "intensityScore: 2, expected [4,5]",
+            "missing observation: coexistence"
+          ]
+        },
+        {
+          "id": "social-presence-not-connection",
+          "errors": [
+            "connectionScore: 3, expected [1,2]"
+          ]
+        },
+        {
+          "id": "solitude-not-loneliness",
+          "errors": [
+            "moodScore: 3, expected [4,5]",
+            "connectionScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "supported-not-happy",
+          "errors": [
+            "connectionScore: 3, expected [4,5]"
+          ]
+        },
+        {
+          "id": "ambivalence-same-object",
+          "errors": [
+            "missing observation: ambivalence"
+          ]
+        },
+        {
+          "id": "ambivalence-separate-objects",
+          "errors": [
+            "missing observation: ambivalence"
+          ]
+        },
+        {
+          "id": "explicit-change",
+          "errors": [
+            "missing observation: change"
+          ]
+        },
+        {
+          "id": "explicit-morning-change",
+          "errors": [
+            "missing observation: change"
+          ]
+        },
+        {
+          "id": "claimed-fine-and-distress",
+          "errors": [
+            "missing observation: contradiction"
+          ]
+        },
+        {
+          "id": "unresolved-contradiction",
+          "errors": [
+            "missing observation: contradiction"
+          ]
+        },
+        {
+          "id": "sarcasm-no-inversion",
+          "errors": [
+            "moodScore: 3, expected null",
+            "missing observation: sarcasm"
+          ]
+        },
+        {
+          "id": "sarcasm-explicit-distress",
+          "errors": [
+            "moodScore: 3, expected [1,2]",
+            "missing observation: sarcasm"
+          ]
+        },
+        {
+          "id": "literal-positive",
+          "errors": [
+            "moodScore: 3, expected [4,5]"
+          ]
+        },
+        {
+          "id": "need-not-motive",
+          "errors": [
+            "missing observation: need"
+          ]
+        },
+        {
+          "id": "longing-not-achieved-connection",
+          "errors": [
+            "connectionScore: 3, expected [1,2]",
+            "missing observation: need"
+          ]
+        },
+        {
+          "id": "trigger-explicit-link",
+          "errors": [
+            "moodScore: 3, expected [1,2]",
+            "missing observation: trigger"
+          ]
+        },
+        {
+          "id": "self-reported-cycle",
+          "errors": [
+            "moodScore: 3, expected [1,2]",
+            "missing observation: pattern",
+            "missing observation: trigger"
+          ]
+        },
+        {
+          "id": "first-person-theory",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "abstract-argument",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "academic-feeling-word",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "academic-feeling-adjective",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "possessive-emotion",
+          "errors": [
+            "moodScore: 3, expected [1,2]"
+          ]
+        },
+        {
+          "id": "possessive-academic",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "named-other-person",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 2, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "topic-led-emotional-adjective",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 2, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "topic-not-experience",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 2, expected null",
+            "connectionScore: 2, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "other-person",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 2, expected null",
+            "connectionScore: 2, expected null",
+            "intensityScore: 3, expected null"
+          ]
+        },
+        {
+          "id": "other-person-parent",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 2, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "third-person-with-author",
+          "errors": [
+            "moodScore: 3, expected [1,2]",
+            "misattributed emotion: pleased"
+          ]
+        },
+        {
+          "id": "author-with-third-person",
+          "errors": [
+            "moodScore: 3, expected [4,5]",
+            "misattributed emotion: angry"
+          ]
+        },
+        {
+          "id": "quoted-emotion",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 2, expected null",
+            "connectionScore: 4, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "curly-quotation",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "quote-then-author",
+          "errors": [
+            "moodScore: 3, expected [1,2]",
+            "misattributed emotion: pleased"
+          ]
+        },
+        {
+          "id": "negated-negative",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 2, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "negated-positive",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "coordinated-negation",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "negation-reset",
+          "errors": [
+            "moodScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "no-longer",
+          "errors": [
+            "misattributed emotion: anxious"
+          ]
+        },
+        {
+          "id": "litotes-not-reversed",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "hypothetical",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "future-not-current",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 4, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "distant-memory",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 2, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "wish-not-current",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "activity-not-energy",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 4, expected null",
+            "intensityScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "object-not-emotion",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "physical-not-emotional-hurt",
+          "errors": [
+            "moodScore: 1, expected null",
+            "connectionScore: 3, expected null"
+          ]
+        },
+        {
+          "id": "low-intensity-sadness",
+          "errors": [
+            "moodScore: 1, expected [2,3]"
+          ]
+        },
+        {
+          "id": "high-intensity-distress",
+          "errors": [
+            "moodScore: 3, expected [1,1]",
+            "intensityScore: 1, expected [5,5]"
+          ]
+        },
+        {
+          "id": "profanity-not-intensity",
+          "errors": [
+            "intensityScore: 3, expected [1,2]"
+          ]
+        },
+        {
+          "id": "numb-not-neutral-happy",
+          "errors": [
+            "moodScore: 3, expected null"
+          ]
+        },
+        {
+          "id": "unicode-apostrophe",
+          "errors": [
+            "missing observation: ambivalence"
+          ]
+        },
+        {
+          "id": "no-diagnosis-inference",
+          "errors": [
+            "moodScore: 3, expected null"
+          ]
+        },
+        {
+          "id": "explicit-need-without-affect",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 1, expected null",
+            "missing observation: need"
+          ]
+        },
+        {
+          "id": "active-support-not-received",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "active-rejection-not-own-hurt",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 2, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "hurt-other-not-self",
+          "errors": [
+            "moodScore: 1, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "technical-connection",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 4, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        },
+        {
+          "id": "sarcasm-literal-positive-untrusted",
+          "errors": [
+            "moodScore: 5, expected null",
+            "missing observation: sarcasm"
+          ]
+        },
+        {
+          "id": "sarcasm-explicit-marker",
+          "errors": [
+            "moodScore: 5, expected null",
+            "missing observation: sarcasm"
+          ]
+        },
+        {
+          "id": "unrelated-other-feeling",
+          "errors": [
+            "moodScore: 3, expected [1,2]",
+            "misattributed emotion: pleased"
+          ]
+        },
+        {
+          "id": "afterthought-own-feeling",
+          "errors": [
+            "moodScore: 1, expected [4,5]",
+            "misattributed emotion: sad"
+          ]
+        },
+        {
+          "id": "need-is-not-fulfilled",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 4, expected null",
+            "intensityScore: 2, expected null",
+            "missing observation: need"
+          ]
+        },
+        {
+          "id": "past-want-not-current-affect",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 3, expected null",
+            "intensityScore: 2, expected null",
+            "missing observation: need"
+          ]
+        },
+        {
+          "id": "negated-state-elliptic-contrast",
+          "errors": [
+            "moodScore: 1, expected null"
+          ]
+        },
+        {
+          "id": "behavioral-smile",
+          "errors": [
+            "moodScore: 3, expected [4,5]"
+          ]
+        },
+        {
+          "id": "behavioral-tears",
+          "errors": [
+            "moodScore: 3, expected [1,2]"
+          ]
+        },
+        {
+          "id": "depletion-idiom",
+          "errors": [
+            "moodScore: 3, expected null",
+            "energyScore: 3, expected [1,2]"
+          ]
+        }
+      ]
+    },
+    "after": {
+      "cases": 78,
+      "passed": 78,
+      "abstentionCorrect": 128,
+      "abstentionTotal": 128,
+      "scoredCorrect": 54,
+      "scoredTotal": 54,
+      "failures": []
+    }
+  },
+  "publicJournals": {
+    "before": {
+      "cases": 8,
+      "passed": 1,
+      "abstentionCorrect": 0,
+      "abstentionTotal": 8,
+      "scoredCorrect": 2,
+      "scoredTotal": 6,
+      "failures": [
+        {
+          "id": "bashkirtseff-unhappy",
+          "errors": [
+            "moodScore: 3, expected [1,2]"
+          ]
+        },
+        {
+          "id": "bashkirtseff-despair",
+          "errors": [
+            "moodScore: 3, expected [1,2]"
+          ]
+        },
+        {
+          "id": "bashkirtseff-tired",
+          "errors": [
+            "connectionScore: 3, expected null"
+          ]
+        },
+        {
+          "id": "bashkirtseff-sad",
+          "errors": [
+            "moodScore: 3, expected [1,2]",
+            "connectionScore: 4, expected null"
+          ]
+        },
+        {
+          "id": "amiel-metaphoric-self",
+          "errors": [
+            "energyScore: 4, expected null",
+            "connectionScore: 3, expected null"
+          ]
+        },
+        {
+          "id": "amiel-melancholy",
+          "errors": [
+            "moodScore: 3, expected [1,2]"
+          ]
+        },
+        {
+          "id": "amiel-abstract-religion",
+          "errors": [
+            "moodScore: 5, expected null",
+            "energyScore: 3, expected null",
+            "connectionScore: 4, expected null",
+            "intensityScore: 2, expected null"
+          ]
+        }
+      ]
+    },
+    "after": {
+      "cases": 8,
+      "passed": 8,
+      "abstentionCorrect": 8,
+      "abstentionTotal": 8,
+      "scoredCorrect": 6,
+      "scoredTotal": 6,
+      "failures": []
+    }
+  },
+  "performance": {
+    "everyday5000": {
+      "before": {
+        "characters": 5000,
+        "medianMs": 0.83,
+        "maxMs": 1.84
+      },
+      "after": {
+        "characters": 5000,
+        "medianMs": 4.22,
+        "maxMs": 5.51
+      }
+    },
+    "journal60000": {
+      "before": {
+        "characters": 60000,
+        "medianMs": 7.29,
+        "maxMs": 9.64
+      },
+      "after": {
+        "characters": 60000,
+        "medianMs": 4.91,
+        "maxMs": 8.31
+      }
+    },
+    "varied60000": {
+      "before": {
+        "characters": 60000,
+        "medianMs": 7.84,
+        "maxMs": 8.86
+      },
+      "after": {
+        "characters": 60000,
+        "medianMs": 20.18,
+        "maxMs": 25.46
+      }
+    },
+    "unbroken60000": {
+      "before": {
+        "characters": 60000,
+        "medianMs": 8.61,
+        "maxMs": 18.4
+      },
+      "after": {
+        "characters": 60000,
+        "medianMs": 3.35,
+        "maxMs": 4.66
+      }
+    },
+    "maximum200000": {
+      "before": {
+        "characters": 200000,
+        "medianMs": 29.96,
+        "maxMs": 36.56
+      },
+      "after": {
+        "characters": 200000,
+        "medianMs": 7.1,
+        "maxMs": 10.75
+      }
+    },
+    "variedMaximum200000": {
+      "before": {
+        "characters": 200000,
+        "medianMs": 25.03,
+        "maxMs": 28.16
+      },
+      "after": {
+        "characters": 200000,
+        "medianMs": 69.96,
+        "maxMs": 109.48
+      }
+    }
+  }
+}

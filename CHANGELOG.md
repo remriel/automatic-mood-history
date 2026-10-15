@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 — 2026-10-15
+
+- Replace global lexical frequency scoring with contextual, concept-based evidence and independent nullable score axes.
+- Distinguish personally experienced affect from quoted/attributed/negated/hypothetical feelings and intellectual discussion.
+- Preserve mixed emotions, activation/depletion coexistence, explicit temporal change and unresolved contradictions; detect selected sarcasm conservatively.
+- Anchor explicit needs, situational associations and self-reported recurrence to source quotations; add local, scope-compatible historical comparisons.
+- Validate new provider evidence and direction, cap confidence, and generate bounded explanations from supported signals.
+- Surface evidence/context in Markdown and dashboard, including unscored entries; document sensitive quotation storage.
+- Add challenge/public-journal benchmarks, counterfactuals, persistence/provider/history regressions and browser coverage. Preserve consent, recovery, compatibility and source indexing.
+
 ## 1.2.9 — 2026-10-13
 
 - Recover staged analysis results across Markdown/JSON storage interruptions; serialize plugin data saves and preserve concurrent user edits.

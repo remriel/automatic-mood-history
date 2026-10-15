@@ -572,3 +572,17 @@
 }
 .auto-mood-chart-empty { color: var(--amh-text); font-weight: 700; }
 .auto-mood-chart-empty[hidden] { display: none; }
+.auto-mood-evidence {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.auto-mood-evidence summary {
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auto-mood-evidence p {
+  line-height: 1.6;
+}

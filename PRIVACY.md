@@ -4,7 +4,7 @@ Automatic Mood History operates in two modes.
 
 ## Local mode
 
-Local mode uses deterministic word-pattern scoring inside Obsidian. No note text is intentionally transmitted by this plugin. Local results are directional and marked low confidence.
+Local mode uses deterministic contextual English rules inside Obsidian. No note text is intentionally transmitted by this plugin. Local results are directional and marked low confidence. Comparisons across dates use already saved analysis evidence locally; the plugin does not reread earlier days or add their text to a Groq request for these comparisons.
 
 ## Optional Groq mode
 
@@ -26,9 +26,11 @@ The plugin stores settings and derived results in its Obsidian plugin `data.json
 - dates and source paths;
 - mood, energy, connection, and intensity scores;
 - emotions, summaries, drivers, and confidence explanations;
+- short exact excerpts from the selected source text (up to 16 signal quotations of 240 characters and eight observations with up to three 240-character quotations each), with dimension, direction and evidence confidence;
+- bounded local comparison snapshots, including earlier observed dates, repeated emotional expressions and matching situation wording;
 - content hashes, timestamps, model identifiers, and provider errors.
 
-These records may be sensitive even though they do not contain the full original note text. Vault sync, cloud drives, backup programs, or Git repositories may copy them.
+These records may be sensitive and now intentionally include short source quotations, though not the full original notes. Repeated comparison evidence can also quote earlier derived excerpts. Vault sync, cloud drives, backup programs, or Git repositories may copy them. Excluding a source later stops future reads and remote submission, but does not delete previously saved history or quotations; remove those generated entries and records separately if needed.
 
 ## Telemetry
 

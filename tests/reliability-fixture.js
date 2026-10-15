@@ -31,7 +31,7 @@ function fixture(disk = { json: null, files: new Map() }) {
   p.app = { vault: {
     getMarkdownFiles: () => Array.from(files.values()).filter(file => file instanceof TFile),
     getAbstractFileByPath: path => files.get(path) || null,
-    cachedRead: async file => disk.files.get(file.path) ?? "A fictional writer feels calm and hopeful after a conversation with friends.",
+    cachedRead: async file => disk.files.get(file.path) ?? "I feel calm and hopeful after a conversation with friends. This is a fictional fixture.",
     create: async (path, text) => { if (files.has(path)) throw new Error("Already exists"); const file = new TFile(path); files.set(path, file); disk.files.set(path, text); return file; },
     process: async (file, transform) => { disk.files.set(file.path, transform(disk.files.get(file.path))); },
     createFolder: async path => { files.set(path, new TFolder()); },
