@@ -25,7 +25,7 @@ for (const emotion of ["sad", "happy", "anxious", "lonely", "exhausted", "suppor
   const repeated = localSentiment(`I feel ${emotion}. `.repeat(250));
   for (const axis of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) assert.equal(repeated[axis], direct[axis], `${emotion}: repetition invariance`);
 }
-const raw = '> I feel hopeless and sad.\n\n`I am happy`\n\nI feel calm.';
+const raw = '> The novel says "I feel hopeless and sad."\n\n`I am happy`\n\nI feel calm.';
 assert.equal(localSentiment(textForAnalysis(raw)).moodScore, 4);
 const positive = localSentiment("I feel happy.");
 const crowded = localSentiment(Array.from({ length: 20 }, (_, i) => `I feel anxious after event ${i}.`).join(" ") + " I feel happy but sad.");

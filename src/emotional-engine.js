@@ -2,7 +2,7 @@
 // an absent signal is unknown, never evidence for the middle of a scale.
 const AXES = ["mood", "energy", "connection", "intensity"];
 const OBSERVATION_KINDS = ["change", "ambivalence", "contradiction", "coexistence", "sarcasm", "pattern", "need", "trigger"];
-const ENGINE_VERSION = "contextual-evidence-v2";
+const ENGINE_VERSION = "contextual-evidence-v3";
 const OBSERVATION_DESCRIPTIONS = {
   ambivalence: "Positive and painful feelings coexist in the quoted evidence; neither side cancels the other.",
   contradiction: "The quoted claims appear in tension. Their relationship is unresolved, not proof of dishonesty or a hidden feeling.",
@@ -103,18 +103,23 @@ function sourceEvidenceSpan(raw, text, masked) {
   for (let attempt = 0; attempt < 8; attempt++) {
     start = text.indexOf(quote, start + 1);
     if (start < 0) return -1;
-    if (!masked.slice(start, start + quote.length).trim()) continue;
-    // Verify attribution in surrounding context, even for a one-word quote.
+    // Verify the quotation, not whether an English rule engine can reproduce
+    // the model's interpretation. Reflective/metaphorical evidence is valid.
     const boundary = Math.max(text.lastIndexOf(".", start - 1), text.lastIndexOf("!", start - 1), text.lastIndexOf("?", start - 1), text.lastIndexOf(";", start - 1), text.lastIndexOf("\n", start - 1)) + 1;
     const contextStart = Math.max(boundary, start - 240);
-    const context = masked.slice(contextStart, start + quote.length);
-    if (raw.dimension === "mood" && raw.direction === "positive" && /\b(?:yeah right|just great|just perfect|oh great|thanks for nothing)\b|\/s(?=\s|$)/i.test(text.slice(contextStart, start + quote.length + 10))) continue;
-    let offset = 0;
+    const context = text.slice(contextStart, start + quote.length).replace(/[’]/g, "'");
+    if (!masked.slice(start, start + quote.length).trim() && /\b(?:the book|the novel|the character|he|she|they)\s+(?:says?|said|wrote)\b/i.test(context)) continue;
     const emotionRule = AFFECT_RULES.find(item => item[0] === raw.emotion);
-    if (emotionRule) { const match = new RegExp(emotionRule[1].source, "i").exec(quote); if (match) offset = match.index; }
-    else { const subject = /\b(?:i|we|me|my)\b/i.exec(quote); if (subject) offset = subject.index + subject[0].length; }
-    const position = start - contextStart + offset;
-    if (!personalAt(context, position) || negatedSignal(context.slice(0, position))) continue;
+    const literal = emotionRule && new RegExp(emotionRule[1].source, "i").exec(quote);
+    if (literal) {
+      const prefix = context.slice(0, start - contextStart + literal.index).trim();
+      // Reject only unambiguous literal counterexamples, not a failure to find
+      // "I feel" or an emotion word in the quotation.
+      if (/^(?:she|he|they)\s+(?:feels?|felt|is|are|was|were)\s*$/i.test(prefix) ||
+          /^i\s+(?:study|research|define)\s*$/i.test(prefix) ||
+          /^i\s+(?:do not|don't|did not|didn't)\s+feel\s*$/i.test(prefix) ||
+          /^if i\s+(?:felt|were|was)\s*$/i.test(prefix)) continue;
+    }
     return start;
   }
   return -1;

@@ -128,12 +128,13 @@ function stripFrontmatter(text) {
 
 function textForAnalysis(text) {
   return stripFrontmatter(text)
-    .replace(/^\s*>[^\n]*$/gm, " ")
+    .replace(/^\s*>\s?/gm, "")
     .replace(/!\[\[[^\]]+\]\]/g, " ")
     .replace(/!\[[^\]]*\]\([^\n]*?\)/g, " ")
     .replace(/!\[[^\]]*\]\[[^\]]*\]/g, " ")
     .replace(/<img\b[^>]*>/gi, " ")
-    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/```([^\n]*)\n([\s\S]*?)```/g, (_block, language, body) =>
+      /^mermaid\s*$/i.test(language.trim()) && /^\s*mindmap\b/i.test(body) ? body.replace(/^\s*mindmap\b/i, "") : " ")
     .replace(/`[^`\n]*`/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/^#.*$/gm, " ")

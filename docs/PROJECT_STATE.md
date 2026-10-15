@@ -1,3 +1,7 @@
+## 1.3.1 recall correction (2026-10-15)
+
+The 1.3.0 abstention rules were too aggressive for personal reflective writing. Preserve blockquote prose and Mermaid mindmaps, and validate provider quote provenance without requiring the local English classifier to reproduce the inference. Do not equate analytical style, metaphor or unmet needs with emotional absence. One bounded semantic recheck handles empty provider evidence when personal signals are present. Tests use synthetic examples; private validation material is never committed. ENGINE_VERSION=contextual-evidence-v3, prompt=evidence-context-prompt-v3, pipeline=markdown-text-v4. Full functional/recall tests pass; publication and installed verification in progress.
+
 # Automatic Mood History — project state
 
 ## Current objective and status (2026-10-15)

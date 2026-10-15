@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 — 2026-10-15
+
+- Fix false emotional exclusions for reflective writing, indirect expression, blockquotes and prose mindmaps.
+- Remove positive-proof lexical gating of provider interpretations while retaining source matching.
+- Add one bounded empty-evidence recheck and focused recall regressions.
+
 ## 1.3.0 — 2026-10-15
 
 - Replace global lexical frequency scoring with contextual, concept-based evidence and independent nullable score axes.
