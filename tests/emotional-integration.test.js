@@ -82,7 +82,7 @@ async function run() {
   const requests = [];
   p.requestGroq = async payload => { requests.push(payload); const helper = require("./provider-fixture"); return reply(helper.version2(providerResult([evidence("mood", "I feel sad", "sad")]), helper.chunkFromPayload(payload))); };
   await p.analyzeDate(date);
-  assert.equal(requests.length, 2, "local intensity cues trigger one dimension review without creating unsupported scores");
+  assert.equal(requests.length, 1, "explicit unsupported dimensions do not trigger a redundant local-cue review");
   assert(!JSON.stringify(requests).includes(privateMarker));
   assert(!JSON.stringify(requests).includes(f.source.path));
   assert.equal(p.records[date].analysisSource, "groq");

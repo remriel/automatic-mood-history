@@ -1,20 +1,30 @@
 # Automatic Mood History
 
-## Pending recovery in 1.4.1
+## Faster analysis in 1.5.0
+
+Groq chunk analysis now uses a compact evidence response and low reasoning on GPT-OSS models. A successful chunk normally takes one request, with at most one necessary correction. Exact quotation validation, independent nullable scores, saved progress and existing results are preserved. The model explicitly acknowledges reviewing the complete chunk; quote offsets and readable explanations are built locally instead of generated repeatedly.
+
+Independent chunks use up to five workers when the account's reported token quota permits. The first response discovers quota, subsequent requests reserve estimated input/output tokens before dispatch, and server pauses including `Retry-After` remain binding. The plugin does not assume a Free tier or interpret daily request headers as requests per minute. The dashboard shows recent request time, token use and token quota.
+
+Use **Resume pending** to continue unfinished work while reusing validated chunks. It drains productive batches without an artificial minute between them; the saved character cap still applies to each batch. **Stop analysis** cancels further dispatch and keeps saved progress. Upgrading preserves consent, source scope, settings and completed history; it does not automatically reanalyze old Groq records.
+
+The same synthetic 10-chunk batch took **65.03s on 1.4.1 and 4.92s on 1.5.0**, a 92.4% reduction in wall time. Small-entry median latency fell from 5.60s to 1.27s, about 77%. All 57 required score checks passed across three repetitions with zero unsupported scores. These regression measurements use Groq `openai/gpt-oss-120b`; the worker benchmark excludes native disk and dashboard overhead. They are not a guarantee for every account or note. See [release notes](docs/RELEASE_NOTES_1.5.0.md), [performance measurements](docs/GROQ_PERFORMANCE.json) and [accuracy regressions](docs/GROQ_FAST_ACCURACY.json).
+
+## Pending recovery in 1.4.1 (continued in 1.5.0)
 
 An invalid response for one chunk no longer blocks the later chunks in that date. Automatic recovery skips chunks whose retry time has not arrived and continues independent ready work within the saved per-run character budget. Ordinary budget continuation resumes after one minute without accumulating exponential failure delays. Provider rate limits, outages and authentication pauses still stop requests.
 
-Use **Resume pending** on the dashboard or **Automatic Mood History: Resume pending analysis** in the command palette for one immediate budget-limited pass over unfinished work. It preserves validated chunks and prior entries, and does not refresh unrelated completed or stale history. With automatic analysis enabled, subsequent scheduled passes continue remaining work. Processing counts refresh as checkpoints are saved; pending rows show the next retry or continuation time. Invalid evidence remains pending until corrected.
+Use **Resume pending** on the dashboard or **Automatic Mood History: Resume pending analysis** in the command palette for unfinished work. It preserves validated chunks and prior entries, and does not refresh unrelated completed or stale history. Version 1.5 continues productive budget-limited batches immediately; provider pauses still apply. Processing counts refresh as checkpoints are saved; pending rows show the next retry or continuation time. Invalid evidence remains pending until corrected.
 
-## Accountable coverage in 1.4
+## Accountable coverage in 1.4 (compact provider contract in 1.5)
 
-The complete eligible input is hashed before request limits. Long dates are split deterministically with local source mappings and opaque provider passage IDs. Every eligible passage must have an explicit assessed outcome and all four dimensions must be resolved before a replacement commits. Completion, dimension assessment and available scores are separate: supported, assessed without support, ambiguous, unresolved conflict and not yet assessed remain distinguishable. Legacy assessment coverage is unknown.
+The complete eligible input is hashed before request limits. Long dates are split deterministically with local source mappings and opaque provider passage IDs. The provider explicitly confirms reviewing the whole chunk, which supplies the internal assessed outcomes for its eligible passages; all four dimensions must be resolved before a replacement commits. Completion, dimension assessment and available scores are separate: supported, assessed without support, ambiguous, unresolved conflict and not yet assessed remain distinguishable. Legacy assessment coverage is unknown.
 
 The saved character limit is now a **per-run source-data budget**, including repeated attempts and neighboring context. It is retained during upgrade. Successful chunks survive reload and resume under identical source/pipeline/provider/model/prompt fingerprints. Dates exceeding the budget remain visibly queued; the prior successful entry stays available. The minimum-character policy is explicit and records its excluded, unassessed coverage.
 
 Use **Preview repair** on the dashboard to inspect stale fingerprints, unknown/incomplete coverage, missing assessments, conflicts and failed work. Select a batch to see chunk/request estimates and repair it. Display-only corrections use no provider calls. Upgrading does not silently reprocess saved remote history; matching legacy prefix hashes are flagged stale because their historical full coverage cannot be established.
 
-Mood, connection, energy and intensity have independent populations and chart gaps. Valid connection-only or energy-only days remain visible. Provider interpretation uses exact passage quotations, explicit/inferred meaning, personal/textual basis, temporal context and support. One targeted review addresses omitted/conflicting dimensions; explicit abstention is valid. All validated concepts and opposing poles contribute to aggregation, independently of the 16 displayed quotations or artificial chunk boundaries. Local rules remain conservative and English-focused.
+Mood, connection, energy and intensity have independent populations and chart gaps. Valid connection-only or energy-only days remain visible. Provider interpretation uses exact passage quotations, inferred meaning, personal/textual basis, temporal context and support. Malformed or conflicting output can receive one correction; explicit abstention is valid and does not trigger a routine second review. All validated concepts and opposing poles contribute to aggregation, independently of the 16 displayed quotations or artificial chunk boundaries. Local rules remain conservative and English-focused.
 
 See [coverage architecture and acceptance](docs/COVERAGE_DESIGN.md), [baseline reproductions](docs/COVERAGE_BASELINE.md), and the evaluation/performance JSON files linked there. These are engineering checks, not psychological or clinical validation. The earlier 1.3 descriptions below are historical where superseded by 1.4.
 
@@ -53,7 +63,7 @@ The plugin groups eligible Markdown notes by the local calendar date of their Ob
 - Optional automatic analysis after changes to included notes
 - Folder include/exclude lists, with subfolder support and exclusions taking precedence
 - One consolidated result per calendar date
-- Optional Groq structured-output analysis with a validated three-stage JSON fallback
+- Optional Groq compact structured-output analysis with at most one correction per chunk
 - Local deterministic analysis that works without a network connection or API key
 - Evidence-backed independent scores, mixed emotions, contextual observations and local sparse-history comparisons
 - Native Markdown entry notes and an Obsidian Base
