@@ -10,12 +10,7 @@ const valid = {
   valence: "positive", emotions: ["hopeful", "peaceful"],
   summary: "A fictional sample describes a calm and supportive conversation.",
   drivers: ["The fictional writer mentions support."], confidence: "medium",
-  confidenceReason: "The fictional sample has clear but limited evidence.",
-  insights: { version: 1, observations: [], limitations: [], evidence: [
-    { dimension: "mood", quote: "hopeful", direction: "positive", emotion: "hopeful", confidence: "medium" },
-    { dimension: "mood", quote: "calm", direction: "positive", emotion: "peaceful", confidence: "medium" },
-    { dimension: "connection", quote: "supported", direction: "positive", emotion: "supported", confidence: "medium" }
-  ] }
+  confidenceReason: "The fictional sample has clear but limited evidence."
 };
 const success = (analysis = valid) => ({ status: 200, json: { choices: [{ finish_reason: "stop", message: { content: JSON.stringify(analysis) } }] } });
 const originalLoad = Module._load;
@@ -47,7 +42,7 @@ function fixture() {
   plugin.groqBlockedUntil = 0;
   plugin.lastGroqError = "";
   plugin.getAllDates = () => dates;
-  plugin.gatherDate = async (date) => ({ date, analysisText: "I feel calm, hopeful, and supported after a friendly conversation.", topic: "", contentHash: date, sourcePaths: [`Fictional/${date}.md`] });
+  plugin.gatherDate = async (date) => ({ date, analysisText: "A fictional writer feels calm, hopeful, and supported after a friendly conversation.", topic: "", contentHash: date, sourcePaths: [`Fictional/${date}.md`] });
   plugin.savePluginData = async () => {};
   plugin.writeEntryNote = async () => {};
   plugin.resolveEntryPath = async record => record.entryPath || `Mood History/Entries/${record.date}.md`;
@@ -60,34 +55,34 @@ async function run() {
   let plugin = fixture();
   respond = (payload) => {
     assert.strictEqual(payload.response_format.json_schema.schema.properties.emotions.uniqueItems, undefined);
-    assert.strictEqual(payload.reasoning_effort, "medium");
+    assert.strictEqual(payload.reasoning_effort, "low");
     assert.strictEqual(payload.include_reasoning, false);
     assert.strictEqual(payload.reasoning_format, undefined);
     assert.deepStrictEqual(payload.messages.map((message) => message.role), ["system", "user"]);
     return success({ ...valid, emotions: ["hopeful", "hopeful"] });
   };
-  const result = await plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation.");
-  assert.deepStrictEqual(result.emotions, ["hopeful", "peaceful", "supported"], "validation deduplicates and retains every grounded evidence label within the tag limit");
-  assert.strictEqual(requests.length, 2, "one targeted review covers omitted intensity");
+  const result = await plugin.analyzeWithGroq(dates[0], "Synthetic sample.");
+  assert.deepStrictEqual(result.emotions, ["hopeful"], "local validation deduplicates without an unsupported remote constraint");
+  assert.strictEqual(requests.length, 1);
 
   plugin = fixture();
   respond = (payload) => requests.length === 1 ? { status: 200, json: { choices: [{ finish_reason: "length", message: { content: "", reasoning: "unfinished synthetic reasoning" } }] } } : success();
-  await plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation.");
-  assert.strictEqual(requests.length, 3);
+  await plugin.analyzeWithGroq(dates[0], "Synthetic sample.");
+  assert.strictEqual(requests.length, 2);
   assert.strictEqual(requests[1].max_completion_tokens, 8192);
   assert.deepStrictEqual(requests[0].response_format, requests[1].response_format, "length recovery keeps strict output");
 
   plugin = fixture();
   respond = () => success({});
-  await assert.rejects(plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation."), (error) => error.status === 422);
+  await assert.rejects(plugin.analyzeWithGroq(dates[0], "Synthetic sample."), (error) => error.status === 422);
   assert.strictEqual(requests.length, 3, "partial objects do not turn into invented neutral scores");
 
   plugin = fixture();
   plugin.groqBlockedUntil = Date.now() + 600000;
-  await assert.rejects(plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation."));
+  await assert.rejects(plugin.analyzeWithGroq(dates[0], "Synthetic sample."));
   assert.strictEqual(requests.length, 0);
-  await plugin.analyzeWithGroq(dates[0], "I feel calm, hopeful, and supported after a friendly conversation.", { forceGroq: true });
-  assert.strictEqual(requests.length, 2, "explicit retry reaches the provider despite an old cooldown");
+  await plugin.analyzeWithGroq(dates[0], "Synthetic sample.", { forceGroq: true });
+  assert.strictEqual(requests.length, 1, "explicit retry reaches the provider despite an old cooldown");
 
   plugin = fixture();
   plugin.groqBlockedUntil = Date.now() + 600000;
@@ -115,7 +110,7 @@ async function run() {
   plugin = fixture();
   plugin.records[dates[0]] = { ...valid, date: dates[0], status: "complete", dateBasis: "created-at-local-date", analysisSource: "local-fallback", contentHash: dates[0] };
   await plugin.analyzeDate(dates[0]);
-  assert.strictEqual(requests.length, 2, "unchanged fallback records are retried after a pause expires");
+  assert.strictEqual(requests.length, 1, "unchanged fallback records are retried after a pause expires");
   assert.strictEqual(plugin.records[dates[0]].analysisSource, "groq");
 
   plugin = fixture();
@@ -155,7 +150,7 @@ async function run() {
   plugin = fixture();
   plugin.groqBlockedUntil = Date.now() + 600000;
   assert.strictEqual(await plugin.checkGroqConnection(), true);
-  assert.strictEqual(requests.length, 2);
+  assert.strictEqual(requests.length, 1);
   assert(requests[0].messages[1].content.includes("fictional connection-check sample"));
   assert.deepStrictEqual(plugin.records, {}, "connection checks do not create or replace history");
   assert.strictEqual(plugin.groqBlockedUntil, 0);

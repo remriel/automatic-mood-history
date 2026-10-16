@@ -1,54 +1,12 @@
 # Automatic Mood History
 
-## Faster analysis in 1.5.0
-
-Groq chunk analysis now uses a compact evidence response and low reasoning on GPT-OSS models. A successful chunk normally takes one request, with at most one necessary correction. Exact quotation validation, independent nullable scores, saved progress and existing results are preserved. The model explicitly acknowledges reviewing the complete chunk; quote offsets and readable explanations are built locally instead of generated repeatedly.
-
-Independent chunks use up to five workers when the account's reported token quota permits. The first response discovers quota, subsequent requests reserve estimated input/output tokens before dispatch, and server pauses including `Retry-After` remain binding. The plugin does not assume a Free tier or interpret daily request headers as requests per minute. The dashboard shows recent request time, token use and token quota.
-
-Use **Resume pending** to continue unfinished work while reusing validated chunks. It drains productive batches without an artificial minute between them; the saved character cap still applies to each batch. **Stop analysis** cancels further dispatch and keeps saved progress. Upgrading preserves consent, source scope, settings and completed history; it does not automatically reanalyze old Groq records.
-
-The same synthetic 10-chunk batch took **65.03s on 1.4.1 and 4.92s on 1.5.0**, a 92.4% reduction in wall time. Small-entry median latency fell from 5.60s to 1.27s, about 77%. All 57 required score checks passed across three repetitions with zero unsupported scores. These regression measurements use Groq `openai/gpt-oss-120b`; the worker benchmark excludes native disk and dashboard overhead. They are not a guarantee for every account or note. See [release notes](docs/RELEASE_NOTES_1.5.0.md), [performance measurements](docs/GROQ_PERFORMANCE.json) and [accuracy regressions](docs/GROQ_FAST_ACCURACY.json).
-
-## Pending recovery in 1.4.1 (continued in 1.5.0)
-
-An invalid response for one chunk no longer blocks the later chunks in that date. Automatic recovery skips chunks whose retry time has not arrived and continues independent ready work within the saved per-run character budget. Ordinary budget continuation resumes after one minute without accumulating exponential failure delays. Provider rate limits, outages and authentication pauses still stop requests.
-
-Use **Resume pending** on the dashboard or **Automatic Mood History: Resume pending analysis** in the command palette for unfinished work. It preserves validated chunks and prior entries, and does not refresh unrelated completed or stale history. Version 1.5 continues productive budget-limited batches immediately; provider pauses still apply. Processing counts refresh as checkpoints are saved; pending rows show the next retry or continuation time. Invalid evidence remains pending until corrected.
-
-## Accountable coverage in 1.4 (compact provider contract in 1.5)
-
-The complete eligible input is hashed before request limits. Long dates are split deterministically with local source mappings and opaque provider passage IDs. The provider explicitly confirms reviewing the whole chunk, which supplies the internal assessed outcomes for its eligible passages; all four dimensions must be resolved before a replacement commits. Completion, dimension assessment and available scores are separate: supported, assessed without support, ambiguous, unresolved conflict and not yet assessed remain distinguishable. Legacy assessment coverage is unknown.
-
-The saved character limit is now a **per-run source-data budget**, including repeated attempts and neighboring context. It is retained during upgrade. Successful chunks survive reload and resume under identical source/pipeline/provider/model/prompt fingerprints. Dates exceeding the budget remain visibly queued; the prior successful entry stays available. The minimum-character policy is explicit and records its excluded, unassessed coverage.
-
-Use **Preview repair** on the dashboard to inspect stale fingerprints, unknown/incomplete coverage, missing assessments, conflicts and failed work. Select a batch to see chunk/request estimates and repair it. Display-only corrections use no provider calls. Upgrading does not silently reprocess saved remote history; matching legacy prefix hashes are flagged stale because their historical full coverage cannot be established.
-
-Mood, connection, energy and intensity have independent populations and chart gaps. Valid connection-only or energy-only days remain visible. Provider interpretation uses exact passage quotations, inferred meaning, personal/textual basis, temporal context and support. Malformed or conflicting output can receive one correction; explicit abstention is valid and does not trigger a routine second review. All validated concepts and opposing poles contribute to aggregation, independently of the 16 displayed quotations or artificial chunk boundaries. Local rules remain conservative and English-focused.
-
-See [coverage architecture and acceptance](docs/COVERAGE_DESIGN.md), [baseline reproductions](docs/COVERAGE_BASELINE.md), and the evaluation/performance JSON files linked there. These are engineering checks, not psychological or clinical validation. The earlier 1.3 descriptions below are historical where superseded by 1.4.
-
 Analysis caching uses a versioned fingerprint covering the source hash, text pipeline, analyzer/prompt/model, evidence thresholds and local topic semantics. Local results with fingerprints refresh when those semantics change. Unchanged Groq results are preserved after model or prompt changes until you explicitly choose **Retry all with Groq** or analyze the active note; a model change alone does not spend provider quota. Changed source text is analyzed during the next authorized scan. Records without fingerprints keep their historical provenance and result until source changes or explicit reanalysis; no missing provenance is invented.
 
 Full scans build a temporary date-to-files index once. Source eligibility, file identity and metadata are checked again before reads and requests; changed scope cancels the scan. The index retains file references and paths only, and is discarded after each scan. It does not cache note text or reduce provider latency.
 
 Generated provider summaries, drivers and confidence explanations are bounded plain text. Markdown punctuation is serialized as literal characters and line breaks are collapsed, so narrative fields cannot create links, images, embeds or HTML. Intended source-note links remain available separately. Summaries and confidence explanations are limited to 500 characters; each of up to four drivers is limited to 250 characters. Native Obsidian 1.14.4 synthetic checks verify literal readable output with no narrative link/image/embed/script elements.
 
-Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Markdown blockquotes and prose Mermaid mindmaps are retained; executable code is excluded. Local analysis now uses contextual English rules for attribution, negation, hypothetical/abstract discussion, mixed feelings and explicit emotional evidence. Its confidence remains low because rule coverage is limited.
-
-## Emotional analysis in 1.3
-
-The local engine replaces global word counting with clause-level evidence. It distinguishes a personally felt state from other people's feelings, quotations, first-person intellectual discussion and wishes. Four dimensions are scored independently: fatigue does not imply sadness, solitude does not establish loneliness, and the presence of friends does not prove felt connection. Unsupported dimensions are `null` and appear as **— / Not evidenced**, rather than invented neutral scores. A long note without usable personal emotional signals can be marked **insufficient**.
-
-The engine retains competing feelings and explicitly marked changes within the writing. It records possible sarcasm without reversing sentiment automatically; explicit needs, event/feeling associations and self-reported recurrence have concrete quotation anchors. Activation and depletion can coexist. Intensity comes from the expressed state and modifiers, rather than profanity, punctuation or repeated words. Evidence and context are available in each entry and an expandable dashboard panel, including unscored entries.
-
-New Groq responses must supply source evidence. Quotations are checked against the submitted cleaned text, clear literal misattribution is checked locally without requiring a local lexical match, and unsupported dimensions lose their scores. A score that contradicts its cited direction is left unscored with an explanation; the other grounded passages are retained. Explanations are built from validated signal labels, source quotations and bounded interpretation templates; unrestricted model summaries are not persisted as the explanation. Quotation matching cannot prove the interpretation is correct. Provider evidence confidence is capped at medium, ambiguities remain tentative, and local results remain low confidence.
-
-In 1.3.2, Groq also retains emotionally charged commentary, second-person address and clipped passages as **textual charge**. These passages can support intensity without proving the author's personal mood, energy or connection. Each such signal is labeled in the entry and dashboard. Neutral definitions and mere mentions of emotion can still be unscored. A first empty assessment always receives one semantic review; if local personal signals remain omitted, the existing record is preserved and the date remains pending. JSON fallback can repair misplaced observation/limitation containers without changing their contents, and format retries receive validation guidance. GPT-OSS models use medium reasoning effort with the existing completion limits. Previously saved remote results still require explicit reanalysis; upgrading alone does not send them again.
-
-Comparisons across dates use only already saved evidence, locally, with matching source scope, analyzer generation, model, provider and date basis. Up to 14 earlier observed dates within 30 days can supply a numerical comparison. Repeated feelings and exact event/feeling wording require at least three observed dates. Gaps are not filled in and a recurring phrase is not a diagnosis, personality trait or proof of causation. Comparisons are snapshots taken when an entry is analyzed; reanalyze after changing earlier entries to refresh them. No earlier writing is added to a Groq request.
-
-Existing record identities, score field names, source links and historical provenance are preserved. Fingerprinted local results refresh on the next authorized scan. Unchanged remote results still require explicit reanalysis after a prompt/model change. Existing Methodology notes are preserved; consult this section and [the engine design and evaluation](docs/EMOTIONAL_ENGINE.md) for the new behavior. Local rules are English-focused and can miss subtle metaphor, indirect feeling, unfamiliar wording and cultural context. The included benchmark is an engineering evaluation, not clinical validation.
+Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Local scoring remains a simple English word-pattern estimate: it does not implement the Groq prompt's attribution, quotation or negation reasoning, and its confidence remains low.
 
 ![Automatic Mood History for Obsidian: mood and energy trends presented in a colorful dashboard-style graphic with illustrative data.](assets/readme-banner.svg)
 
@@ -63,9 +21,8 @@ The plugin groups eligible Markdown notes by the local calendar date of their Ob
 - Optional automatic analysis after changes to included notes
 - Folder include/exclude lists, with subfolder support and exclusions taking precedence
 - One consolidated result per calendar date
-- Optional Groq compact structured-output analysis with at most one correction per chunk
+- Optional Groq structured-output analysis with a validated three-stage JSON fallback
 - Local deterministic analysis that works without a network connection or API key
-- Evidence-backed independent scores, mixed emotions, contextual observations and local sparse-history comparisons
 - Native Markdown entry notes and an Obsidian Base
 - Mood, energy, connection, and intensity scores from 1–5, all plotted in the trend chart
 - Dominant-emotion history and day-by-day source links

@@ -1,5 +1,3 @@
-const { ENGINE_VERSION, contextualAnalysis, normalizeInsights, assertProviderInsights, groundedAnalysis, compareEmotionalHistory } = require("./emotional-engine");
-
 const ALLOWED_EMOTIONS = [
   "affectionate",
   "amused",
@@ -48,65 +46,29 @@ const ANALYSIS_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    moodScore: { type: ["integer", "null"], minimum: 1, maximum: 5 },
-    energyScore: { type: ["integer", "null"], minimum: 1, maximum: 5 },
-    connectionScore: { type: ["integer", "null"], minimum: 1, maximum: 5 },
-    intensityScore: { type: ["integer", "null"], minimum: 1, maximum: 5 },
+    moodScore: { type: "integer", minimum: 1, maximum: 5 },
+    energyScore: { type: "integer", minimum: 1, maximum: 5 },
+    connectionScore: { type: "integer", minimum: 1, maximum: 5 },
+    intensityScore: { type: "integer", minimum: 1, maximum: 5 },
     valence: {
       type: "string",
-      enum: ["very_negative", "negative", "mixed", "positive", "very_positive", "unknown"]
+      enum: ["very_negative", "negative", "mixed", "positive", "very_positive"]
     },
     emotions: {
       type: "array",
-      minItems: 0,
+      minItems: 1,
       maxItems: 6,
       items: { type: "string", minLength: 1, maxLength: 48 }
     },
     summary: { type: "string" },
     drivers: {
       type: "array",
-      minItems: 0,
+      minItems: 1,
       maxItems: 4,
       items: { type: "string" }
     },
     confidence: { type: "string", enum: ["low", "medium", "high"] },
-    confidenceReason: { type: "string" },
-    insights: {
-      type: "object", additionalProperties: false,
-      properties: {
-        version: { type: "integer", enum: [1] },
-        evidence: {
-          type: "array", maxItems: 16,
-          items: {
-            type: "object", additionalProperties: false,
-            properties: {
-              dimension: { type: "string", enum: ["mood", "energy", "connection", "intensity"] },
-              basis: { type: "string", enum: ["personal", "textual"] },
-              quote: { type: "string", minLength: 1, maxLength: 240 },
-              direction: { type: "string", enum: ["positive", "negative", "mixed", "neutral"] },
-              emotion: { type: "string", maxLength: 48 },
-              confidence: { type: "string", enum: ["low", "medium", "high"] }
-            },
-            required: ["dimension", "basis", "quote", "direction", "emotion", "confidence"]
-          }
-        },
-        observations: {
-          type: "array", maxItems: 8,
-          items: {
-            type: "object", additionalProperties: false,
-            properties: {
-              kind: { type: "string", enum: ["ambivalence", "contradiction", "coexistence", "sarcasm", "need", "trigger", "pattern", "change"] },
-              description: { type: "string", maxLength: 300 },
-              quotes: { type: "array", minItems: 1, maxItems: 3, items: { type: "string", minLength: 1, maxLength: 240 } },
-              confidence: { type: "string", enum: ["low", "medium", "high"] }
-            },
-            required: ["kind", "description", "quotes", "confidence"]
-          }
-        },
-        limitations: { type: "array", maxItems: 6, items: { type: "string", maxLength: 240 } }
-      },
-      required: ["version", "evidence", "observations", "limitations"]
-    }
+    confidenceReason: { type: "string" }
   },
   required: [
     "moodScore",
@@ -118,54 +80,113 @@ const ANALYSIS_SCHEMA = {
     "summary",
     "drivers",
     "confidence",
-    "confidenceReason",
-    "insights"
+    "confidenceReason"
   ]
 };
+
+const EMOTION_LEXICON = {
+  affectionate: ["affection", "affectionate", "care", "caring", "tender", "fond"],
+  amused: ["amused", "funny", "laugh", "laughing", "joke", "playful"],
+  angry: ["angry", "anger", "furious", "rage", "pissed", "mad"],
+  anxious: ["anxious", "anxiety", "panic", "panicking", "nervous", "worry", "worried"],
+  bored: ["bored", "boring", "stagnant", "sameness", "nothing happens"],
+  confused: ["confused", "confusing", "uncertain", "don't understand", "cannot understand"],
+  content: ["content", "comfortable", "at ease", "satisfied"],
+  curious: ["curious", "curiosity", "wonder", "question", "discover"],
+  depressed: ["depressed", "depression", "bleak", "hopeless", "misery", "miserable"],
+  disappointed: ["disappointed", "disappointment", "let down", "failed"],
+  disgusted: ["disgusted", "disgusting", "grotesque", "repulsed"],
+  dismayed: ["dismayed", "shocked", "horrified", "appalled"],
+  disillusioned: ["disillusioned", "illusion", "false", "lie", "betrayal"],
+  eager: ["eager", "hungry for", "can't wait", "want to"],
+  excited: ["excited", "excitement", "alive", "electric", "thrilled"],
+  fearful: ["fear", "fearful", "afraid", "dread", "scared"],
+  frustrated: ["frustrated", "frustration", "stuck", "blocked", "trapped"],
+  guilty: ["guilty", "guilt", "responsible for", "my fault"],
+  helpless: ["helpless", "can't do anything", "cannot do anything", "no control"],
+  hopeful: ["hope", "hopeful", "possibility", "future", "better"],
+  hurt: ["hurt", "painful", "pain", "wounded"],
+  insecure: ["insecure", "rejected", "unwanted", "not enough"],
+  isolated: ["isolated", "withdrawal", "alone", "closed system", "cut off"],
+  irritated: ["irritated", "annoyed", "bothering", "snapped"],
+  lonely: ["lonely", "loneliness", "nobody", "no one", "unseen"],
+  loving: ["love", "loving", "devotion", "loyalty"],
+  moved: ["moved", "touched", "meaningful", "matters to me"],
+  optimistic: ["optimistic", "confident", "will improve", "can improve"],
+  peaceful: ["peace", "peaceful", "calm", "relaxed"],
+  pleased: ["pleased", "glad", "happy", "delighted", "joy"],
+  powerless: ["powerless", "dependent", "no money", "no resources", "cannot leave"],
+  proud: ["proud", "accomplished", "achievement", "stronger"],
+  regretful: ["regret", "regretful", "wish i had", "should have"],
+  relieved: ["relieved", "relief", "finally free", "weight lifted"],
+  sad: ["sad", "sadness", "sorrow", "cry", "grief", "unhappy"],
+  satisfied: ["satisfied", "fulfilled", "enough", "gratified"],
+  scared: ["scared", "terrified", "frightened", "spooked"],
+  shameful: ["shame", "ashamed", "embarrassed", "humiliated"],
+  stressed: ["stressed", "stress", "exhausted", "overwhelmed", "drained", "burned out"],
+  surprised: ["surprised", "unexpected", "astonished", "amazed"],
+  worried: ["worried", "worry", "concerned", "what if"]
+};
+
+const POSITIVE_WORDS = [
+  "love", "joy", "happy", "hope", "hopeful", "alive", "excited", "playful",
+  "connection", "connected", "affection", "grateful", "stronger", "better",
+  "curious", "freedom", "possibility", "fun", "calm", "peace", "proud"
+];
+
+const NEGATIVE_WORDS = [
+  "hate", "angry", "sad", "miserable", "depressed", "hopeless", "trapped",
+  "stuck", "exhausted", "drained", "resent", "lonely", "isolated", "fear",
+  "afraid", "guilty", "shame", "disgust", "bleak", "dead", "death", "hurt",
+  "pain", "frustrated", "unwanted", "rejected", "powerless", "nothing"
+];
+
+const ENERGY_UP = [
+  "energy", "move", "movement", "run", "travel", "create", "build", "want",
+  "desire", "ambition", "excited", "alive", "initiative", "action", "play"
+];
+
+const ENERGY_DOWN = [
+  "tired", "exhausted", "drained", "stuck", "passive", "stagnant", "nothing",
+  "bored", "sleep", "flat", "heavy", "burned out", "no energy"
+];
+
+const CONNECTION_UP = [
+  "connection", "connected", "friend", "friends", "together", "love", "care",
+  "affection", "community", "family", "share", "conversation", "understand"
+];
+
+const CONNECTION_DOWN = [
+  "alone", "lonely", "isolated", "withdrawal", "unseen", "unwanted", "absent",
+  "disconnect", "wall", "closed system", "nobody", "no one", "rejected"
+];
+
+const TERM_PATTERNS = new Map(Array.from(new Set([
+  ...POSITIVE_WORDS, ...NEGATIVE_WORDS, ...ENERGY_UP, ...ENERGY_DOWN,
+  ...CONNECTION_UP, ...CONNECTION_DOWN, ...Object.values(EMOTION_LEXICON).flat()
+])).map((term) => [term, new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi")]));
+
+function countTerms(text, terms, counts) {
+  return terms.reduce((total, term) => {
+    if (!counts.has(term)) {
+      const matches = text.match(TERM_PATTERNS.get(term));
+      counts.set(term, matches ? matches.length : 0);
+    }
+    return total + counts.get(term);
+  }, 0);
+}
 
 function stripFrontmatter(text) {
   return text.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "");
 }
 
-function maskFencedContent(text) {
-  // Preserve original offsets and line boundaries while excluding complete or
-  // unclosed code fences of any Markdown-supported length. Prose mindmaps stay.
-  const lines = String(text).match(/[^\n]*\n|[^\n]+$/g) || [];
-  const output = [];
-  const mask = value => value.replace(/[^\r\n]/g, ' ');
-  for (let index = 0; index < lines.length; index++) {
-    const opening = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/.exec(lines[index]);
-    if (!opening) { output.push(lines[index]); continue; }
-    const marker = opening[1][0]; const size = opening[1].length;
-    const start = index; const body = [];
-    let closed = false;
-    while (++index < lines.length) {
-      const closing = /^ {0,3}(`+|~+)[ \t]*(?:\r?\n)?$/.exec(lines[index]);
-      if (closing && closing[1][0] === marker && closing[1].length >= size) { closed = true; break; }
-      body.push(lines[index]);
-    }
-    const mindmap = /^mermaid\s*$/i.test(opening[2].trim()) && /^\s*mindmap\b/i.test(body.join(''));
-    output.push(mask(lines[start]));
-    if (mindmap) {
-      let removed = false;
-      for (const line of body) output.push(!removed && /\bmindmap\b/i.test(line) ? (removed = true, line.replace(/\bmindmap\b/i, word => ' '.repeat(word.length))) : line);
-    } else output.push(...body.map(mask));
-    if (closed) output.push(mask(lines[index]));
-  }
-  return output.join('');
-}
-
 function textForAnalysis(text) {
-  return stripFrontmatter(maskFencedContent(text))
-    .replace(/^\s*>\s?/gm, "")
+  return stripFrontmatter(text)
     .replace(/!\[\[[^\]]+\]\]/g, " ")
     .replace(/!\[[^\]]*\]\([^\n]*?\)/g, " ")
     .replace(/!\[[^\]]*\]\[[^\]]*\]/g, " ")
     .replace(/<img\b[^>]*>/gi, " ")
-    .replace(/```([^\n]*)\n([\s\S]*?)```/g, (_block, language, body) =>
-      /^mermaid\s*$/i.test(language.trim()) && /^\s*mindmap\b/i.test(body) ? body.replace(/^\s*mindmap\b/i, "") : " ")
-    .replace(/~~~[^\n]*\n[\s\S]*?~~~/g, " ")
-    .replace(/`[^`\n]*`/g, " ")
+    .replace(/```[\s\S]*?```/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/^#.*$/gm, " ")
     .replace(/^\s*[-*]\s*$/gm, " ")
@@ -277,7 +298,65 @@ function validateAnalysis(input) {
 }
 
 function localSentiment(text, topic = "") {
-  return contextualAnalysis(text, topic);
+  const normalized = text.toLowerCase();
+  // Many words participate in both scores and emotion labels. Count each
+  // distinct term once per analysis, without retaining sensitive source text.
+  const counts = new Map();
+  const count = (terms) => countTerms(normalized, terms, counts);
+  const positive = count(POSITIVE_WORDS);
+  const negative = count(NEGATIVE_WORDS);
+  const total = positive + negative;
+  const ratio = total ? (positive - negative) / total : 0;
+  let moodScore = 3;
+  if (ratio <= -0.45) moodScore = 1;
+  else if (ratio < -0.12) moodScore = 2;
+  else if (ratio >= 0.5) moodScore = 5;
+  else if (ratio > 0.15) moodScore = 4;
+
+  const energyUp = count(ENERGY_UP);
+  const energyDown = count(ENERGY_DOWN);
+  let energyScore = 3;
+  if (energyDown > energyUp * 1.5) energyScore = energyDown >= 6 ? 1 : 2;
+  else if (energyUp > energyDown * 1.5) energyScore = energyUp >= 6 ? 5 : 4;
+
+  const connected = count(CONNECTION_UP);
+  const disconnected = count(CONNECTION_DOWN);
+  let connectionScore = 3;
+  if (disconnected > connected * 1.4) connectionScore = disconnected >= 5 ? 1 : 2;
+  else if (connected > disconnected * 1.4) connectionScore = connected >= 5 ? 5 : 4;
+
+  const profanity = (normalized.match(/\b(fuck|fucking|bitch|shit|damn)\b/g) || []).length;
+  const exclamations = (text.match(/!/g) || []).length;
+  const emotionDensity = Math.min(20, total + profanity + exclamations);
+  const intensityScore = emotionDensity >= 12 ? 5 : emotionDensity >= 7 ? 4 : emotionDensity >= 3 ? 3 : emotionDensity >= 1 ? 2 : 1;
+
+  const ranked = Object.entries(EMOTION_LEXICON)
+    .map(([emotion, terms]) => [emotion, count(terms)])
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([emotion]) => emotion);
+
+  const drivers = [];
+  if (negative > positive) drivers.push("Negative emotional language outweighs positive language.");
+  if (positive > negative) drivers.push("Positive and possibility-oriented language outweighs negative language.");
+  if (disconnected > connected) drivers.push("Isolation or disconnection language is prominent.");
+  if (connected > disconnected) drivers.push("Connection, care, or relationship language is prominent.");
+  if (energyDown > energyUp) drivers.push("Depletion and stagnation language lowers the inferred energy score.");
+  if (energyUp > energyDown) drivers.push("Movement and desire language raises the inferred energy score.");
+
+  return validateAnalysis({
+    moodScore,
+    energyScore,
+    connectionScore,
+    intensityScore,
+    valence: moodToValence(moodScore),
+    emotions: ranked,
+    summary: topic || "Local sentiment estimate from the day's writing.",
+    drivers: drivers.slice(0, 4),
+    confidence: "low",
+    confidenceReason: "This entry uses deterministic word-pattern scoring and should be treated as directional."
+  });
 }
 
 function escapeYaml(value) {
@@ -299,7 +378,6 @@ function buildEntryMarkdown(record) {
     `date: ${escapeYaml(record.date)}`,
     `date_basis: ${escapeYaml(record.dateBasis || "legacy-note-date")}`,
     `status: ${escapeYaml(record.status)}`,
-    `processing_state: ${escapeYaml(record.processing?.state || "coverage-unknown")}`,
     `analysis_source: ${escapeYaml(record.analysisSource)}`,
     `confidence: ${escapeYaml(record.confidence || "none")}`,
     `mood: ${record.moodScore ?? "null"}`,
@@ -331,16 +409,14 @@ function buildEntryMarkdown(record) {
     "## Snapshot",
     ""
   );
-  if (record.coverage) lines.push(`Processing: ${record.coverage.processedChunks}/${record.coverage.totalChunks} chunks; ${record.coverage.pendingCharacters} eligible characters pending.`, "");
-  if (record.insights?.assessments) {
-    for (const axis of ["mood", "energy", "connection", "intensity"]) lines.push(`- ${axis} assessment: ${plainNarrative(record.insights.assessments[axis]?.state || "not_assessed")}`);
-    lines.push("");
-  } else lines.push("Assessment coverage unknown for this historical record.", "");
   if (record.status === "insufficient") {
-    lines.push(plainNarrative(record.summary || "There was not enough personal emotional evidence to assign scores reliably."));
+    lines.push("There was not enough written text to infer a mood reliably.");
   } else {
     lines.push(
-      ...["mood", "energy", "connection", "intensity"].map(axis => `- **${axis[0].toUpperCase() + axis.slice(1)}:** ${Number.isFinite(record[`${axis}Score`]) ? `${record[`${axis}Score`]}/5` : "Not evidenced"}`),
+      `- **Mood:** ${record.moodScore}/5`,
+      `- **Energy:** ${record.energyScore}/5`,
+      `- **Connection:** ${record.connectionScore}/5`,
+      `- **Intensity:** ${record.intensityScore}/5`,
       `- **Emotions:** ${plainNarrative((record.emotions || []).join(", ") || "none")}`,
       `- **Confidence:** ${plainNarrative(record.confidence)}`,
       "",
@@ -350,29 +426,6 @@ function buildEntryMarkdown(record) {
   if (record.drivers?.length) {
     lines.push("", "## Signals", "");
     for (const driver of record.drivers.slice(0, 4)) lines.push(`- ${plainNarrative(driver, 250)}`);
-  }
-  const insights = normalizeInsights(record.insights);
-  if (insights) {
-    lines.push("", "## Emotional evidence", "");
-    for (const item of insights.evidence) lines.push(`- **${item.dimension}${item.basis === "textual" ? " · textual charge" : ""} · ${item.confidence}:** ${plainNarrative(item.emotion, 48)} — “${plainNarrative(item.quote, 240)}”`);
-    if (insights.observations.length) lines.push("", "## Context and complexity", "");
-    for (const item of insights.observations) {
-      lines.push(`- **${item.kind} · ${item.confidence}:** ${plainNarrative(item.description, 300)}`);
-      for (const quote of item.quotes) lines.push(`  - Evidence: “${plainNarrative(quote, 240)}”`);
-    }
-    for (const limitation of insights.limitations) lines.push("", `_${plainNarrative(limitation, 240)}_`);
-  }
-  const comparison = record.historyComparison;
-  if (comparison?.version === 1 && Array.isArray(comparison.changes) && Array.isArray(comparison.recurring)) {
-    lines.push("", "## Compared with earlier writing", "");
-    for (const item of comparison.changes.filter(item => item && typeof item === "object").slice(0, 4)) lines.push(`- ${plainNarrative(item.dimension, 20)}: ${plainNarrative(String(item.delta), 10)} from the earlier mean (${plainNarrative(String(item.sampleSize), 5)} observed dates).`);
-    for (const item of comparison.recurring.filter(item => item && typeof item === "object").slice(0, 6)) lines.push(`- Repeated expression: ${plainNarrative(item.emotion, 48)} on ${plainNarrative(Array.isArray(item.dates) ? item.dates.join(", ") : "", 150)}.`);
-    for (const item of (Array.isArray(comparison.situations) ? comparison.situations : []).filter(item => item && typeof item === "object").slice(0, 3)) {
-      lines.push(`- Repeated situation wording: ${plainNarrative(item.emotion, 48)} with “${plainNarrative(item.context, 100)}” (low confidence).`);
-      for (const support of (Array.isArray(item.evidence) ? item.evidence : []).filter(item => item && typeof item === "object").slice(0, 4))
-        lines.push(`  - ${plainNarrative(support.date, 10)}: “${plainNarrative(support.quote, 240)}”`);
-    }
-    lines.push("", plainNarrative(comparison.caveat, 240));
   }
   if (record.providerIssue?.message) {
     lines.push("", "## Groq status", "", plainNarrative(record.providerIssue.message));
@@ -390,21 +443,15 @@ function PathBasename(path) {
 }
 
 module.exports = {
-  ENGINE_VERSION,
   ALLOWED_EMOTIONS,
   ANALYSIS_SCHEMA,
   buildEntryMarkdown,
   deduplicateParagraphs,
   localSentiment,
-  normalizeInsights,
-  assertProviderInsights,
-  groundedAnalysis,
-  compareEmotionalHistory,
   moodToValence,
   plainNarrative,
   sha256,
   stripFrontmatter,
   textForAnalysis,
-  maskFencedContent,
   validateAnalysis
 };

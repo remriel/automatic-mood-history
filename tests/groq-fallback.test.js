@@ -19,11 +19,7 @@ const valid = {
   summary: "A synthetic sample mentions a busy day and a helpful conversation.",
   drivers: ["The sample mentions a conversation."],
   confidence: "low",
-  confidenceReason: "The synthetic sample contains limited sentiment detail.",
-  insights: { version: 1, observations: [], limitations: [], evidence: [
-    { dimension: "mood", quote: "curious", direction: "positive", emotion: "curious", confidence: "low" },
-    { dimension: "mood", quote: "relieved", direction: "positive", emotion: "relieved", confidence: "low" }
-  ] }
+  confidenceReason: "The synthetic sample contains limited sentiment detail."
 };
 
 const originalLoad = Module._load;
@@ -69,8 +65,8 @@ instance.settings = {
 instance.groqBlockedUntil = 0;
 instance.lastGroqError = "";
 
-instance.analyzeWithGroq("2030-03-14", "I feel curious and relieved after the conversation.").then((result) => {
-  assert.strictEqual(calls, 4, "format fallback and missing-dimension review remain bounded");
+instance.analyzeWithGroq("2030-03-14", "The sample mentions a busy day and a helpful conversation.").then((result) => {
+  assert.strictEqual(calls, 3);
   assert.strictEqual(result.moodScore, 3);
   assert.deepStrictEqual(result.emotions, ["curious", "relieved"]);
   console.log("Groq three-stage structured-output fallback passed");

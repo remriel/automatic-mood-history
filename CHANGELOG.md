@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2 — 2026-10-16
+
+- Revert the plugin implementation to the 1.2.9 release, removing all functional changes from 1.3.0–1.5.1.
+- Keep the existing plugin identity; update release metadata to 1.5.2 and retain prior changelog entries.
+- Warn that data and pending-job compatibility with later versions needs verification. See `docs/RELEASE_NOTES_1.5.2.md`.
+
 ## 1.5.1 — 2026-10-16
 
 - Repair unique source quotations when Groq changes only spacing or typography; preserve exact source text in saved evidence.

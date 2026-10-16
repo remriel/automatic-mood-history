@@ -1,19 +1,14 @@
 {
   "name": "automatic-mood-history",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "description": "Local-first mood history for dated Obsidian notes, with optional Groq analysis.",
   "scripts": {
     "build": "node scripts/build.js",
-    "check": "node --check src/main.js && node --check src/sentiment-core.js && node --check src/emotional-engine.js && node --check src/analysis-pipeline.js && node --check main.js && node --check src/groq-runtime.js",
-    "test": "npm run build && npm run check && node tests/core.test.js && node tests/bundle-load.test.js && node tests/onload.test.js && node tests/timestamp-grouping.test.js && node tests/folder-filter.test.js && node tests/groq-fallback.test.js && node tests/groq-recovery.test.js && node tests/dashboard-migration.test.js && node tests/legacy-fallback-recovery.test.js && node tests/automatic-recovery.test.js && node tests/audit-regressions.test.js && node tests/storage-recovery.test.js && node tests/lifecycle-cancellation.test.js && node tests/settings-validation.test.js && node tests/cache-discovery.test.js && node tests/history-identity.test.js && node tests/narrative-policy.test.js && node tests/emotional-engine.test.js && node tests/emotional-integration.test.js && node tests/emotional-history.test.js && node tests/reflective-recall.test.js && node tests/charged-content.test.js && node tests/coverage-reproductions.test.js && node tests/coverage-pipeline.test.js && node tests/coverage-evaluation.test.js && node tests/pending-recovery.test.js && node tests/groq-runtime.test.js",
-    "test:pending": "node tests/pending-recovery.test.js",
-    "test:charged": "node tests/charged-content.test.js",
+    "check": "node --check src/main.js && node --check src/sentiment-core.js && node --check main.js",
+    "test": "npm run build && npm run check && node tests/core.test.js && node tests/bundle-load.test.js && node tests/onload.test.js && node tests/timestamp-grouping.test.js && node tests/folder-filter.test.js && node tests/groq-fallback.test.js && node tests/groq-recovery.test.js && node tests/dashboard-migration.test.js && node tests/legacy-fallback-recovery.test.js && node tests/automatic-recovery.test.js && node tests/audit-regressions.test.js && node tests/storage-recovery.test.js && node tests/lifecycle-cancellation.test.js && node tests/settings-validation.test.js && node tests/cache-discovery.test.js && node tests/history-identity.test.js && node tests/narrative-policy.test.js",
     "test:layout": "node tests/layout.test.js",
-    "audit:release": "node scripts/audit-release.js",
-    "benchmark:emotions": "node scripts/benchmark-emotions.js",
-    "evaluate:coverage": "node scripts/evaluate-coverage.js",
-    "benchmark:groq": "node scripts/benchmark-groq.js"
+    "audit:release": "node scripts/audit-release.js"
   },
   "devDependencies": {
     "playwright": "1.62.1"
