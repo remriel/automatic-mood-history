@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.1 — 2026-10-16
+
+- Continue independent chunks after invalid provider output or a cooling chunk; preserve validated work and existing results.
+- Keep ordinary character-budget continuation at a one-minute delay and track failure backoff per chunk.
+- Add pending-only resume, live checkpoint counts and retry/continuation times; preserve provider-wide pauses and source/data caps.
+- Cover 68-chunk recovery across reloads, storage failures, rate limits and cancellation with regression tests.
+
 ## 1.3.2 — 2026-10-15
 
 - Retain emotionally charged commentary, second-person address and clipped material as explicitly labeled textual intensity without assigning personal mood, energy or connection from that material.

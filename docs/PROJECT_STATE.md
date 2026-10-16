@@ -1,6 +1,20 @@
 # Automatic Mood History — durable project state
 
-## Active objective: accountable coverage and contextual interpretation
+## Active follow-up: stalled pending analysis (2026-10-16)
+
+Current baseline is merged main 37fc00a1363df2104c2c7bbac99dbec243e9becf, version 1.4.0. The user reports twelve pending date groups, including a 240,329-character/68-chunk group. This session uses one agent and synthetic fixtures; earlier vault/provider/publication authorization below is historical and must not be imported.
+
+Confirmed source defects: processPreparedDate returns immediately after any failed chunk and breaks on a cooling first chunk, blocking later independent text. markDatePending increases exponential backoff even for ordinary character-budget continuation; successful partial work does not reset that penalty. Existing valid checkpoints, source fingerprints, exact quote validation, provider-only mode, rate limits, cancellation and configured per-pass source limits must remain intact. Do not fix completion by accepting invalid evidence, hiding pending states, raising the budget or reprocessing completed chunks.
+
+Implementation (1.4.1 candidate): processPreparedDate skips cooling/oversized chunks and continues after isolated validation/format failures; provider-wide pauses still stop dispatch. Chunk failures have separate counts (reset when more dimensions resolve), categories and deadlines. markDatePending treats budget continuation as one-minute eligibility with attempts=1 and preserves the earliest pending deadline. Successful checkpoints are stored outside the provider-error catch, so a later save failure remains storage recovery. pendingAnalysisKeys/getAnalysisTargets and resumePendingAnalysis implement a bounded pending-only scan; analyzeDate rechecks pending membership after queueing. renderProcessingAndRepair shows retry/continuation times and checkpoint refreshes update the UI. The dashboard and command palette expose Resume pending.
+
+Compatibility: unchanged source preparation, COVERAGE_VERSION, prompt, engine and analysisFingerprint preserve valid 1.4.0 checkpoints. Do not bump those for scheduling changes. Final evidence and all passage/dimension completion requirements remain strict; no local fallback is introduced in Groq mode. Existing automatic-analysis policy controls future scheduled passes; manual resume authorizes one cap-limited pass.
+
+Relevant tests: tests/pending-recovery.test.js reproduces the baseline blocker and a full 68-chunk synthetic date with real parsing/validation, automatic recovery/reloads and a deliberately conflicting first chunk. The other 67 complete once each under the 60,000-character cap; one valid targeted correction completes the date. Tests also cover independent cooldowns, unchanged old history, stable budget delay, save failure reuse, provider-wide stops, cancellation and queued pending-only rechecks. New layout coverage exercises the pending time/button in a 280px pane. Full local functional/syntax/frozen semantic-fingerprint gates pass. Child-process EPERM prevents local browser/official audit runs; equivalent privacy scanning passed and hosted CI must complete those checks.
+
+RESUME HERE: reconcile actual git state with PROGRESS.md, finish current-head hosted CI and reviewable PR synchronization, then deliver candidate assets and continuity documents. Version 1.4.0 is confirmed published at 2026-10-16T07:01:12Z from main 37fc00a; its CI 38864464486 and release workflow 38864464479 passed. The 1.4.1 candidate is not merged/released yet. The code fix and completion of the user's private backlog are separate acceptance claims. No installed changes or live Groq calls were performed here. Shell network failed; connected GitHub APIs are available. Historical sections below describe the prior implementation and its evidence.
+
+## Historical 1.4.0 objective: accountable coverage and contextual interpretation
 
 Baseline: verified main 6f17fcc8c509428e4ed71c29540896909cbcfd53 (1.3.2). Prior release completion does not establish this objective. Single-agent execution only. User authorizes repeated Groq openai/gpt-oss-120b evaluations, live testing with the entire Obsidian vault within existing exclusions/consent/scope, and release publication after acceptance. No private text, paths, raw provider output, credentials or native screenshots enter Git.
 
@@ -27,7 +41,7 @@ Full functional suite, new coverage/contract/recovery and exact-build frozen-eva
 
 Complete source accounting and provenance cost additional CPU and storage: see COVERAGE_PERFORMANCE.json. Large inputs previously truncated at 60,000 characters are not equivalent baseline work. Pending metadata is deleted after commit; compact mappings and bounded evidence remain sensitive local data. Exact quotation checks cannot prove semantic truth, universal recall, clinical accuracy or power-loss fsync guarantees. A long native historical replacement remains pending; its prior record and staged dimensions are preserved. Publication verification is the remaining release gate.
 
-## RESUME HERE
+## Historical 1.4.0 handoff (superseded)
 
 Implementation and local acceptance are complete. Branch feat/accountable-emotional-coverage is being synchronized for 1.4.0. Finish latest-head GitHub CI, merge the reviewable PR, and verify the established release workflow, downloaded assets/digests and source-bound attestations. Then record exact publication evidence and deliver both continuity documents. Do not silently backfill unknown remote history, increase the saved data budget, or claim the pending native long date is complete. Session vault authorization is explicit here and must not be imported as authorization for an unrelated future session.
 

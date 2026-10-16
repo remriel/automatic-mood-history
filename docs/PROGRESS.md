@@ -1,3 +1,25 @@
+# Pending analysis recovery — execution state (2026-10-16)
+
+Objective: correct the stalled chunk backlog reported against 1.4.0, preserve validated work and previous records, and deliver a verified fix synchronized to GitHub.
+
+Progress: 85% [#################---] — 1.4.1 implementation and local functional verification complete; GitHub CI/publication and delivery remain.
+
+- [x] Reconcile GitHub main, local clean source, continuity files and tests. No subagents.
+- [x] Identify failed-chunk head-of-line blocking and exponential budget-continuation backoff.
+- [x] Reproduce baseline failure (one request versus five required chunks), fix isolated chunk scheduling, preserve retry reasons/deadlines and add pending-only recovery.
+- [x] Verify a 68-chunk synthetic date through real request parsing, strict evidence validation, scheduled recovery and reload: 67 independent chunks complete while one conflicts; one targeted correction then commits all 68. Completed chunks are each sent once and every pass stays within 60,000 source/context characters.
+- [x] Verify stable one-minute budget eligibility, earliest chunk cooldown, partial dimensions, checkpoint failure/reuse, provider-wide pause, cancellation and queued pending-only deduplication. Full functional/syntax and frozen semantic-contract gates pass.
+- [ ] Verify responsive-layout and official release audit in GitHub CI; local process spawning is denied (browser and child git EPERM). Equivalent local privacy scan passed for 92 tracked/untracked publishable files; diff check passes.
+- [ ] Synchronize a reviewable GitHub PR and deliver installable assets and both continuity files.
+
+Current implementation: 1.4.1 candidate, unchanged analysis fingerprints and 1.4.0 checkpoint compatibility. New dashboard/command action resumes only pending groups, rechecks queued targets before force processing, and preserves unrelated completed/stale history. Progress refreshes after persisted checkpoints. Normal budget pauses have no exponential penalty; failed chunks retain independent failure counts, categories and deadlines. Provider-wide pauses and per-pass caps remain.
+
+Current blockers: no code blocker. Shell networking and child-process launches are restricted; connected GitHub tools are available for branch/PR publication and hosted CI. No private source reads, installed changes or live Groq calls have been performed in this session.
+
+Exact next steps: synchronize the tested candidate to GitHub; create/attach the PR; require current-head green hosted CI including responsive-layout/audit; save installable files and both continuity documents under outputs. Private backlog completion must be measured separately from code verification and must never be claimed from synthetic tests. Merging the version change will trigger the established release workflow; it is not yet merged or released.
+
+The earlier 1.4.0 execution record below is historical. GitHub main now includes merged PR #5; its publication TODOs are stale.
+
 # Coverage and contextual analysis — execution state
 
 Objective: eliminate silent source/dimension/persistence/display omissions, improve grounded contextual inference, and publish verified 1.4.0.
