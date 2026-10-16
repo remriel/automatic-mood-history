@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0 — 2026-10-16
+
+- Replace verbose Groq chunk output with compact grounded evidence and low GPT-OSS reasoning; normally one request, at most one necessary correction.
+- Run independent chunks with up to five workers, reserve estimated tokens against reported quota and preserve server retry pauses.
+- Reuse validated pending chunks after exact fingerprint verification; reduce checkpoint writes and dashboard redraws.
+- Continue productive Resume pending batches immediately within the saved per-batch character cap; add Stop analysis and request/token/quota telemetry.
+- Measure a 92.4% wall-time reduction on a synthetic 10-chunk batch and about 77% on the small-entry median against 1.4.1. Pass all 57 score checks across three regression runs with zero unsupported scores.
+- Preserve prior records, source scope, provider consent, current settings, strict quotation validation and serialized recoverable commits.
+
 ## 1.4.1 — 2026-10-16
 
 - Continue independent chunks after invalid provider output or a cooling chunk; preserve validated work and existing results.

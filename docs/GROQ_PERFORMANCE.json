@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "implementationHash": "bd0057a8b292d814b80d19e0f2d41b65becfd15aa681e0c37e667fa3e85e32fd",
+  "bundleSHA256": "26b2a2fc70d4b9954a3be02ee76d4e784223e6044b4dd30ded62750201ec8178",
+  "model": "openai/gpt-oss-120b",
+  "baseline": "1.4.1",
+  "note": "Baseline 18-case contract comparison and fixed 10-chunk worker batch measured once on 1.4.1. Final current accuracy measured three times on the same regression inputs; current worker batch measured once with the identical generator/input. Initial failed compact trial is retained separately. Native disk/DOM overhead is excluded from worker measurements. This is not held-out or clinical validation.",
+  "baselineSummary": {
+    "cases": 18,
+    "successful": 18,
+    "constraints": 19,
+    "passed": 19,
+    "unsupported": 0,
+    "requests": 20,
+    "inputTokens": 74225,
+    "outputTokens": 37955,
+    "reasoningTokens": 31188,
+    "medianMilliseconds": 5597.31
+  },
+  "currentSummary": {
+    "cases": 54,
+    "successful": 54,
+    "constraints": 57,
+    "passed": 57,
+    "unsupported": 0,
+    "requests": 56,
+    "inputTokens": 49707,
+    "outputTokens": 20929,
+    "reasoningTokens": 10311,
+    "medianMilliseconds": 1271.33
+  },
+  "workerInputHash": "6f7f497374c56b4f237aca383848010a6ea52b45135cedf70b3adea0ec78462a",
+  "workers": [
+    {
+      "engine": "1.4.1",
+      "success": true,
+      "milliseconds": 65027.16,
+      "requests": 12,
+      "providerMilliseconds": 64947.855100000015,
+      "inputTokens": 50405,
+      "outputTokens": 27983,
+      "reasoningTokens": 23708,
+      "rateLimits": 0,
+      "chunks": 10,
+      "peakConcurrency": 1
+    },
+    {
+      "engine": "current",
+      "success": true,
+      "milliseconds": 4917.67,
+      "requests": 10,
+      "providerMilliseconds": 12748.304300000002,
+      "inputTokens": 13632,
+      "outputTokens": 4182,
+      "reasoningTokens": 2217,
+      "rateLimits": 0,
+      "chunks": 10,
+      "peakConcurrency": 5
+    }
+  ],
+  "smallEntryMedianReduction": 0.77286768108252,
+  "batchWallTimeReduction": 0.9243751380192523,
+  "analysisContractHash": "7bcbec4b3fc70b82324b34c70e0d9557f5c290b2a9bc333cc201a97a264aec08",
+  "presentationChangeNote": "After measurement, dashboard repair estimates were corrected from five calls to two. The analysis, quota, lifecycle, storage and worker code preceding buildRepairPreview is unchanged and independently fingerprinted; original full measured source and bundle hashes are retained."
+}

@@ -90,13 +90,13 @@ async function run() {
   assert(f.p.records[date].moodScore <= 3); assert(f.p.records[date].connectionScore <= 3);
   assert.equal(f.p.records[date].processing.state, 'complete');
 
-  // An explicit review abstention is allowed even if an English cue disagrees.
+  // Explicit abstention completes in one call even if an English cue disagrees.
   f = fixture(); f.disk.files.set(f.source.path, 'I feel sad is an example sentence in this language exercise.');
   const abstentionCalls = wireProvider(f.p, analysis => {
     for (const axis of pipeline.DIMENSIONS) { analysis[`${axis}Score`] = null; analysis.insights.assessments[axis] = { state: 'unsupported', reason: 'no_support' }; }
     analysis.insights.evidence = []; return analysis;
   });
-  assert.equal(await f.p.analyzeDate(date), true); assert.equal(abstentionCalls(), 2);
+  assert.equal(await f.p.analyzeDate(date), true); assert.equal(abstentionCalls(), 1);
   assert.equal(f.p.records[date].status, 'insufficient');
   assert.equal(f.p.records[date].processing.state, 'complete');
   assert.equal(f.p.records[date].insights.assessments.mood.state, 'unsupported');
@@ -127,8 +127,10 @@ async function run() {
     if (fallbackCalls === 1) { output.moodScore = 5; }
     return reply(output);
   };
-  assert.equal(await fallback.p.analyzeDate(date), true);
-  assert.equal(fallbackCalls, 3, 'the one semantic review can recover its format within the shared request allowance');
+  assert.equal(await fallback.p.analyzeDate(date), false);
+  assert.equal(fallbackCalls, 2, 'a chunk spends at most two calls; valid staged axes survive a failed repair');
+  assert.equal(await fallback.p.analyzeDate(date, { force: true }), true);
+  assert.equal(fallbackCalls, 3, 'a later explicit resume uses one correction rather than restarting validated work');
   assert(fallback.p.records[date].moodScore <= 3);
 
   // Per-run source budget includes repeated attempts; reload reuses complete
@@ -159,7 +161,7 @@ async function run() {
   assert(p.records[date].coverage.mappings.length > 0, 'source mappings survive final commit');
 
   // Mixed completion recovery, malformed format fallback and semantic review
-  // cannot exceed the shared five-attempt allowance.
+  // cannot exceed the compact two-attempt allowance.
   f = fixture(); f.p.analyzeWithGroq = Mood.prototype.analyzeWithGroq;
   const budgetChunk = prepare('I feel sad and lonely after reaching out.').chunks[0];
   let attempts = 0;
@@ -170,8 +172,8 @@ async function run() {
     const output = pipeline.localChunkAnalysis(budgetChunk);
     output.moodScore = 5; return reply(output);
   };
-  await assert.rejects(f.p.analyzeWithGroq(date, budgetChunk.text, { chunk: budgetChunk }), error => ['semantic_unresolved', 'processing_budget'].includes(error.code));
-  assert(attempts <= 5);
+  await assert.rejects(f.p.analyzeWithGroq(date, budgetChunk.text, { chunk: budgetChunk }));
+  assert(attempts <= 2);
 
   // A newly eligible source invalidates in-flight work even with automatic
   // analysis disabled. Event invalidation does not itself schedule remote work.
