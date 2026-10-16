@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1 — 2026-10-16
+
+- Repair unique source quotations when Groq changes only spacing or typography; preserve exact source text in saved evidence.
+- Fix trimmed quotation offsets and reject supported scores if normalized evidence disappears.
+- Treat malformed analysis as a date-specific output issue, keep diagnostic codes visible on the dashboard, and preserve other completed chunks.
+- Respect remaining daily requests when selecting three workers; remove a quadratic passage lookup during source preparation.
+
 ## 1.5.0 — 2026-10-16
 
 - Replace verbose Groq chunk output with compact grounded evidence and low GPT-OSS reasoning; normally one request, at most one necessary correction.

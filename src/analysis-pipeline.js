@@ -66,7 +66,7 @@ function prepareSourceCoverage(sources, budget = 60000) {
     if (!group.length) return;
     const text = group.map(item => item.text).join('\n\n');
     // Neighbor context is separately labeled and never eligible as new evidence.
-    const first = passages.indexOf(group[0]);
+    const first = groupStart;
     const last = first + group.length - 1;
     const room = Math.max(0, target - text.length);
     const contextLimit = Math.min(120, Math.floor(room / 2));
@@ -77,8 +77,11 @@ function prepareSourceCoverage(sources, budget = 60000) {
       requestCharacters: text.length + context.reduce((sum, item) => sum + item.text.length, 0) });
     group = []; length = 0;
   };
-  for (const passage of passages) {
+  let groupStart = 0;
+  for (let index = 0; index < passages.length; index++) {
+    const passage = passages[index];
     if (group.length && (length + 2 + passage.text.length > target || group.length >= 32)) finish();
+    if (!group.length) groupStart = index;
     group.push(passage); length += passage.text.length + (group.length > 1 ? 2 : 0);
   }
   finish();
@@ -139,6 +142,13 @@ function chunkAssessments(analysis, chunk, options = {}) {
     const axis = item.dimension;
     const passage = passages.get(item.passageId);
     let start = item.start;
+    // The display normalizer trims quotations. Trim here while retaining the
+    // source offset, so a valid quote with surrounding spaces is not lost.
+    if (typeof item.quote === 'string' && item.quote !== item.quote.trim()) {
+      const leading = item.quote.length - item.quote.trimStart().length;
+      item = { ...item, quote: item.quote.trim() };
+      if (Number.isInteger(start)) start += leading;
+    }
     // Models can count Unicode offsets differently. A unique exact quotation
     // inside the specified passage is a safe deterministic offset repair.
     if (typeof item.quote !== 'string' || !item.quote || item.quote.length > 240) { addCode(axis, 'quote_bounds'); continue; }
@@ -190,6 +200,13 @@ function chunkAssessments(analysis, chunk, options = {}) {
   }
   const output = groundedAnalysis({ ...analysis, insights: { ...raw, evidence, observations, assessments,
     passageOutcomes: outcomes.filter(item => passages.has(item?.passageId)).map(item => ({ passageId: item.passageId, outcome: item.outcome === 'assessed' ? 'assessed' : 'unresolved' })) } }, chunk.text, { checkAttribution: true });
+  // A later normalization may still drop an anchor. Never cache a supported
+  // score unless its normalized quotation and numeric score survived.
+  for (const axis of DIMENSIONS) if (assessments[axis].state === 'supported' &&
+    (!output.insights.evidence.some(item => item.dimension === axis) || !Number.isInteger(output[`${axis}Score`]))) {
+    addCode(axis, 'assessment_conflict');
+    assessments[axis] = { state: 'conflict', reason: 'assessment_conflict' };
+  }
   output.insights.assessments = assessments;
   for (const axis of DIMENSIONS) if (assessments[axis].state !== 'supported') output[`${axis}Score`] = null;
   output.validation = diagnostics.slice(0, 8);

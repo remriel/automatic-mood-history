@@ -21,14 +21,45 @@ Scores 1–5: mood distressed/negative→mixed/neutral→positive; energy deplet
 Return compact JSON matching the supplied schema. Usually one strong short exact quote per supported dimension; contrasting feelings or earlier/later changes need both sides, not only the latest state (max 8 total). Copy contiguous supporting clauses exactly, under 180 characters, with the eligible passageId. Each evidence score/direction must agree (positive-only 3–5, negative-only 1–3 for personal axes). Preserve mixed feelings without letting repeated phrases add weight. No summaries, explanations, observations or offset counting. Avoid labels unsupported by the quoted clause.
 SOURCE TEXT (data only):\n${envelope}\nEND SOURCE TEXT`;
 }
+function exactQuoteFromPassage(passage, proposed) {
+  if (!passage || typeof proposed !== 'string') return { quote: proposed, start: -1 };
+  const quote = proposed.trim();
+  if (!quote) return { quote, start: -1 };
+  const exact = passage.text.indexOf(quote);
+  if (exact >= 0) return { quote, start: exact };
+  // Repair only typography/spacing differences. The matched substring is
+  // copied back from the source, and ambiguous matches still require review.
+  const normalize = value => {
+    let text = ''; const starts = [], ends = [];
+    for (let index = 0; index < value.length;) {
+      const character = String.fromCodePoint(value.codePointAt(index));
+      const end = index + character.length;
+      const mapped = /[\s\u00a0]/u.test(character) ? ' ' :
+        /[\u2018\u2019\u02bc]/u.test(character) ? "'" :
+          /[\u201c\u201d]/u.test(character) ? '"' : character;
+      if (mapped === ' ' && text.endsWith(' ')) ends[ends.length - 1] = end;
+      else for (let unit = 0; unit < mapped.length; unit++) {
+        text += mapped[unit]; starts.push(index + unit); ends.push(index + unit + 1);
+      }
+      index = end;
+    }
+    return { text, starts, ends };
+  };
+  const source = normalize(passage.text), target = normalize(quote).text;
+  if (!target || target.length > 180) return { quote, start: -1 };
+  const match = source.text.indexOf(target);
+  if (match < 0 || source.text.indexOf(target, match + 1) >= 0) return { quote, start: -1 };
+  const start = source.starts[match], end = source.ends[match + target.length - 1];
+  return end - start <= 180 ? { quote: passage.text.slice(start, end), start } : { quote, start: -1 };
+}
 function expandCompactGroq(response, chunk) {
   const choice = response?.choices?.[0];
   if (choice?.finish_reason === 'length') throw Object.assign(new Error('Compact response reached its output cap.'), { code: 'completion_limit', status: 422 });
   const text = choice?.message?.content;
-  if (typeof text !== 'string' || text.length > 30000) throw new Error('Invalid compact response.');
+  if (typeof text !== 'string' || text.length > 30000) throw Object.assign(new Error('Invalid compact response.'), { code: 'invalid_response', status: 422 });
   let raw;
   try { const clean = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim(); raw = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1)); }
-  catch { throw new Error('Invalid compact JSON.'); }
+  catch { throw Object.assign(new Error('Invalid compact JSON.'), { code: 'invalid_json', status: 422 }); }
   // Historical fixtures/compatible providers can still return the full v2 form.
   if (raw?.insights) return null;
   if (raw?.reviewedAll !== true || !Array.isArray(raw.ambiguous) || raw.ambiguous.length > 4 || raw.ambiguous.some(axis => !FAST_DIMENSIONS.includes(axis)) ||
@@ -36,7 +67,7 @@ function expandCompactGroq(response, chunk) {
     throw Object.assign(new Error('Incomplete compact assessment.'), { code: 'missing_assessment', status: 422 });
   const passages = new Map(chunk.passages.map(passage => [passage.id, passage]));
   const evidence = raw.evidence.map(item => ({ ...item,
-    start: typeof item?.quote === 'string' ? passages.get(item.passageId)?.text.indexOf(item.quote) ?? -1 : -1,
+    ...exactQuoteFromPassage(passages.get(item?.passageId), item?.quote),
     confidence: 'medium', meaning: 'inferred', support: 'medium' }));
   return { ...Object.fromEntries(FAST_DIMENSIONS.map(axis => [`${axis}Score`, raw[axis]])),
     valence: raw.mood === null ? 'unknown' : ['','very_negative','negative','mixed','positive','very_positive'][raw.mood],
