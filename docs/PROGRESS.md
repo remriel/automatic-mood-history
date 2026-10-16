@@ -1,3 +1,34 @@
+# Pending analysis recovery — execution state (2026-10-16)
+
+Objective: correct the stalled chunk backlog reported against 1.4.0, preserve validated work and previous records, and deliver a verified fix synchronized to GitHub.
+
+Progress: 100% [####################] toward a verified, reviewable 1.4.1 candidate. Release/installation and the private live backlog remain separate, unperformed steps.
+
+- [x] Reconcile GitHub main, local clean source, continuity files and tests. No subagents.
+- [x] Identify failed-chunk head-of-line blocking and exponential budget-continuation backoff.
+- [x] Reproduce baseline failure (one request versus five required chunks), fix isolated chunk scheduling, preserve retry reasons/deadlines and add pending-only recovery.
+- [x] Verify a 68-chunk synthetic date through real request parsing, strict evidence validation, scheduled recovery and reload: 67 independent chunks complete while one conflicts; one targeted correction then commits all 68. Completed chunks are each sent once and every pass stays within 60,000 source/context characters.
+- [x] Verify stable one-minute budget eligibility, earliest chunk cooldown, partial dimensions, checkpoint failure/reuse, provider-wide pause, cancellation and queued pending-only deduplication. Full functional/syntax and frozen semantic-contract gates pass.
+- [x] GitHub CI 38950299896 passed functional/syntax, official release privacy audit and responsive browser checks on implementation commit 4eb5ea30048ea8041f2892f7c2567fd6c2f5e84d. Local browser/child Git spawning was denied by EPERM; equivalent local privacy scanning also passed for all 92 publishable files. Diff check passes.
+- [x] Synchronize and attach ready PR #6: https://github.com/remriel/automatic-mood-history/pull/6. Save the installable candidate ZIP/three files and both continuity documents under this chat's outputs directory. Candidate files match the tested implementation; no official 1.4.1 release or provenance attestation is claimed.
+
+Current implementation: 1.4.1 candidate, unchanged analysis fingerprints and 1.4.0 checkpoint compatibility. New dashboard/command action resumes only pending groups, rechecks queued targets before force processing, and preserves unrelated completed/stale history. Progress refreshes after persisted checkpoints. Normal budget pauses have no exponential penalty; failed chunks retain independent failure counts, categories and deadlines. Provider-wide pauses and per-pass caps remain.
+
+Current blockers: no code blocker. Shell networking and child-process launches are restricted; connected GitHub tools are available for branch/PR publication and hosted CI. No private source reads, installed changes or live Groq calls have been performed in this session.
+
+Verification links: https://github.com/remriel/automatic-mood-history/actions/runs/38950299896 and https://github.com/remriel/automatic-mood-history/pull/6. Only continuity documentation changes follow that checked implementation; verify the final PR head again after they are synchronized.
+
+Candidate SHA-256: main.js f2e1b1fe2a92ce9e219f64ea221699cbd3818b965f7a9348697b5f2ae915be6e; manifest.json 5aa41e471b6dbb05ad7332a60c710eee1381daaf7c854a72ade8913f68317093; styles.css 8dfaf8866f1cda3301a1765cd3d6240ba803d0200fd042ea0e2f724b7edfc811.
+
+Exact next steps after user authorization:
+1. Merge PR #6 with a green latest head, then verify the existing 1.4.1 release workflow, source tag, asset digests and attestations.
+2. Identify the installed vault/plugin, back up assets and saved progress, and install the verified release without discarding checkpoints or changing provider/scope/budget settings.
+3. Resume only the reported pending date groups with the existing enabled Groq provider; verify saved progress/reload and zero remaining chunks, reporting any unresolved provider evidence honestly.
+
+Private backlog completion must be measured separately from code verification and must never be claimed from synthetic tests. Merging the version change triggers the established release workflow; PR #6 is not yet merged or released.
+
+The earlier 1.4.0 execution record below is historical. GitHub main now includes merged PR #5; its publication TODOs are stale.
+
 # Coverage and contextual analysis — execution state
 
 Objective: eliminate silent source/dimension/persistence/display omissions, improve grounded contextual inference, and publish verified 1.4.0.

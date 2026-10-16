@@ -171,6 +171,18 @@ async function inspectLayout(page, label) {
     assert.equal(await page.locator('.auto-mood-repair input:checked').count(), 0, 'repair batches require an explicit selection');
     assert((await page.locator('.auto-mood-repair').innerText()).includes('0–0 requests'), 'display repair estimates zero calls');
     await inspectLayout(page, 'repair preview and processing coverage at 280px');
+    await page.evaluate(() => {
+      fixture.plugin.runtime.pendingDates = { '2099-01-02': { kind: 'budget', retryAt: new Date(Date.now() + 60000).toISOString() } };
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    assert((await page.locator('.auto-mood-section').allTextContents()).some(text => text.includes('continues')), 'budget continuation displays its next time');
+    const resume = page.getByRole('button', { name: 'Resume pending', exact: true });
+    assert.equal(await resume.isEnabled(), true);
+    await resume.click();
+    assert.equal(await resume.isDisabled(), true, 'resume is disabled while a scan is active');
+    await page.waitForFunction(() => !fixture.plugin.activeScan);
+    assert.equal(await page.evaluate(() => fixture.calls.resume), 1);
+    await inspectLayout(page, 'pending continuation time and resume control at 280px');
     await page.evaluate(() => { fixture.plugin.onunload(); });
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 0, "plugin unload disposes observers");
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartSeriesViews.size), 0, "unload disposes series controls");

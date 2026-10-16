@@ -1,5 +1,11 @@
 # Automatic Mood History
 
+## Pending recovery in 1.4.1
+
+An invalid response for one chunk no longer blocks the later chunks in that date. Automatic recovery skips chunks whose retry time has not arrived and continues independent ready work within the saved per-run character budget. Ordinary budget continuation resumes after one minute without accumulating exponential failure delays. Provider rate limits, outages and authentication pauses still stop requests.
+
+Use **Resume pending** on the dashboard or **Automatic Mood History: Resume pending analysis** in the command palette for one immediate budget-limited pass over unfinished work. It preserves validated chunks and prior entries, and does not refresh unrelated completed or stale history. With automatic analysis enabled, subsequent scheduled passes continue remaining work. Processing counts refresh as checkpoints are saved; pending rows show the next retry or continuation time. Invalid evidence remains pending until corrected.
+
 ## Accountable coverage in 1.4
 
 The complete eligible input is hashed before request limits. Long dates are split deterministically with local source mappings and opaque provider passage IDs. Every eligible passage must have an explicit assessed outcome and all four dimensions must be resolved before a replacement commits. Completion, dimension assessment and available scores are separate: supported, assessed without support, ambiguous, unresolved conflict and not yet assessed remain distinguishable. Legacy assessment coverage is unknown.

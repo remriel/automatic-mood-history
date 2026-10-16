@@ -143,6 +143,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       callback: () => this.retryAllWithGroq()
     });
     this.addCommand({
+      id: "resume-pending-analysis",
+      name: "Resume pending analysis",
+      callback: () => this.resumePendingAnalysis()
+    });
+    this.addCommand({
       id: "check-groq-connection",
       name: "Check Groq connection with sample text",
       callback: () => this.checkGroqConnection()
@@ -601,8 +606,18 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return this.records?.[date] ? `${legacySources ? "legacy" : "created"}:${date}` : date;
   }
 
+  pendingAnalysisKeys() {
+    return new Set([...Object.keys(this.runtime.pendingDates || {}), ...Object.keys(this.runtime.chunkWork || {}),
+      ...Object.entries(this.runtime.analysisStates || {}).filter(([, state]) => ['queued', 'processing', 'awaiting_retry', 'partially_assessed'].includes(state.state)).map(([key]) => key)]);
+  }
+
   getAnalysisTargets(options = {}) {
     const targets = new Map();
+    if (options.onlyPending) {
+      return [...this.pendingAnalysisKeys()].filter(key => validDate(dateFromKey(key))).map(recordKey => ({ date: dateFromKey(recordKey), recordKey,
+        legacySources: recordKey.startsWith('legacy:') || this.runtime.pendingDates?.[recordKey]?.legacySources === true || this.records[recordKey]?.dateBasis === LEGACY_DATE_BASIS
+      })).sort((a, b) => a.date.localeCompare(b.date));
+    }
     if (!options.onlyFallbacks) {
       for (const date of this.getAllDates(options.dateIndex)) {
         const recordKey = this.recordKey(date);
@@ -993,6 +1008,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const assertQueuedCurrent = options.assertCurrent || this.analysisGuard(options);
     // Serialize scans, active-note commands, and debounced note events.
     const task = (this.analysisQueue || Promise.resolve()).then(async () => {
+      if (options.onlyPending && !this.pendingAnalysisKeys().has(options.recordKey)) {
+        if (options.runStats) options.runStats.skipped++;
+        return false;
+      }
       const pending = this.runtime?.pendingDates?.[options.recordKey];
       if (options.background && pending && Date.parse(pending.retryAt) > Date.now()) {
         if (options.runStats) options.runStats.pending += 1;
@@ -1018,8 +1037,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.runtime ||= {};
     this.runtime.pendingDates ||= {};
     const key = options.recordKey || this.recordKey(date, options.legacySources);
-    const attempts = Math.min(10, (this.runtime.pendingDates[key]?.attempts || 0) + 1);
-    const retryAt = new Date(Math.max(Date.now() + Math.min(3600000, 60000 * 2 ** (attempts - 1)), this.groqBlockedUntil || 0)).toISOString();
+    // A bounded pass ending normally is continuation, not another failure.
+    const attempts = kind === 'budget' ? 1 : Math.max(1, Math.min(10, options.pendingAttempts ?? (this.runtime.pendingDates[key]?.attempts || 0) + 1));
+    const suppliedRetry = Date.parse(options.pendingRetryAt || '');
+    const retryAt = new Date(Math.max(Number.isFinite(suppliedRetry) ? suppliedRetry : Date.now() + Math.min(3600000, 60000 * 2 ** (attempts - 1)), this.groqBlockedUntil || 0)).toISOString();
     this.runtime.pendingDates[key] = { kind, attempts, retryAt, legacySources: Boolean(options.legacySources) };
     this.setAnalysisState(key, { ...this.runtime.analysisStates?.[key], state: kind === 'budget' ? 'queued' : 'awaiting_retry', reason: kind });
   }
@@ -1266,10 +1287,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     const requestBudget = { remainingCharacters: this.settings.maxCharactersPerDay || 60000 };
     const started = Date.now();
-    const update = async state => {
+    let failures = 0;
+    const update = async (state, reason) => {
       options.assertCurrent();
-      this.setAnalysisState(key, { state, coverage: sourceCoverage(work, prepared), fingerprint });
+      this.setAnalysisState(key, { state, coverage: sourceCoverage(work, prepared), fingerprint, ...(reason ? { reason } : {}) });
       await this.savePluginData();
+      this.refreshRenderers();
     };
     await update('queued');
     for (const chunk of prepared.chunks) {
@@ -1282,46 +1305,62 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         delete work.chunks[chunk.id];
       }
       const priorChunk = work.chunks[chunk.id];
-      if (!options.force && priorChunk?.retryAt && Date.parse(priorChunk.retryAt) > Date.now()) break;
-      if (requestBudget.remainingCharacters < chunk.requestCharacters) break;
+      if (!options.force && priorChunk?.retryAt && Date.parse(priorChunk.retryAt) > Date.now()) continue;
+      if (requestBudget.remainingCharacters < chunk.requestCharacters) continue;
       work.chunks[chunk.id] = { ...priorChunk, state: 'processing', attempts: (priorChunk?.attempts || 0) + 1 };
       await update('processing');
+      let analysis;
       try {
-        const analysis = this.settings.enableGroq ? await this.analyzeWithGroq(date, chunk.text, { ...options, chunk, requestBudget, metrics: work.metrics,
+        analysis = this.settings.enableGroq ? await this.analyzeWithGroq(date, chunk.text, { ...options, chunk, requestBudget, metrics: work.metrics,
           stagedAnalysis: priorChunk?.analysis,
           beforeRequest: () => update('processing') }) : localChunkAnalysis(chunk);
         options.assertCurrent();
         if (!analysis.insights?.assessments || DIMENSIONS.some(axis => !RESOLVED_ASSESSMENTS.includes(analysis.insights.assessments[axis]?.state))) {
           const error = new Error('Explicit dimension assessment remains unresolved.'); error.code = 'semantic_unresolved'; error.status = 422; error.stagedAnalysis = analysis; throw error;
         }
-        if (!this.settings.enableGroq) requestBudget.remainingCharacters -= chunk.requestCharacters;
-        work.chunks[chunk.id] = { state: 'complete', attempts: work.chunks[chunk.id].attempts, analysis };
-        if (this.settings.enableGroq) this.recordGroqSuccess();
-        await update('partially_assessed');
       } catch (error) {
         if (error.code === 'analysis_cancelled') throw error;
         options.assertCurrent();
         const budget = error.code === 'processing_budget';
         const issue = budget ? { kind: 'budget' } : this.recordGroqFailure(error);
-        this.markDatePending(date, { ...options, recordKey: key }, issue.kind);
+        const resolved = value => DIMENSIONS.filter(axis => RESOLVED_ASSESSMENTS.includes(value?.insights?.assessments?.[axis]?.state)).length;
+        const chunkFailures = budget ? priorChunk?.failures || 0 : resolved(error.stagedAnalysis) > resolved(priorChunk?.analysis) ? 1 : Math.min(10, (priorChunk?.failures ?? priorChunk?.attempts ?? 0) + 1);
+        this.markDatePending(date, { ...options, recordKey: key, pendingAttempts: chunkFailures }, issue.kind);
         const pending = this.runtime.pendingDates[key];
         work.chunks[chunk.id] = { ...work.chunks[chunk.id], state: budget ? 'queued' : 'awaiting_retry',
+          failures: chunkFailures, failureKind: issue.kind,
           category: budget ? 'budget' : error.code === 'semantic_unresolved' ? 'semantic' : error.phase === 'transport' ? 'transport' : 'format',
           codes: error.stagedAnalysis?.validation?.slice(0, 8) || [{ code: ['missing_assessment', 'semantic_unresolved', 'completion_limit', 'processing_budget'].includes(error.code) ? error.code : 'provider_failure' }],
-          ...(error.stagedAnalysis ? { analysis: error.stagedAnalysis } : {}), retryAt: pending.retryAt };
-        work.metrics.processingMilliseconds += Date.now() - started;
-        if (options.runStats) { options.runStats.pending++; if (!budget) options.runStats.failures++; }
-        await update(budget ? 'queued' : error.stagedAnalysis ? 'partially_assessed' : 'awaiting_retry');
-        this.refreshRenderers(); return null;
+          ...(error.stagedAnalysis ? { analysis: error.stagedAnalysis } : {}), retryAt: budget ? null : pending.retryAt };
+        if (!budget) failures++;
+        await update(budget ? 'queued' : error.stagedAnalysis ? 'partially_assessed' : 'awaiting_retry', issue.kind);
+        // Invalid evidence is local to this chunk. Assess independent later
+        // chunks while preserving the failed chunk and its own cooldown.
+        if (Date.now() < this.groqBlockedUntil) break;
+        continue;
       }
+      if (!this.settings.enableGroq) requestBudget.remainingCharacters -= chunk.requestCharacters;
+      work.chunks[chunk.id] = { state: 'complete', attempts: work.chunks[chunk.id].attempts, analysis };
+      if (this.settings.enableGroq) this.recordGroqSuccess();
+      // Storage failure is not a provider failure; retain the completed result
+      // in memory and let the normal storage recovery persist it.
+      await update('partially_assessed');
       await new Promise(resolve => globalThis.setTimeout(resolve, 0));
     }
     work.metrics.processingMilliseconds += Date.now() - started;
     const coverage = sourceCoverage(work, prepared);
     if (coverage.pendingCharacters || coverage.processedChunks !== coverage.totalChunks) {
-      this.markDatePending(date, { ...options, recordKey: key }, 'budget');
-      if (options.runStats) options.runStats.pending++;
-      await update('queued'); this.refreshRenderers(); return null;
+      const unfinished = prepared.chunks.filter(chunk => work.chunks[chunk.id]?.state !== 'complete').map(chunk => work.chunks[chunk.id]);
+      const ready = unfinished.some(chunk => !chunk?.retryAt || Date.parse(chunk.retryAt) <= Date.now());
+      const earliest = unfinished.filter(chunk => chunk?.retryAt).sort((a, b) => Date.parse(a.retryAt) - Date.parse(b.retryAt))[0];
+      const paused = Date.now() < this.groqBlockedUntil;
+      const kind = paused ? this.runtime.lastGroqIssue?.kind || 'paused' : ready ? 'budget' : earliest?.failureKind || earliest?.category || 'output';
+      this.markDatePending(date, { ...options, recordKey: key,
+        ...(paused ? { pendingRetryAt: this.runtime.pendingDates[key]?.retryAt, pendingAttempts: this.runtime.pendingDates[key]?.attempts || 1 }
+          : !ready && earliest ? { pendingRetryAt: earliest.retryAt, pendingAttempts: earliest.failures || earliest.attempts || 1 } : {}) }, kind);
+      if (options.runStats) { options.runStats.pending++; if (failures) options.runStats.failures++; }
+      await update(ready && !paused ? 'queued' : unfinished.some(chunk => chunk?.analysis) || coverage.processedChunks ? 'partially_assessed' : 'awaiting_retry', kind);
+      return null;
     }
     const analysis = aggregateChunkAnalyses(prepared.chunks.map(chunk => ({ chunk, analysis: work.chunks[chunk.id].analysis })), this.settings.enableGroq ? '' : options.topic);
     work.metrics.assessmentCompletionMilliseconds = Date.now() - Date.parse(work.metrics.startedAt);
@@ -1424,6 +1463,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return;
     }
     await this.analyzeAll({ force: true, forceGroq: true });
+  }
+
+  async resumePendingAnalysis() {
+    return this.analyzeAll({ onlyPending: true, force: true, forceGroq: this.settings.enableGroq });
   }
 
   async recoverFallbacksWithGroq() {
@@ -1746,7 +1789,11 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     if (states.length) {
       const section = wrapper.createDiv({ cls: 'auto-mood-section' });
       section.createEl('h3', { text: 'PROCESSING STATUS' });
-      for (const [key, value] of states) section.createEl('p', { text: `${dateFromKey(key)} · ${value.state.replace(/_/g, ' ')}${value.coverage ? ` · ${value.coverage.processedChunks}/${value.coverage.totalChunks} chunks · ${value.coverage.pendingCharacters} characters pending` : ''}${value.reason ? ` · ${value.reason.replace(/_/g, ' ')}` : ''}` });
+      for (const [key, value] of states) {
+        const pending = this.runtime.pendingDates?.[key];
+        const retry = pending && Number.isFinite(Date.parse(pending.retryAt)) ? ` · ${pending.kind === 'budget' ? 'continues' : 'retry'} ${new Date(pending.retryAt).toLocaleTimeString()}` : '';
+        section.createEl('p', { text: `${dateFromKey(key)} · ${value.state.replace(/_/g, ' ')}${value.coverage ? ` · ${value.coverage.processedChunks}/${value.coverage.totalChunks} chunks · ${value.coverage.pendingCharacters} characters pending` : ''}${value.reason ? ` · ${value.reason.replace(/_/g, ' ')}` : ''}${['processing', 'current'].includes(value.state) ? '' : retry}` });
+      }
     }
     if (!this.repairPreview) return;
     const section = wrapper.createDiv({ cls: 'auto-mood-section auto-mood-repair' });
@@ -1778,6 +1825,9 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const actions = toolbar.createDiv({ cls: "auto-mood-actions" });
     const changedButton = actions.createEl("button", { text: "Analyze changed" });
     changedButton.addEventListener("click", () => void this.analyzeAll({ force: false, forceGroq: false }));
+    const resumeButton = actions.createEl('button', { text: 'Resume pending' });
+    resumeButton.disabled = Boolean(this.activeScan) || Boolean(this.checkingGroq) || !this.getAnalysisTargets({ onlyPending: true }).length;
+    resumeButton.addEventListener('click', () => void this.resumePendingAnalysis());
     const groqButton = actions.createEl("button", { text: "Retry all with Groq" });
     groqButton.addEventListener("click", () => void this.retryAllWithGroq());
     const checkButton = actions.createEl("button", { text: "Check Groq" });
