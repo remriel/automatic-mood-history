@@ -275,6 +275,27 @@ function moodToValence(score) {
   return ["", "very_negative", "negative", "mixed", "positive", "very_positive"][clampScore(score)];
 }
 
+
+/** Exempt only categorical "no emotional evidence" conclusions in generated analysis. */
+function hasNoEmotionalEvidence(analysis) {
+  if (!analysis || typeof analysis !== "object") return false;
+  const narratives = [analysis.summary, analysis.confidenceReason, ...(Array.isArray(analysis.drivers) ? analysis.drivers : [])];
+  return narratives.some((value) => {
+    if (typeof value !== "string") return false;
+    const statement = value.replace(/\s+/g, " ").trim();
+    return /\b(?:no|without|lacks?|lacking|absence of|insufficient|not enough)\b.{0,65}\b(?:explicit\s+)?(?:emotional\s+(?:content|evidence|expression|information|signals?|cues?|indicators?|language)|emotions?\s+(?:expressed|described)|affective\s+(?:content|evidence))\b/i.test(statement)
+      || /\bno\s+(?:(?:meaningful|readable|analyzable|written|source)\s+)?(?:content|text|input|writing|notes?|material)\s+(?:(?:was|were|is|has been)\s+)?(?:provided|available|supplied|included|present|for analysis)\b/i.test(statement)
+      || /\b(?:emotional state|mood|feelings?)\b.{0,65}\b(?:cannot|can't|could not|unable to|impossible to)\s+(?:be\s+)?(?:determin\w*|assess\w*|infer\w*|evaluat\w*|estimat\w*)/i.test(statement)
+      || /\b(?:insufficient|no|not enough)\s+(?:evidence|information|context)\s+to\s+(?:assess|infer|determine)\s+(?:emotion\w*|mood|feelings?)\b/i.test(statement);
+  });
+}
+function exemptUnscorableAssessment(analysis) {
+  if (!hasNoEmotionalEvidence(analysis)) return analysis;
+  return { ...analysis, status: "insufficient",
+    moodScore: null, energyScore: null, connectionScore: null, intensityScore: null,
+    valence: "unknown", emotions: [], drivers: [], confidence: "none" };
+}
+
 function validateAnalysis(input) {
   const moodScore = clampScore(input.moodScore);
   const emotions = Array.from(new Set((input.emotions || [])
@@ -447,6 +468,8 @@ module.exports = {
   ANALYSIS_SCHEMA,
   buildEntryMarkdown,
   deduplicateParagraphs,
+  exemptUnscorableAssessment,
+  hasNoEmotionalEvidence,
   localSentiment,
   moodToValence,
   plainNarrative,

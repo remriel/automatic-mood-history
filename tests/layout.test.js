@@ -74,6 +74,20 @@ async function inspectLayout(page, label) {
       if (![...document.querySelectorAll('.auto-mood-chart-legend li')].some(li => li.textContent === 'Intensity')) throw new Error('Intensity legend is visible');
       if (!svg.getAttribute('aria-label').includes('intensity')) throw new Error('Accessible chart description includes intensity');
     });
+    await page.evaluate(() => {
+      fixture.configure({ paneWidth: 680, count: 6 });
+      const records = Object.values(fixture.plugin.records);
+      const excludedDate = records[0].date;
+      records[0].summary = "No explicit emotional content was provided, making assessment uncertain.";
+      records[0].confidenceReason = "No content was provided for analysis, so the emotional state cannot be determined.";
+      fixture.plugin.records = fixture.plugin.validateRecords(fixture.plugin.records);
+      fixture.plugin.renderDashboard(document.getElementById("dashboard"));
+      const marks = [...document.querySelectorAll(".auto-mood-svg circle")];
+      if (marks.length !== 20) throw new Error("Exempt date must have zero chart points");
+      if (marks.some(mark => mark.querySelector("title")?.textContent.includes(excludedDate))) throw new Error("Exempt date plotted");
+      if (!document.querySelector(".auto-mood-insufficient")) throw new Error("Exempt date must show no scores in the history");
+      if (!document.querySelector(".auto-mood-cards")?.textContent.includes("5")) throw new Error("Scored count must exclude exempt date");
+    });
     await page.setViewportSize({ width: 640, height: 1000 });
     await page.evaluate(() => { document.body.style.zoom = '2'; fixture.configure({ paneWidth: 320, longText: true }); });
     await inspectLayout(page, "200% CSS zoom, including SVG text, in a narrow pane");
