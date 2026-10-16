@@ -14,8 +14,8 @@ Module._load = originalLoad;
 const legacyDate = "2030-03-14";
 const secondDate = "2030-03-15";
 const currentDate = "2035-03-14";
-const originalText = "A fictional writer feels calm and hopeful after a supportive conversation.";
-const otherText = "A different fictional note reports curiosity about a new project and several small achievements.";
+const originalText = "I feel calm and hopeful after a supportive conversation.";
+const otherText = "I feel curious and hopeful about a new project and several small achievements.";
 const valid = { moodScore: 4, energyScore: 3, connectionScore: 4, intensityScore: 2, valence: "positive", emotions: ["hopeful"], summary: "Fictional Groq result.", drivers: ["Fictional support."], confidence: "medium", confidenceReason: "Fictional evidence." };
 
 async function fixture() {
@@ -30,7 +30,7 @@ async function fixture() {
   plugin.writeEntryNote = async record => writes.push(buildEntryMarkdown(record));
   plugin.savePluginData = plugin.ensureSupportFiles = async () => {};
   plugin.refreshRenderers = () => {};
-  plugin.analyzeWithGroq = async (date, text) => { calls.push({ date, text }); return { ...valid }; };
+  plugin.analyzeWithGroq = async (date, text, options) => { calls.push({ date, text }); return require("../src/analysis-pipeline").localChunkAnalysis(options.chunk); };
   const legacy = { ...valid, date: legacyDate, status: "complete", analysisSource: "local-fallback", dateBasis: "legacy-note-date", sourcePaths: [files[0].path], contentHash: "old-hash", entryPath: `Mood History/Entries/${legacyDate} (Automatic Mood History).md` };
   const gathered = await plugin.gatherDate(currentDate);
   const current = { ...valid, date: currentDate, status: "complete", analysisSource: "groq", dateBasis: "created-at-local-date", sourcePaths: gathered.sourcePaths, contentHash: gathered.contentHash };

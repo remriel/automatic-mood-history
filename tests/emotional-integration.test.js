@@ -60,7 +60,7 @@ async function run() {
   assert(core.buildEntryMarkdown(p.records[date]).includes("personal emotional evidence"));
   const restarted = fixture(f.disk); await restarted.p.onload();
   assert.equal(restarted.p.records[date].moodScore, null);
-  assert.equal(restarted.p.records[date].insights.version, 1);
+  assert.equal(restarted.p.records[date].insights.version, 2);
   assert(!JSON.stringify(restarted.p.records).includes("apiKey"));
 
   // New insights survive prepared-result recovery and JSON storage without changing
@@ -80,9 +80,9 @@ async function run() {
   p.records["2031-02-02"] = { ...priorRecord(), date: "2031-02-02", summary: privateMarker };
   f.disk.files.set(f.source.path, text);
   const requests = [];
-  p.requestGroq = async payload => { requests.push(payload); return reply(providerResult([evidence("mood", "I feel sad", "sad")])); };
+  p.requestGroq = async payload => { requests.push(payload); const helper = require("./provider-fixture"); return reply(helper.version2(providerResult([evidence("mood", "I feel sad", "sad")]), helper.chunkFromPayload(payload))); };
   await p.analyzeDate(date);
-  assert.equal(requests.length, 1);
+  assert.equal(requests.length, 2, "local intensity cues trigger one dimension review without creating unsupported scores");
   assert(!JSON.stringify(requests).includes(privateMarker));
   assert(!JSON.stringify(requests).includes(f.source.path));
   assert.equal(p.records[date].analysisSource, "groq");

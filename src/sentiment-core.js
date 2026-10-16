@@ -127,8 +127,36 @@ function stripFrontmatter(text) {
   return text.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "");
 }
 
+function maskFencedContent(text) {
+  // Preserve original offsets and line boundaries while excluding complete or
+  // unclosed code fences of any Markdown-supported length. Prose mindmaps stay.
+  const lines = String(text).match(/[^\n]*\n|[^\n]+$/g) || [];
+  const output = [];
+  const mask = value => value.replace(/[^\r\n]/g, ' ');
+  for (let index = 0; index < lines.length; index++) {
+    const opening = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/.exec(lines[index]);
+    if (!opening) { output.push(lines[index]); continue; }
+    const marker = opening[1][0]; const size = opening[1].length;
+    const start = index; const body = [];
+    let closed = false;
+    while (++index < lines.length) {
+      const closing = /^ {0,3}(`+|~+)[ \t]*(?:\r?\n)?$/.exec(lines[index]);
+      if (closing && closing[1][0] === marker && closing[1].length >= size) { closed = true; break; }
+      body.push(lines[index]);
+    }
+    const mindmap = /^mermaid\s*$/i.test(opening[2].trim()) && /^\s*mindmap\b/i.test(body.join(''));
+    output.push(mask(lines[start]));
+    if (mindmap) {
+      let removed = false;
+      for (const line of body) output.push(!removed && /\bmindmap\b/i.test(line) ? (removed = true, line.replace(/\bmindmap\b/i, word => ' '.repeat(word.length))) : line);
+    } else output.push(...body.map(mask));
+    if (closed) output.push(mask(lines[index]));
+  }
+  return output.join('');
+}
+
 function textForAnalysis(text) {
-  return stripFrontmatter(text)
+  return stripFrontmatter(maskFencedContent(text))
     .replace(/^\s*>\s?/gm, "")
     .replace(/!\[\[[^\]]+\]\]/g, " ")
     .replace(/!\[[^\]]*\]\([^\n]*?\)/g, " ")
@@ -136,6 +164,7 @@ function textForAnalysis(text) {
     .replace(/<img\b[^>]*>/gi, " ")
     .replace(/```([^\n]*)\n([\s\S]*?)```/g, (_block, language, body) =>
       /^mermaid\s*$/i.test(language.trim()) && /^\s*mindmap\b/i.test(body) ? body.replace(/^\s*mindmap\b/i, "") : " ")
+    .replace(/~~~[^\n]*\n[\s\S]*?~~~/g, " ")
     .replace(/`[^`\n]*`/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/^#.*$/gm, " ")
@@ -270,6 +299,7 @@ function buildEntryMarkdown(record) {
     `date: ${escapeYaml(record.date)}`,
     `date_basis: ${escapeYaml(record.dateBasis || "legacy-note-date")}`,
     `status: ${escapeYaml(record.status)}`,
+    `processing_state: ${escapeYaml(record.processing?.state || "coverage-unknown")}`,
     `analysis_source: ${escapeYaml(record.analysisSource)}`,
     `confidence: ${escapeYaml(record.confidence || "none")}`,
     `mood: ${record.moodScore ?? "null"}`,
@@ -301,6 +331,11 @@ function buildEntryMarkdown(record) {
     "## Snapshot",
     ""
   );
+  if (record.coverage) lines.push(`Processing: ${record.coverage.processedChunks}/${record.coverage.totalChunks} chunks; ${record.coverage.pendingCharacters} eligible characters pending.`, "");
+  if (record.insights?.assessments) {
+    for (const axis of ["mood", "energy", "connection", "intensity"]) lines.push(`- ${axis} assessment: ${plainNarrative(record.insights.assessments[axis]?.state || "not_assessed")}`);
+    lines.push("");
+  } else lines.push("Assessment coverage unknown for this historical record.", "");
   if (record.status === "insufficient") {
     lines.push(plainNarrative(record.summary || "There was not enough personal emotional evidence to assign scores reliably."));
   } else {
@@ -370,5 +405,6 @@ module.exports = {
   sha256,
   stripFrontmatter,
   textForAnalysis,
+  maskFencedContent,
   validateAnalysis
 };

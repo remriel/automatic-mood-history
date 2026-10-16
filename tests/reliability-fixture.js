@@ -41,7 +41,7 @@ function fixture(disk = { json: null, files: new Map() }) {
   p.saveData = async snapshot => { disk.json = clone(snapshot); };
   p.loadData = async () => clone(disk.json);
   p.apiKey = () => "fictional"; p.providerCalls = 0;
-  p.analyzeWithGroq = async () => { p.providerCalls++; return clone(valid); };
+  p.analyzeWithGroq = async (_date, text, options = {}) => { p.providerCalls++; return options.chunk ? require('../src/analysis-pipeline').localChunkAnalysis(options.chunk) : clone(valid); };
   p.refreshRenderers = () => {};
   p.addRibbonIcon = p.addCommand = p.addSettingTab = p.registerMarkdownCodeBlockProcessor = p.registerEvent = p.register = () => {};
   return { p, disk, files, source };

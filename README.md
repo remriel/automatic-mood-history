@@ -1,5 +1,17 @@
 # Automatic Mood History
 
+## Accountable coverage in 1.4
+
+The complete eligible input is hashed before request limits. Long dates are split deterministically with local source mappings and opaque provider passage IDs. Every eligible passage must have an explicit assessed outcome and all four dimensions must be resolved before a replacement commits. Completion, dimension assessment and available scores are separate: supported, assessed without support, ambiguous, unresolved conflict and not yet assessed remain distinguishable. Legacy assessment coverage is unknown.
+
+The saved character limit is now a **per-run source-data budget**, including repeated attempts and neighboring context. It is retained during upgrade. Successful chunks survive reload and resume under identical source/pipeline/provider/model/prompt fingerprints. Dates exceeding the budget remain visibly queued; the prior successful entry stays available. The minimum-character policy is explicit and records its excluded, unassessed coverage.
+
+Use **Preview repair** on the dashboard to inspect stale fingerprints, unknown/incomplete coverage, missing assessments, conflicts and failed work. Select a batch to see chunk/request estimates and repair it. Display-only corrections use no provider calls. Upgrading does not silently reprocess saved remote history; matching legacy prefix hashes are flagged stale because their historical full coverage cannot be established.
+
+Mood, connection, energy and intensity have independent populations and chart gaps. Valid connection-only or energy-only days remain visible. Provider interpretation uses exact passage quotations, explicit/inferred meaning, personal/textual basis, temporal context and support. One targeted review addresses omitted/conflicting dimensions; explicit abstention is valid. All validated concepts and opposing poles contribute to aggregation, independently of the 16 displayed quotations or artificial chunk boundaries. Local rules remain conservative and English-focused.
+
+See [coverage architecture and acceptance](docs/COVERAGE_DESIGN.md), [baseline reproductions](docs/COVERAGE_BASELINE.md), and the evaluation/performance JSON files linked there. These are engineering checks, not psychological or clinical validation. The earlier 1.3 descriptions below are historical where superseded by 1.4.
+
 Analysis caching uses a versioned fingerprint covering the source hash, text pipeline, analyzer/prompt/model, evidence thresholds and local topic semantics. Local results with fingerprints refresh when those semantics change. Unchanged Groq results are preserved after model or prompt changes until you explicitly choose **Retry all with Groq** or analyze the active note; a model change alone does not spend provider quota. Changed source text is analyzed during the next authorized scan. Records without fingerprints keep their historical provenance and result until source changes or explicit reanalysis; no missing provenance is invented.
 
 Full scans build a temporary date-to-files index once. Source eligibility, file identity and metadata are checked again before reads and requests; changed scope cancels the scan. The index retains file references and paths only, and is discarded after each scan. It does not cache note text or reduce provider latency.

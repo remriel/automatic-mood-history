@@ -112,7 +112,7 @@ async function inspectLayout(page, label) {
       await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
       assert.equal(await button.getAttribute('aria-pressed'), 'true');
     }
-    assert.equal(await page.locator('.auto-mood-svg .series:visible').count(),4);
+    assert.equal(await page.locator('.auto-mood-svg .series:visible').evaluateAll(lines => new Set(lines.map(line => line.dataset.series)).size),4, 'all four axes retain their separate gap segments');
     assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), recordsBefore, 'view toggles never alter saved scores or source records');
     assert.equal(await page.evaluate(() => fixture.calls.analyze),0,'view toggles never run analysis');
     await page.evaluate(() => { window.originalSave=fixture.plugin.savePluginData;fixture.plugin.savePluginData=async()=>{throw new Error('Fictional storage failure');}; });
@@ -150,6 +150,27 @@ async function inspectLayout(page, label) {
       await page.evaluate(()=>fixture.configure({paneWidth:1000,evidence:true,count:3}));
       await page.screenshot({path:process.env.EMOTIONAL_LAYOUT_SCREENSHOT,fullPage:true});
     }
+    await page.evaluate(() => {
+      fixture.configure({ paneWidth: 280, count: 4 });
+      const records = Object.values(fixture.plugin.records);
+      for (const record of records) { record.moodScore = null; record.energyScore = null; record.connectionScore = null; record.intensityScore = null; }
+      records[0].connectionScore = 4; records[1].energyScore = 2; records[2].intensityScore = 5; records[3].connectionScore = 3;
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    assert.equal(await page.locator('.auto-mood-svg circle').count(), 4, 'independent connection, energy and intensity points survive absent mood');
+    assert.equal(await page.locator('.auto-mood-svg polyline[data-series="connectionScore"]').count(), 2, 'missing connection dates split the solid line');
+    assert.equal(await page.locator('.auto-mood-svg line.series-gap[data-series="connectionScore"]').count(), 1, 'available readings remain connected across the explicitly marked missing interval');
+    assert((await page.locator('.auto-mood-cards').innerText()).includes('3.5'), 'connection average includes connection-only dates');
+    await inspectLayout(page, 'independent axes with visible assessment reasons');
+    await page.evaluate(() => {
+      fixture.plugin.repairPreview = { entries: [{ key: '2099-01-01', date: '2099-01-01', reasons: ['display_only'], displayOnly: true, chunks: 0, requests: 0, maximumRequests: 0 },
+        { key: '2099-01-02', date: '2099-01-02', reasons: ['unknown_or_incomplete_coverage'], chunks: 12, requests: 12, maximumRequests: 60 }] };
+      fixture.plugin.runtime.analysisStates = { '2099-01-02': { state: 'queued', coverage: { processedChunks: 1, totalChunks: 12, pendingCharacters: 50000 } } };
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    assert.equal(await page.locator('.auto-mood-repair input:checked').count(), 0, 'repair batches require an explicit selection');
+    assert((await page.locator('.auto-mood-repair').innerText()).includes('0–0 requests'), 'display repair estimates zero calls');
+    await inspectLayout(page, 'repair preview and processing coverage at 280px');
     await page.evaluate(() => { fixture.plugin.onunload(); });
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 0, "plugin unload disposes observers");
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartSeriesViews.size), 0, "unload disposes series controls");

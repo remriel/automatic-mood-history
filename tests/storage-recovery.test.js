@@ -8,6 +8,7 @@ async function run() {
     let saves = 0;
     const save = p.saveData;
     p.saveData = async value => {
+      if (!value.runtime.pendingWrites?.[date] && !value.records[date]?.processing) { await save(value); return; }
       saves++;
       const stage = saves === 1 ? "prepare" : "commit";
       if (boundary === `${stage}-before`) { p.unloaded = true; throw new Error("Interrupted before save"); }
@@ -20,27 +21,28 @@ async function run() {
       await process(...args);
       if (boundary === "entry-after") { p.unloaded = true; throw new Error("Interrupted after note"); }
     };
-    assert.equal(await p.analyzeDate(date), false, boundary);
+    assert.equal(await p.analyzeDate(date, { force: true }), false, boundary);
     assert.equal(p.records[date], old, `${boundary}: old committed result remains visible`);
     const restart = fixture(disk).p;
     restart.settings = clone(disk.json.settings); restart.records = clone(disk.json.records); restart.runtime = clone(disk.json.runtime);
     await restart.analyzeDate(date);
     const record = restart.records[date];
-    assert.equal(record.summary, "Fictional new result.", boundary);
+    assert.equal(record.processing.state, "complete", boundary);
+    assert.equal(record.insights.version, 2);
     assert.equal(disk.files.get(record.entryPath), buildEntryMarkdown(record), `${boundary}: JSON and Markdown converge`);
     assert.equal(restart.runtime.pendingWrites?.[date], undefined, boundary);
-    assert.equal(restart.providerCalls, boundary === "prepare-before" ? 1 : 0, `${boundary}: persisted results never call Groq again`);
+    assert.equal(restart.providerCalls, 0, `${boundary}: persisted results never call Groq again`);
     console.log(`PASS restart at ${boundary}`);
   }
   const f = fixture(); const { p, disk, files } = f; const old = priorRecord(); p.records[date] = old;
   disk.files.set(old.entryPath, buildEntryMarkdown(old)); files.set(old.entryPath, new TFile(old.entryPath));
   const save = p.saveData; let saves = 0;
-  p.saveData = async value => { if (++saves === 2) throw new Error("Commit unavailable"); await save(value); };
-  assert.equal(await p.analyzeDate(date), false);
+  p.saveData = async value => { if (value.records[date]?.processing) throw new Error("Commit unavailable"); await save(value); };
+  assert.equal(await p.analyzeDate(date, { force: true }), false);
   const edited = buildEntryMarkdown(old) + "\nFictional user edit after interruption.\n";
   disk.files.set(old.entryPath, edited);
   p.saveData = save;
-  assert.equal(await p.analyzeDate(date), true);
+  assert.equal(await p.analyzeDate(date, { force: true }), true);
   assert.equal(disk.files.get(old.entryPath), edited, "recovery preserves edited owned notes");
   assert.notEqual(p.records[date].entryPath, old.entryPath);
   assert.equal(p.providerCalls, 1);
