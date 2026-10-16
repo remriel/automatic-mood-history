@@ -172,6 +172,13 @@ async function inspectLayout(page, label) {
     assert((await page.locator('.auto-mood-repair').innerText()).includes('0–0 requests'), 'display repair estimates zero calls');
     await inspectLayout(page, 'repair preview and processing coverage at 280px');
     await page.evaluate(() => {
+      fixture.plugin.runtime.pendingDates = { '2099-01-02': { kind: 'output', retryAt: new Date(Date.now() + 60000).toISOString() } };
+      fixture.plugin.runtime.chunkWork = { '2099-01-02': { chunks: { failed: { state: 'awaiting_retry', codes: [{ code: 'quote_not_in_passage' }] } } } };
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    assert((await page.locator('.auto-mood-section').allTextContents()).some(text => text.includes('quote not in passage')),
+      'pending output displays a safe chunk diagnostic');
+    await page.evaluate(() => {
       fixture.plugin.runtime.pendingDates = { '2099-01-02': { kind: 'budget', retryAt: new Date(Date.now() + 60000).toISOString() } };
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
     });

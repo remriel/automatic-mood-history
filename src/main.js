@@ -22,7 +22,7 @@ const {
   textForAnalysis,
   validateAnalysis
 } = require("./sentiment-core");
-const { COVERAGE_VERSION, DIMENSIONS, RESOLVED_ASSESSMENTS, prepareSourceCoverage, providerEnvelope, coverageSchema, chunkAssessments, localChunkAnalysis, aggregateChunkAnalyses, sourceCoverage, assessmentLabel } = require('./analysis-pipeline');
+const { COVERAGE_VERSION, DIMENSIONS, REJECTION_CODES, RESOLVED_ASSESSMENTS, prepareSourceCoverage, providerEnvelope, coverageSchema, chunkAssessments, localChunkAnalysis, aggregateChunkAnalyses, sourceCoverage, assessmentLabel } = require('./analysis-pipeline');
 const { compactGroqSchema, compactGroqPrompt, expandCompactGroq, groqTokenEstimate, groqAvailableTokens, groqRateDelay, groqRateSnapshot } = require('./groq-runtime');
 
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
@@ -674,7 +674,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (rate?.model !== this.settings.model || !Number.isFinite(rate.tokenLimit) || rate.tokenLimit <= 0) return 1; // Discover quota with real work first.
     const available = groqAvailableTokens(rate) - [...(this.groqReservations?.values() || [])].reduce((sum, value) => sum + value, 0);
     if (groqRateDelay(rate, cost) > 0) return 1;
-    return available >= cost * 5 && (rate.remainingRequests ?? Infinity) >= 5 ? 5 : available >= cost * 3 ? 3 : 1;
+    return available >= cost * 5 && (rate.remainingRequests ?? Infinity) >= 5 ? 5 :
+      available >= cost * 3 && (rate.remainingRequests ?? Infinity) >= 3 ? 3 : 1;
   }
 
   async reserveGroqCapacity(payload, assertCurrent = () => {}) {
@@ -1078,8 +1079,17 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         await options.beforeRequest?.(); options.assertCurrent?.();
         response = await this.requestGroq(payload, options);
         metrics.inputTokens += response?.usage?.prompt_tokens || 0; metrics.outputTokens += response?.usage?.completion_tokens || 0;
-        const expanded = expandCompactGroq(response, options.chunk);
-        const analysis = merge(expanded ? chunkAssessments(expanded, options.chunk, { reviewed: true }) : this.parseGroqAnalysis(response, text, { ...options, reviewed: true }));
+        let analysis;
+        try {
+          const expanded = expandCompactGroq(response, options.chunk);
+          analysis = merge(expanded ? chunkAssessments(expanded, options.chunk, { reviewed: true }) : this.parseGroqAnalysis(response, text, { ...options, reviewed: true }));
+        } catch (error) {
+          // A syntactically successful HTTP response can still be unusable
+          // output. Do not turn its validation error into a global connection
+          // pause that blocks unrelated dates.
+          error.status ||= 422; error.code ||= 'invalid_output'; error.phase = 'format';
+          throw error;
+        }
         if (!analysis.reviewDimensions.length) return analysis;
         staged = analysis;
         throw Object.assign(new Error('Evidence needs correction.'), { status: 422, code: 'semantic_unresolved', stagedAnalysis: staged });
@@ -1442,10 +1452,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         const chunkFailures = budget ? priorChunk?.failures || 0 : resolved(error.stagedAnalysis) > resolved(priorChunk?.analysis) ? 1 : Math.min(10, (priorChunk?.failures ?? priorChunk?.attempts ?? 0) + 1);
         this.markDatePending(date, { ...options, recordKey: key, pendingAttempts: chunkFailures }, issue.kind);
         const pending = this.runtime.pendingDates[key];
+        const validationCodes = error.stagedAnalysis?.validation?.slice(0, 8);
+        const knownOutputCodes = ['completion_limit', 'invalid_json', 'invalid_response', 'invalid_output', 'missing_assessment', 'semantic_unresolved'];
         work.chunks[chunk.id] = { ...work.chunks[chunk.id], state: budget ? 'queued' : 'awaiting_retry',
           failures: chunkFailures, failureKind: issue.kind,
           category: budget ? 'budget' : error.code === 'semantic_unresolved' ? 'semantic' : error.phase === 'transport' ? 'transport' : 'format',
-          codes: error.stagedAnalysis?.validation?.slice(0, 8) || [{ code: ['missing_assessment', 'semantic_unresolved', 'completion_limit', 'processing_budget'].includes(error.code) ? error.code : 'provider_failure' }],
+          codes: validationCodes?.length ? validationCodes : [{ code: budget ? 'processing_budget' : knownOutputCodes.includes(error.code) ? error.code : 'provider_failure' }],
           ...(error.stagedAnalysis ? { analysis: error.stagedAnalysis } : {}), retryAt: budget ? null : pending.retryAt };
         if (!budget) failures++;
         await update(budget ? 'queued' : error.stagedAnalysis ? 'partially_assessed' : 'awaiting_retry', issue.kind);
@@ -1957,10 +1969,15 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     if (states.length) {
       const section = wrapper.createDiv({ cls: 'auto-mood-section' });
       section.createEl('h3', { text: 'PROCESSING STATUS' });
+      const safeCodes = new Set([...REJECTION_CODES, 'completion_limit', 'invalid_json', 'invalid_response', 'invalid_output', 'semantic_unresolved']);
       for (const [key, value] of states) {
         const pending = this.runtime.pendingDates?.[key];
         const retry = pending && Number.isFinite(Date.parse(pending.retryAt)) ? ` · ${pending.kind === 'budget' ? 'continues' : 'retry'} ${new Date(pending.retryAt).toLocaleTimeString()}` : '';
-        section.createEl('p', { text: `${dateFromKey(key)} · ${value.state.replace(/_/g, ' ')}${value.coverage ? ` · ${value.coverage.processedChunks}/${value.coverage.totalChunks} chunks · ${value.coverage.pendingCharacters} characters pending` : ''}${value.reason ? ` · ${value.reason.replace(/_/g, ' ')}` : ''}${['processing', 'current'].includes(value.state) ? '' : retry}` });
+        const details = [...new Set(Object.values(this.runtime.chunkWork?.[key]?.chunks || {}).filter(chunk => chunk?.state !== 'complete')
+          .flatMap(chunk => Array.isArray(chunk.codes) ? chunk.codes : [])
+          .map(item => item?.code).filter(code => safeCodes.has(code)))].slice(0, 2);
+        const detail = pending?.kind === 'output' && details.length ? ` · ${details.join(', ').replace(/_/g, ' ')}` : '';
+        section.createEl('p', { text: `${dateFromKey(key)} · ${value.state.replace(/_/g, ' ')}${value.coverage ? ` · ${value.coverage.processedChunks}/${value.coverage.totalChunks} chunks · ${value.coverage.pendingCharacters} characters pending` : ''}${value.reason ? ` · ${value.reason.replace(/_/g, ' ')}` : ''}${detail}${['processing', 'current'].includes(value.state) ? '' : retry}` });
       }
     }
     if (!this.repairPreview) return;

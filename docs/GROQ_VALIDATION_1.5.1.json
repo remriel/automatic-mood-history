@@ -1,0 +1,1392 @@
+{
+  "version": 1,
+  "corpus": "regression",
+  "baseline": "1.4.1",
+  "model": "openai/gpt-oss-120b",
+  "repeats": 3,
+  "note": "Synthetic engineering accuracy checks and real provider latency. No private vault or clinical accuracy claim. Baseline/current use identical input. Worker comparison excludes native disk/DOM overhead. Repeated live model output varies: 55 of 57 required scores passed; the two abstentions occurred once each on second-person and temporal cases. The 1.4.1 worker baseline is reused from the 1.5.0 report. This is not held-out or clinical validation.",
+  "results": [
+    {
+      "id": "unseen",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1700.5,
+      "requests": 1,
+      "providerMilliseconds": 1682.1963999999998,
+      "inputTokens": 890,
+      "outputTokens": 630,
+      "reasoningTokens": 306,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 4
+      }
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1473.39,
+      "requests": 1,
+      "providerMilliseconds": 1470.7377999999999,
+      "inputTokens": 889,
+      "outputTokens": 604,
+      "reasoningTokens": 317,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 3
+      }
+    },
+    {
+      "id": "valued",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1124.71,
+      "requests": 1,
+      "providerMilliseconds": 1122.6561000000002,
+      "inputTokens": 886,
+      "outputTokens": 451,
+      "reasoningTokens": 164,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 4,
+        "energy": null,
+        "connection": 4,
+        "intensity": 3
+      }
+    },
+    {
+      "id": "mixed",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1058.51,
+      "requests": 1,
+      "providerMilliseconds": 1053.8532999999998,
+      "inputTokens": 882,
+      "outputTokens": 430,
+      "reasoningTokens": 203,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 3,
+        "energy": null,
+        "connection": null,
+        "intensity": 3
+      }
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1438.87,
+      "requests": 1,
+      "providerMilliseconds": 1437.1122999999998,
+      "inputTokens": 883,
+      "outputTokens": 548,
+      "reasoningTokens": 245,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 1,
+        "energy": 1,
+        "connection": null,
+        "intensity": 5
+      }
+    },
+    {
+      "id": "negation",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1698.45,
+      "requests": 1,
+      "providerMilliseconds": 1696.6237,
+      "inputTokens": 888,
+      "outputTokens": 183,
+      "reasoningTokens": 108,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 721.21,
+      "requests": 1,
+      "providerMilliseconds": 719.7673999999988,
+      "inputTokens": 887,
+      "outputTokens": 143,
+      "reasoningTokens": 68,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1119.33,
+      "requests": 1,
+      "providerMilliseconds": 1117.2559999999994,
+      "inputTokens": 890,
+      "outputTokens": 417,
+      "reasoningTokens": 206,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 5,
+        "intensity": null
+      }
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 3254.43,
+      "requests": 2,
+      "providerMilliseconds": 3250.9658,
+      "inputTokens": 1830,
+      "outputTokens": 919,
+      "reasoningTokens": 467,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": null,
+        "intensity": 4
+      }
+    },
+    {
+      "id": "neutral",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 534.78,
+      "requests": 1,
+      "providerMilliseconds": 529.9269000000004,
+      "inputTokens": 887,
+      "outputTokens": 142,
+      "reasoningTokens": 60,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "short",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 931.12,
+      "requests": 1,
+      "providerMilliseconds": 929.8991000000005,
+      "inputTokens": 874,
+      "outputTokens": 359,
+      "reasoningTokens": 152,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": null
+      }
+    },
+    {
+      "id": "spanish",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1002.3,
+      "requests": 1,
+      "providerMilliseconds": 1000.0859,
+      "inputTokens": 886,
+      "outputTokens": 427,
+      "reasoningTokens": 210,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 1,
+        "energy": null,
+        "connection": 1,
+        "intensity": null
+      }
+    },
+    {
+      "id": "french",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 993.45,
+      "requests": 1,
+      "providerMilliseconds": 991.0798000000013,
+      "inputTokens": 882,
+      "outputTokens": 419,
+      "reasoningTokens": 195,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 5,
+        "energy": null,
+        "connection": 5,
+        "intensity": null
+      }
+    },
+    {
+      "id": "second-person",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1322.64,
+      "requests": 1,
+      "providerMilliseconds": 1319.4445000000014,
+      "inputTokens": 890,
+      "outputTokens": 387,
+      "reasoningTokens": 174,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": null
+      }
+    },
+    {
+      "id": "social-activity",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 473.41,
+      "requests": 1,
+      "providerMilliseconds": 470.5568999999996,
+      "inputTokens": 885,
+      "outputTokens": 177,
+      "reasoningTokens": 102,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 577.7,
+      "requests": 1,
+      "providerMilliseconds": 574.9688999999998,
+      "inputTokens": 884,
+      "outputTokens": 146,
+      "reasoningTokens": 71,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "temporal",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1640.88,
+      "requests": 1,
+      "providerMilliseconds": 1639.6110000000008,
+      "inputTokens": 884,
+      "outputTokens": 641,
+      "reasoningTokens": 407,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 3,
+        "energy": null,
+        "connection": null,
+        "intensity": 5
+      }
+    },
+    {
+      "id": "instructions",
+      "repeat": 0,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 610.71,
+      "requests": 1,
+      "providerMilliseconds": 609.7733000000007,
+      "inputTokens": 890,
+      "outputTokens": 151,
+      "reasoningTokens": 76,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "unseen",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 2660.45,
+      "requests": 1,
+      "providerMilliseconds": 2659.0085,
+      "inputTokens": 890,
+      "outputTokens": 575,
+      "reasoningTokens": 253,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 4
+      }
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 2031.05,
+      "requests": 1,
+      "providerMilliseconds": 2029.920900000001,
+      "inputTokens": 889,
+      "outputTokens": 777,
+      "reasoningTokens": 488,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 3
+      }
+    },
+    {
+      "id": "valued",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1176.38,
+      "requests": 1,
+      "providerMilliseconds": 1173.638500000001,
+      "inputTokens": 886,
+      "outputTokens": 492,
+      "reasoningTokens": 275,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 4,
+        "energy": null,
+        "connection": 5,
+        "intensity": null
+      }
+    },
+    {
+      "id": "mixed",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1011.55,
+      "requests": 1,
+      "providerMilliseconds": 1009.9917999999998,
+      "inputTokens": 882,
+      "outputTokens": 373,
+      "reasoningTokens": 220,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 3,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1749.76,
+      "requests": 1,
+      "providerMilliseconds": 1747.5712999999996,
+      "inputTokens": 883,
+      "outputTokens": 469,
+      "reasoningTokens": 188,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 1,
+        "energy": 1,
+        "connection": null,
+        "intensity": 4
+      }
+    },
+    {
+      "id": "negation",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 990.28,
+      "requests": 1,
+      "providerMilliseconds": 989.1031000000003,
+      "inputTokens": 888,
+      "outputTokens": 275,
+      "reasoningTokens": 200,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 503.53,
+      "requests": 1,
+      "providerMilliseconds": 502.1922999999988,
+      "inputTokens": 887,
+      "outputTokens": 158,
+      "reasoningTokens": 83,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1071.18,
+      "requests": 1,
+      "providerMilliseconds": 1070.0682000000015,
+      "inputTokens": 890,
+      "outputTokens": 433,
+      "reasoningTokens": 216,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 4,
+        "energy": null,
+        "connection": 5,
+        "intensity": null
+      }
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1598.29,
+      "requests": 1,
+      "providerMilliseconds": 1595.3277000000016,
+      "inputTokens": 891,
+      "outputTokens": 589,
+      "reasoningTokens": 287,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 3
+      }
+    },
+    {
+      "id": "neutral",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 421.48,
+      "requests": 1,
+      "providerMilliseconds": 413.6702000000005,
+      "inputTokens": 887,
+      "outputTokens": 140,
+      "reasoningTokens": 58,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "short",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1422.94,
+      "requests": 1,
+      "providerMilliseconds": 1421.7424000000028,
+      "inputTokens": 874,
+      "outputTokens": 503,
+      "reasoningTokens": 228,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 2
+      }
+    },
+    {
+      "id": "spanish",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1114.7,
+      "requests": 1,
+      "providerMilliseconds": 1113.4448000000048,
+      "inputTokens": 886,
+      "outputTokens": 445,
+      "reasoningTokens": 230,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 1,
+        "energy": null,
+        "connection": 1,
+        "intensity": null
+      }
+    },
+    {
+      "id": "french",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1163.16,
+      "requests": 1,
+      "providerMilliseconds": 1161.8964999999953,
+      "inputTokens": 882,
+      "outputTokens": 491,
+      "reasoningTokens": 194,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 4,
+        "energy": null,
+        "connection": 5,
+        "intensity": 3
+      }
+    },
+    {
+      "id": "second-person",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": false,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 984.93,
+      "requests": 1,
+      "providerMilliseconds": 983.808299999997,
+      "inputTokens": 890,
+      "outputTokens": 346,
+      "reasoningTokens": 204,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": 2,
+        "intensity": null
+      }
+    },
+    {
+      "id": "social-activity",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 410.04,
+      "requests": 1,
+      "providerMilliseconds": 408.9150000000009,
+      "inputTokens": 885,
+      "outputTokens": 124,
+      "reasoningTokens": 62,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 368.36,
+      "requests": 1,
+      "providerMilliseconds": 367.3379999999961,
+      "inputTokens": 884,
+      "outputTokens": 128,
+      "reasoningTokens": 71,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "temporal",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {
+        "mood": false
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 856.88,
+      "requests": 1,
+      "providerMilliseconds": 855.6754999999976,
+      "inputTokens": 884,
+      "outputTokens": 317,
+      "reasoningTokens": 250,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "instructions",
+      "repeat": 1,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 563.32,
+      "requests": 1,
+      "providerMilliseconds": 562.3672000000006,
+      "inputTokens": 890,
+      "outputTokens": 130,
+      "reasoningTokens": 55,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "unseen",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1517.99,
+      "requests": 1,
+      "providerMilliseconds": 1516.1106999999975,
+      "inputTokens": 890,
+      "outputTokens": 649,
+      "reasoningTokens": 325,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 4
+      }
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1248.02,
+      "requests": 1,
+      "providerMilliseconds": 1242.8358000000007,
+      "inputTokens": 889,
+      "outputTokens": 509,
+      "reasoningTokens": 220,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 2
+      }
+    },
+    {
+      "id": "valued",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1130.35,
+      "requests": 1,
+      "providerMilliseconds": 1128.5170999999973,
+      "inputTokens": 886,
+      "outputTokens": 440,
+      "reasoningTokens": 223,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 4,
+        "energy": null,
+        "connection": 5,
+        "intensity": null
+      }
+    },
+    {
+      "id": "mixed",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1212.85,
+      "requests": 1,
+      "providerMilliseconds": 1175.1790000000037,
+      "inputTokens": 882,
+      "outputTokens": 387,
+      "reasoningTokens": 234,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 3,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1849.75,
+      "requests": 1,
+      "providerMilliseconds": 1847.1229999999996,
+      "inputTokens": 883,
+      "outputTokens": 508,
+      "reasoningTokens": 211,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 1,
+        "energy": 1,
+        "connection": null,
+        "intensity": 4
+      }
+    },
+    {
+      "id": "negation",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 503.99,
+      "requests": 1,
+      "providerMilliseconds": 500.9256000000023,
+      "inputTokens": 888,
+      "outputTokens": 188,
+      "reasoningTokens": 113,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 685.93,
+      "requests": 1,
+      "providerMilliseconds": 683.5549000000028,
+      "inputTokens": 887,
+      "outputTokens": 154,
+      "reasoningTokens": 79,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1517.81,
+      "requests": 1,
+      "providerMilliseconds": 1515.4103000000032,
+      "inputTokens": 890,
+      "outputTokens": 544,
+      "reasoningTokens": 322,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 5,
+        "energy": null,
+        "connection": 5,
+        "intensity": null
+      }
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1535.2,
+      "requests": 1,
+      "providerMilliseconds": 1532.6811000000016,
+      "inputTokens": 891,
+      "outputTokens": 673,
+      "reasoningTokens": 365,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": 4
+      }
+    },
+    {
+      "id": "neutral",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 408.75,
+      "requests": 1,
+      "providerMilliseconds": 406.6677999999956,
+      "inputTokens": 887,
+      "outputTokens": 138,
+      "reasoningTokens": 63,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "short",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 984.49,
+      "requests": 1,
+      "providerMilliseconds": 983.185900000004,
+      "inputTokens": 874,
+      "outputTokens": 364,
+      "reasoningTokens": 155,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": null
+      }
+    },
+    {
+      "id": "spanish",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1339.57,
+      "requests": 1,
+      "providerMilliseconds": 1338.4723000000013,
+      "inputTokens": 886,
+      "outputTokens": 559,
+      "reasoningTokens": 272,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 1,
+        "energy": null,
+        "connection": 1,
+        "intensity": 2
+      }
+    },
+    {
+      "id": "french",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 2161.17,
+      "requests": 1,
+      "providerMilliseconds": 2160.0604999999996,
+      "inputTokens": 882,
+      "outputTokens": 449,
+      "reasoningTokens": 223,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 4,
+        "energy": null,
+        "connection": 4,
+        "intensity": null
+      }
+    },
+    {
+      "id": "second-person",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1304.48,
+      "requests": 1,
+      "providerMilliseconds": 1303.3855999999942,
+      "inputTokens": 890,
+      "outputTokens": 475,
+      "reasoningTokens": 255,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 2,
+        "energy": null,
+        "connection": 2,
+        "intensity": null
+      }
+    },
+    {
+      "id": "social-activity",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 532.83,
+      "requests": 1,
+      "providerMilliseconds": 531.9642999999996,
+      "inputTokens": 885,
+      "outputTokens": 172,
+      "reasoningTokens": 97,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 384.75,
+      "requests": 1,
+      "providerMilliseconds": 383.9599999999991,
+      "inputTokens": 884,
+      "outputTokens": 119,
+      "reasoningTokens": 62,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    },
+    {
+      "id": "temporal",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1434.53,
+      "requests": 1,
+      "providerMilliseconds": 1432.5453000000052,
+      "inputTokens": 884,
+      "outputTokens": 405,
+      "reasoningTokens": 172,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": 3,
+        "energy": null,
+        "connection": null,
+        "intensity": 4
+      }
+    },
+    {
+      "id": "instructions",
+      "repeat": 2,
+      "engine": "current",
+      "checks": {},
+      "unsupported": [],
+      "success": true,
+      "milliseconds": 1043.96,
+      "requests": 1,
+      "providerMilliseconds": 1042.9985000000015,
+      "inputTokens": 890,
+      "outputTokens": 146,
+      "reasoningTokens": 71,
+      "rateLimits": 0,
+      "chunks": 1,
+      "peakConcurrency": 1,
+      "scores": {
+        "mood": null,
+        "energy": null,
+        "connection": null,
+        "intensity": null
+      }
+    }
+  ],
+  "workers": [
+    {
+      "engine": "1.4.1",
+      "success": true,
+      "milliseconds": 65027.16,
+      "requests": 12,
+      "providerMilliseconds": 64947.855100000015,
+      "inputTokens": 50405,
+      "outputTokens": 27983,
+      "reasoningTokens": 23708,
+      "rateLimits": 0,
+      "chunks": 10,
+      "peakConcurrency": 1
+    },
+    {
+      "engine": "current",
+      "success": true,
+      "milliseconds": 4196.14,
+      "requests": 10,
+      "providerMilliseconds": 11416.012400000029,
+      "inputTokens": 13632,
+      "outputTokens": 4022,
+      "reasoningTokens": 2179,
+      "rateLimits": 0,
+      "chunks": 10,
+      "peakConcurrency": 5
+    }
+  ],
+  "workerInputHash": "6f7f497374c56b4f237aca383848010a6ea52b45135cedf70b3adea0ec78462a",
+  "reusedWorkerBaseline": "docs/GROQ_PERFORMANCE.json",
+  "implementationHash": "d8e4f7f02eff8e8d4543259d76d9bce3f61d058547a03278a81e37c81c88dd8f",
+  "analysisContractHash": "2690f2733a67a2a65fdfd42ccc90f2821990b7db3e1f1119035543e2111e0b14",
+  "bundleSHA256": "523ffe08f3e914f126aa185de4815610566db1d0a955f634ac61d5a0d8c484eb",
+  "summary": {
+    "current": {
+      "cases": 54,
+      "successful": 54,
+      "constraints": 57,
+      "passed": 55,
+      "unsupported": 0,
+      "requests": 55,
+      "inputTokens": 48783,
+      "outputTokens": 20818,
+      "reasoningTokens": 10555,
+      "medianMilliseconds": 1119.33
+    }
+  }
+}

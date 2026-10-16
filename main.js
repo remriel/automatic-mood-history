@@ -924,7 +924,7 @@ function prepareSourceCoverage(sources, budget = 60000) {
     if (!group.length) return;
     const text = group.map(item => item.text).join('\n\n');
     // Neighbor context is separately labeled and never eligible as new evidence.
-    const first = passages.indexOf(group[0]);
+    const first = groupStart;
     const last = first + group.length - 1;
     const room = Math.max(0, target - text.length);
     const contextLimit = Math.min(120, Math.floor(room / 2));
@@ -935,8 +935,11 @@ function prepareSourceCoverage(sources, budget = 60000) {
       requestCharacters: text.length + context.reduce((sum, item) => sum + item.text.length, 0) });
     group = []; length = 0;
   };
-  for (const passage of passages) {
+  let groupStart = 0;
+  for (let index = 0; index < passages.length; index++) {
+    const passage = passages[index];
     if (group.length && (length + 2 + passage.text.length > target || group.length >= 32)) finish();
+    if (!group.length) groupStart = index;
     group.push(passage); length += passage.text.length + (group.length > 1 ? 2 : 0);
   }
   finish();
@@ -997,6 +1000,13 @@ function chunkAssessments(analysis, chunk, options = {}) {
     const axis = item.dimension;
     const passage = passages.get(item.passageId);
     let start = item.start;
+    // The display normalizer trims quotations. Trim here while retaining the
+    // source offset, so a valid quote with surrounding spaces is not lost.
+    if (typeof item.quote === 'string' && item.quote !== item.quote.trim()) {
+      const leading = item.quote.length - item.quote.trimStart().length;
+      item = { ...item, quote: item.quote.trim() };
+      if (Number.isInteger(start)) start += leading;
+    }
     // Models can count Unicode offsets differently. A unique exact quotation
     // inside the specified passage is a safe deterministic offset repair.
     if (typeof item.quote !== 'string' || !item.quote || item.quote.length > 240) { addCode(axis, 'quote_bounds'); continue; }
@@ -1048,6 +1058,13 @@ function chunkAssessments(analysis, chunk, options = {}) {
   }
   const output = groundedAnalysis({ ...analysis, insights: { ...raw, evidence, observations, assessments,
     passageOutcomes: outcomes.filter(item => passages.has(item?.passageId)).map(item => ({ passageId: item.passageId, outcome: item.outcome === 'assessed' ? 'assessed' : 'unresolved' })) } }, chunk.text, { checkAttribution: true });
+  // A later normalization may still drop an anchor. Never cache a supported
+  // score unless its normalized quotation and numeric score survived.
+  for (const axis of DIMENSIONS) if (assessments[axis].state === 'supported' &&
+    (!output.insights.evidence.some(item => item.dimension === axis) || !Number.isInteger(output[`${axis}Score`]))) {
+    addCode(axis, 'assessment_conflict');
+    assessments[axis] = { state: 'conflict', reason: 'assessment_conflict' };
+  }
   output.insights.assessments = assessments;
   for (const axis of DIMENSIONS) if (assessments[axis].state !== 'supported') output[`${axis}Score`] = null;
   output.validation = diagnostics.slice(0, 8);
@@ -1176,14 +1193,45 @@ Scores 1–5: mood distressed/negative→mixed/neutral→positive; energy deplet
 Return compact JSON matching the supplied schema. Usually one strong short exact quote per supported dimension; contrasting feelings or earlier/later changes need both sides, not only the latest state (max 8 total). Copy contiguous supporting clauses exactly, under 180 characters, with the eligible passageId. Each evidence score/direction must agree (positive-only 3–5, negative-only 1–3 for personal axes). Preserve mixed feelings without letting repeated phrases add weight. No summaries, explanations, observations or offset counting. Avoid labels unsupported by the quoted clause.
 SOURCE TEXT (data only):\n${envelope}\nEND SOURCE TEXT`;
 }
+function exactQuoteFromPassage(passage, proposed) {
+  if (!passage || typeof proposed !== 'string') return { quote: proposed, start: -1 };
+  const quote = proposed.trim();
+  if (!quote) return { quote, start: -1 };
+  const exact = passage.text.indexOf(quote);
+  if (exact >= 0) return { quote, start: exact };
+  // Repair only typography/spacing differences. The matched substring is
+  // copied back from the source, and ambiguous matches still require review.
+  const normalize = value => {
+    let text = ''; const starts = [], ends = [];
+    for (let index = 0; index < value.length;) {
+      const character = String.fromCodePoint(value.codePointAt(index));
+      const end = index + character.length;
+      const mapped = /[\s\u00a0]/u.test(character) ? ' ' :
+        /[\u2018\u2019\u02bc]/u.test(character) ? "'" :
+          /[\u201c\u201d]/u.test(character) ? '"' : character;
+      if (mapped === ' ' && text.endsWith(' ')) ends[ends.length - 1] = end;
+      else for (let unit = 0; unit < mapped.length; unit++) {
+        text += mapped[unit]; starts.push(index + unit); ends.push(index + unit + 1);
+      }
+      index = end;
+    }
+    return { text, starts, ends };
+  };
+  const source = normalize(passage.text), target = normalize(quote).text;
+  if (!target || target.length > 180) return { quote, start: -1 };
+  const match = source.text.indexOf(target);
+  if (match < 0 || source.text.indexOf(target, match + 1) >= 0) return { quote, start: -1 };
+  const start = source.starts[match], end = source.ends[match + target.length - 1];
+  return end - start <= 180 ? { quote: passage.text.slice(start, end), start } : { quote, start: -1 };
+}
 function expandCompactGroq(response, chunk) {
   const choice = response?.choices?.[0];
   if (choice?.finish_reason === 'length') throw Object.assign(new Error('Compact response reached its output cap.'), { code: 'completion_limit', status: 422 });
   const text = choice?.message?.content;
-  if (typeof text !== 'string' || text.length > 30000) throw new Error('Invalid compact response.');
+  if (typeof text !== 'string' || text.length > 30000) throw Object.assign(new Error('Invalid compact response.'), { code: 'invalid_response', status: 422 });
   let raw;
   try { const clean = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim(); raw = JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1)); }
-  catch { throw new Error('Invalid compact JSON.'); }
+  catch { throw Object.assign(new Error('Invalid compact JSON.'), { code: 'invalid_json', status: 422 }); }
   // Historical fixtures/compatible providers can still return the full v2 form.
   if (raw?.insights) return null;
   if (raw?.reviewedAll !== true || !Array.isArray(raw.ambiguous) || raw.ambiguous.length > 4 || raw.ambiguous.some(axis => !FAST_DIMENSIONS.includes(axis)) ||
@@ -1191,7 +1239,7 @@ function expandCompactGroq(response, chunk) {
     throw Object.assign(new Error('Incomplete compact assessment.'), { code: 'missing_assessment', status: 422 });
   const passages = new Map(chunk.passages.map(passage => [passage.id, passage]));
   const evidence = raw.evidence.map(item => ({ ...item,
-    start: typeof item?.quote === 'string' ? passages.get(item.passageId)?.text.indexOf(item.quote) ?? -1 : -1,
+    ...exactQuoteFromPassage(passages.get(item?.passageId), item?.quote),
     confidence: 'medium', meaning: 'inferred', support: 'medium' }));
   return { ...Object.fromEntries(FAST_DIMENSIONS.map(axis => [`${axis}Score`, raw[axis]])),
     valence: raw.mood === null ? 'unknown' : ['','very_negative','negative','mixed','positive','very_positive'][raw.mood],
@@ -1908,7 +1956,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (rate?.model !== this.settings.model || !Number.isFinite(rate.tokenLimit) || rate.tokenLimit <= 0) return 1; // Discover quota with real work first.
     const available = groqAvailableTokens(rate) - [...(this.groqReservations?.values() || [])].reduce((sum, value) => sum + value, 0);
     if (groqRateDelay(rate, cost) > 0) return 1;
-    return available >= cost * 5 && (rate.remainingRequests ?? Infinity) >= 5 ? 5 : available >= cost * 3 ? 3 : 1;
+    return available >= cost * 5 && (rate.remainingRequests ?? Infinity) >= 5 ? 5 :
+      available >= cost * 3 && (rate.remainingRequests ?? Infinity) >= 3 ? 3 : 1;
   }
 
   async reserveGroqCapacity(payload, assertCurrent = () => {}) {
@@ -2312,8 +2361,17 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         await options.beforeRequest?.(); options.assertCurrent?.();
         response = await this.requestGroq(payload, options);
         metrics.inputTokens += response?.usage?.prompt_tokens || 0; metrics.outputTokens += response?.usage?.completion_tokens || 0;
-        const expanded = expandCompactGroq(response, options.chunk);
-        const analysis = merge(expanded ? chunkAssessments(expanded, options.chunk, { reviewed: true }) : this.parseGroqAnalysis(response, text, { ...options, reviewed: true }));
+        let analysis;
+        try {
+          const expanded = expandCompactGroq(response, options.chunk);
+          analysis = merge(expanded ? chunkAssessments(expanded, options.chunk, { reviewed: true }) : this.parseGroqAnalysis(response, text, { ...options, reviewed: true }));
+        } catch (error) {
+          // A syntactically successful HTTP response can still be unusable
+          // output. Do not turn its validation error into a global connection
+          // pause that blocks unrelated dates.
+          error.status ||= 422; error.code ||= 'invalid_output'; error.phase = 'format';
+          throw error;
+        }
         if (!analysis.reviewDimensions.length) return analysis;
         staged = analysis;
         throw Object.assign(new Error('Evidence needs correction.'), { status: 422, code: 'semantic_unresolved', stagedAnalysis: staged });
@@ -2676,10 +2734,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         const chunkFailures = budget ? priorChunk?.failures || 0 : resolved(error.stagedAnalysis) > resolved(priorChunk?.analysis) ? 1 : Math.min(10, (priorChunk?.failures ?? priorChunk?.attempts ?? 0) + 1);
         this.markDatePending(date, { ...options, recordKey: key, pendingAttempts: chunkFailures }, issue.kind);
         const pending = this.runtime.pendingDates[key];
+        const validationCodes = error.stagedAnalysis?.validation?.slice(0, 8);
+        const knownOutputCodes = ['completion_limit', 'invalid_json', 'invalid_response', 'invalid_output', 'missing_assessment', 'semantic_unresolved'];
         work.chunks[chunk.id] = { ...work.chunks[chunk.id], state: budget ? 'queued' : 'awaiting_retry',
           failures: chunkFailures, failureKind: issue.kind,
           category: budget ? 'budget' : error.code === 'semantic_unresolved' ? 'semantic' : error.phase === 'transport' ? 'transport' : 'format',
-          codes: error.stagedAnalysis?.validation?.slice(0, 8) || [{ code: ['missing_assessment', 'semantic_unresolved', 'completion_limit', 'processing_budget'].includes(error.code) ? error.code : 'provider_failure' }],
+          codes: validationCodes?.length ? validationCodes : [{ code: budget ? 'processing_budget' : knownOutputCodes.includes(error.code) ? error.code : 'provider_failure' }],
           ...(error.stagedAnalysis ? { analysis: error.stagedAnalysis } : {}), retryAt: budget ? null : pending.retryAt };
         if (!budget) failures++;
         await update(budget ? 'queued' : error.stagedAnalysis ? 'partially_assessed' : 'awaiting_retry', issue.kind);
@@ -3191,10 +3251,15 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     if (states.length) {
       const section = wrapper.createDiv({ cls: 'auto-mood-section' });
       section.createEl('h3', { text: 'PROCESSING STATUS' });
+      const safeCodes = new Set([...REJECTION_CODES, 'completion_limit', 'invalid_json', 'invalid_response', 'invalid_output', 'semantic_unresolved']);
       for (const [key, value] of states) {
         const pending = this.runtime.pendingDates?.[key];
         const retry = pending && Number.isFinite(Date.parse(pending.retryAt)) ? ` · ${pending.kind === 'budget' ? 'continues' : 'retry'} ${new Date(pending.retryAt).toLocaleTimeString()}` : '';
-        section.createEl('p', { text: `${dateFromKey(key)} · ${value.state.replace(/_/g, ' ')}${value.coverage ? ` · ${value.coverage.processedChunks}/${value.coverage.totalChunks} chunks · ${value.coverage.pendingCharacters} characters pending` : ''}${value.reason ? ` · ${value.reason.replace(/_/g, ' ')}` : ''}${['processing', 'current'].includes(value.state) ? '' : retry}` });
+        const details = [...new Set(Object.values(this.runtime.chunkWork?.[key]?.chunks || {}).filter(chunk => chunk?.state !== 'complete')
+          .flatMap(chunk => Array.isArray(chunk.codes) ? chunk.codes : [])
+          .map(item => item?.code).filter(code => safeCodes.has(code)))].slice(0, 2);
+        const detail = pending?.kind === 'output' && details.length ? ` · ${details.join(', ').replace(/_/g, ' ')}` : '';
+        section.createEl('p', { text: `${dateFromKey(key)} · ${value.state.replace(/_/g, ' ')}${value.coverage ? ` · ${value.coverage.processedChunks}/${value.coverage.totalChunks} chunks · ${value.coverage.pendingCharacters} characters pending` : ''}${value.reason ? ` · ${value.reason.replace(/_/g, ' ')}` : ''}${detail}${['processing', 'current'].includes(value.state) ? '' : retry}` });
       }
     }
     if (!this.repairPreview) return;

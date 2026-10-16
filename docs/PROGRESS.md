@@ -1,33 +1,28 @@
 # Automatic Mood History — execution state
 
-Current objective: publish the verified 1.5.0 performance release. The user will test the journal backlog themselves; do not start/resume live analysis.
+Current objective: deliver a verified 1.5.1 recovery update for dates left partially assessed by invalid Groq output. Do not run private journal analysis.
 
-Progress: 90% [##################--] toward verified publication and delivery.
+Progress: 85% [#################---] toward a published, user-testable 1.5.1 release.
 
-- [x] Implement compact evidence, low GPT-OSS reasoning, normally one request and at most one correction per chunk.
-- [x] Add bounded quota-aware workers, token reservations, server-pause enforcement and bounded nonsensitive telemetry.
-- [x] Retain validated pending chunks by exact fingerprint migration; preserve settings, source scope, existing results, cancellation and recoverable storage.
-- [x] Drain productive Resume pending batches without artificial gaps and add Stop analysis.
-- [x] Benchmark against 1.4.1: synthetic 10-chunk batch 65.03s to 4.92s (92.4% reduction); small-entry median 5.60s to 1.27s (77.3%).
-- [x] Pass all 57 score constraints across 54 synthetic regression evaluations, zero unsupported scores and no HTTP 429; retain initial failures transparently.
-- [x] Run full functional/syntax, responsive layout and privacy suites; finalize release notes/README/changelog and continuity documents.
-- [ ] Commit/push performance branch, create/attach PR and require final-head green CI.
-- [ ] Merge the checked head; verify main CI, automatic 1.5.0 release, downloaded runtime digests and official source-bound attestations.
-- [ ] Deliver verified runtime package and both current continuity files; preserve private data/settings and leave journal testing to the user.
+- [x] Reconcile repository, 1.5.0 release and CI with stale handoff text.
+- [x] Fix unique spacing/typography quote recovery, trimmed offsets, post-normalization score checks and invalid-output classification.
+- [x] Show safe per-chunk validation codes on the dashboard; preserve completed chunks and provider quota pauses.
+- [x] Respect reported daily request count for three workers and remove quadratic passage lookup.
+- [x] Add focused regressions, bump to 1.5.1, update release notes and collect new live synthetic evidence.
+- [x] Pass local npm test, browser layout, release audit and diff checks.
+- [ ] Push branch, open a PR, require final-head green CI and merge/release if verified.
+- [ ] Verify published 1.5.1 assets and source-bound attestations; deliver runtime and continuity files.
 
-Implementation: src/groq-runtime.js and src/main.js; scripts/build.js bundles the runtime. Prompt compact-evidence-prompt-v6, engine/text pipeline unchanged. Maximum five concurrent requests subject to quota, maximum two provider calls per chunk. Existing per-batch character limit and provider pauses remain. Serial durable commits; one checkpoint per result. Whole-chunk review is an explicit model acknowledgment, expanded to internal passage outcomes with exact evidence validation.
+Findings: the reported 18/19 and 9/10 lines each leave one chunk pending with reason output. This can mean malformed or incomplete JSON, unmatched quote, conflicting score/evidence, or an output cap. The line alone does not show the exact code, and this checkout has no matching private runtime. The new dashboard displays safe codes. A concrete bug allowed quotes with surrounding spaces to pass initial validation, then disappear during normalization; a supported score could be cached without its anchor. Unique whitespace/quote typography repair and the post-normalization check address that path. The exact private failure remains unverified.
 
-Verification: npm test, npm run test:layout, npm run audit:release and git diff --check passed before final publication. Dashboard request estimate/copy now reflects two calls; the measured analysis runtime is unchanged. Original full measured source/bundle hashes and a separate exact analysis-runtime fingerprint are retained in the reports. CI will rerun all suites on the final commit. Native private backlog has not been verified with 1.5.0 and is not claimed complete.
+Verification: npm test, npm run test:layout, npm run audit:release and git diff --check pass. Live synthetic Groq report docs/GROQ_VALIDATION_1.5.1.json: 54/54 successful evaluations, 55/57 required scores passed, zero unsupported scores, no HTTP 429; the second-person and temporal mood constraints each missed once in three repetitions. Every required constraint passed in at least two of three repeats. Current 10-chunk worker run: 4.20s, ten calls, peak concurrency five, no 429; reused 1.4.1 baseline: 65.03s. These are regression inputs, not private journal or clinical validation.
 
-Publication baseline: released/installed 1.4.1, main 14098ed08b9eccc63fe351376cea59a7649de25e, PR #6, main CI 38952971283 and release 38952971308 successful, asset digests and source-bound provenance verified. Performance branch: perf/compact-groq-analysis. 1.5.0 is not yet claimed published here.
+Current implementation: source and bundled main.js updated on branch fix/output-recovery-diagnostics. Version metadata is 1.5.1. Existing saved chunks retain their v6 fingerprint because the provider prompt/schema did not change. No private source, credentials or provider bodies are in Git.
 
-Private state: earlier backup contains 198 source hashes plus runtime/data/generated history. Latest automatic/startup settings were both off; user changed chart preferences during work, so never restore old settings. Native 1.4.1 user-started scan was canceled with its normal epoch guard and checkpoints preserved. No provider calls through the filesystem fallback. Keep private paths, notes, credentials, raw provider bodies and screenshots outside Git.
-
-Blockers: none. Pending remote journal work is now user testing, not a publication prerequisite.
+Blockers: no local implementation blocker. GitHub publication and private-date retry remain outstanding.
 
 Exact ordered next steps:
-1. Run the final local gates after dashboard-copy and documentation changes.
-2. Commit/push the branch; create and attach the PR; check CI on that exact head.
-3. Merge with a checked-head lease and wait for main/release workflow success.
-4. Download the published three runtime assets; verify version, digests and official source-bound provenance.
-5. Deliver the release link, installable package, PROJECT_STATE.md and PROGRESS.md. Do not start journal analysis.
+1. Commit/push the branch and create the PR.
+2. Require green CI on the exact PR head, then merge and verify main/release workflows.
+3. Verify 1.5.1 asset digests and source-bound attestation; package the three runtime assets.
+4. Give the user the release and these two files. Ask the user to retry the two dates; inspect only safe codes if one remains pending. Do not start the private analysis here.

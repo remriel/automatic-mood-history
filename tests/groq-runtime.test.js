@@ -56,6 +56,28 @@ async function run() {
   assert(pipeline.chunkAssessments(expanded, chunk, { reviewed: true }).reviewDimensions.length > 0);
   const conflict = structuredClone(result); conflict.mood = 1;
   assert(pipeline.chunkAssessments(runtime.expandCompactGroq(reply(conflict).json, chunk), chunk, { reviewed: true }).reviewDimensions.includes('mood'));
+  const spaced = structuredClone(result);
+  spaced.evidence[0].quote = ` ${spaced.evidence[0].quote} `;
+  expanded = runtime.expandCompactGroq(reply(spaced).json, chunk);
+  assert.equal(pipeline.chunkAssessments(expanded, chunk, { reviewed: true }).reviewDimensions.length, 0,
+    'surrounding quote spaces do not discard a validated anchor during normalization');
+  const legacySpaced = pipeline.localChunkAnalysis(chunk);
+  legacySpaced.insights.evidence[0].quote = ` ${legacySpaced.insights.evidence[0].quote} `;
+  legacySpaced.insights.evidence[0].start--;
+  assert.equal(pipeline.chunkAssessments(legacySpaced, chunk, { reviewed: true }).reviewDimensions.length, 0);
+  const typography = pipeline.prepareSourceCoverage([{ path: 'Synthetic.md', text: 'I’m glad\n\tto be here.' }]).chunks[0];
+  const repaired = runtime.expandCompactGroq(reply({ mood: 4, energy: null, connection: null, intensity: null,
+    reviewedAll: true, ambiguous: [], evidence: [{ dimension: 'mood', passageId: typography.passages[0].id,
+      quote: "I'm glad to be here.", score: 4, direction: 'positive', emotion: 'glad', basis: 'personal', temporal: 'present' }] }).json, typography);
+  assert.equal(repaired.insights.evidence[0].quote, typography.passages[0].text);
+  assert.equal(pipeline.chunkAssessments(repaired, typography, { reviewed: true }).reviewDimensions.length, 0,
+    'unique typography and whitespace repair copies the exact source span');
+  const repeated = pipeline.prepareSourceCoverage([{ path: 'Synthetic.md', text: 'I’m glad. I’m glad.' }]).chunks[0];
+  const ambiguous = runtime.expandCompactGroq(reply({ mood: 4, energy: null, connection: null, intensity: null,
+    reviewedAll: true, ambiguous: [], evidence: [{ dimension: 'mood', passageId: repeated.passages[0].id,
+      quote: "I'm glad.", score: 4, direction: 'positive', emotion: 'glad', basis: 'personal', temporal: 'present' }] }).json, repeated);
+  assert(pipeline.chunkAssessments(ambiguous, repeated, { reviewed: true }).reviewDimensions.includes('mood'),
+    'ambiguous approximate quotations remain unresolved');
 
   // Known tokens are reserved across concurrent calls. Daily-request headers
   // remain daily quotas and are never interpreted as per-minute throughput.
@@ -68,6 +90,10 @@ async function run() {
   f = setup(); f.p.runtime.groqRateLimits = { model: 'fictional', remainingRequests: 0, requestsResetAt: Date.now() + 120000 };
   await assert.rejects(f.p.requestGroq({ model: 'fictional', messages: [] }), error => error.code === 'quota_wait');
   assert.equal(httpCalls, 0);
+  f = setup(); knownQuota(f.p); f.p.runtime.groqRateLimits.remainingRequests = 2;
+  assert.equal(f.p.groqWorkerLimit(4000), 1, 'daily requests below three cannot start three workers');
+  f.p.runtime.groqRateLimits.remainingRequests = 3;
+  assert.equal(f.p.groqWorkerLimit(4000), 3);
 
   f = setup(); httpCalls = 0;
   respond = async () => { httpCalls++; return { status: 429, headers: { 'retry-after': '10' }, json: { error: { code: 'rate_limit_exceeded', message: 'PRIVATE_PROVIDER_TEXT' } } }; };
@@ -76,6 +102,17 @@ async function run() {
   await assert.rejects(f.p.requestGroq({ model: 'fictional', messages: [] }), error => error.code === 'quota_wait');
   assert.equal(httpCalls, 1, 'manual retry cannot bypass a current provider Retry-After');
   assert(!JSON.stringify(f.p.runtime).includes('PRIVATE_PROVIDER_TEXT'));
+
+  for (const content of ['not JSON', JSON.stringify({ insights: {} })]) {
+    f = setup(); knownQuota(f.p); httpCalls = 0;
+    respond = async () => { httpCalls++; return { status: 200, headers: {}, json: { choices: [{ finish_reason: 'stop', message: { content } }] } }; };
+    assert.equal(await f.p.analyzeDate(date), false);
+    assert.equal(httpCalls, 2, 'invalid output receives one bounded correction attempt');
+    assert.equal(f.p.runtime.pendingDates[date].kind, 'output');
+    assert.equal(f.p.groqBlockedUntil, 0, 'a successful HTTP response with invalid analysis does not pause other dates');
+    const failed = Object.values(f.p.runtime.chunkWork[date].chunks).find(item => item.state !== 'complete');
+    assert(['invalid_json', 'invalid_output'].includes(failed.codes[0].code));
+  }
 
   // Real compact parsing/HTTP adapter with five overlapping independent chunks.
   f = setup(); knownQuota(f.p); f.disk.files.set(f.source.path, longText(7));
