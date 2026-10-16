@@ -37,11 +37,11 @@ function fixtureHTML() {
     ${bundle}
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
     plugin.settings={outputFolder:'Mood History',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
-    const calls={analyze:0,retry:0,check:0,recover:0,resume:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};
+    const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};
     let statusText='SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';
     plugin.groqStatus=()=>({kind:plugin.settings.enableGroq?'ready':'local',text:plugin.activeScan?'Analyzing fictional fixture records':plugin.checkingGroq?'Checking with fictional fixture text':statusText});
     const action=async(name)=>{calls[name]+=1;if(name==='check')plugin.checkingGroq=true;else plugin.activeScan=true;plugin.refreshRenderers();await new Promise(r=>setTimeout(r,120));plugin.checkingGroq=false;plugin.activeScan=false;plugin.refreshRenderers();};
-    plugin.analyzeAll=()=>action('analyze');plugin.retryAllWithGroq=()=>action('retry');plugin.checkGroqConnection=()=>action('check');plugin.recoverFallbacksWithGroq=()=>action('recover');plugin.resumePendingAnalysis=()=>action('resume');
+    plugin.analyzeAll=()=>action('analyze');plugin.retryAllWithGroq=()=>action('retry');plugin.checkGroqConnection=()=>action('check');plugin.recoverFallbacksWithGroq=()=>action('recover');
     const tab=new AutomaticMoodHistorySettingTab({},plugin);tab.containerEl=document.getElementById('settings');
     function configure(options={}) {
       document.documentElement.style.fontSize=options.largeText?'32px':'16px';document.body.className=options.theme==='light'?'theme-light':'theme-dark';document.getElementById('pane').style.width=options.paneWidth?options.paneWidth+'px':'100%';
@@ -49,13 +49,7 @@ function fixtureHTML() {
       const count=options.mode==='empty'?0:options.count??32;plugin.records={};
       for(let i=0;i<count;i++) {
         const date=new Date(Date.UTC(2099,0,i+1)).toISOString().slice(0,10);const insufficient=options.mode==='insufficient'||i%11===10;const legacy=i%7===6;
-        plugin.records[date]={date,dateBasis:legacy?'legacy-note-date':'created-at-local-date',status:insufficient?'insufficient':'complete',moodScore:insufficient?null:1+i%5,energyScore:insufficient?null:1+(i+2)%5,connectionScore:insufficient?null:1+(i+3)%5,intensityScore:insufficient?null:1+(i+1)%5,emotions:['curious','hopeful',...(options.longText?['VeryLongUnbrokenEmotionName'.repeat(10)]:[])],summary:insufficient?'There was not enough readable text to infer a score.':'A fictional day with thoughtful reflection, small achievements, and supportive conversations.'+(options.longText?' '+('WrappedEvidence'.repeat(45)):''),analysisSource:insufficient?'none':i%3===0?'groq':'local-fallback',entryPath:'Mood History/Entries/'+date+' (Automatic Mood History).md',providerIssue:i%3?{message:'Fictional provider issue'}:undefined};
-        if(options.evidence) {
-          const record=plugin.records[date];record.connectionScore=null;
-          record.insights={version:1,evidence:[{dimension:'mood',emotion:'anxious',direction:'negative',confidence:'medium',quote:'I feel anxious after vague feedback. '+('LongEvidenceWord'.repeat(10))}],observations:[{kind:'need',description:'An explicit need is stated; no hidden motive is inferred.',quotes:['I need some quiet. <img src="fictional"> ![[Fictional]]'],confidence:'low'}],limitations:[]};
-          record.insights.evidence.push({dimension:'intensity',basis:'textual',emotion:'indignation',direction:'negative',confidence:'medium',quote:'This fictional demand turns every independent choice into an offense.'});
-          record.historyComparison={version:1,changes:[{dimension:'mood',delta:-1,sampleSize:3}],situations:[{context:'vague feedback',emotion:'anxious'}]};
-        }
+        plugin.records[date]={date,dateBasis:legacy?'legacy-note-date':'created-at-local-date',status:insufficient?'insufficient':'complete',moodScore:insufficient?null:1+i%5,energyScore:1+(i+2)%5,connectionScore:1+(i+3)%5,intensityScore:1+(i+1)%5,emotions:['curious','hopeful',...(options.longText?['VeryLongUnbrokenEmotionName'.repeat(10)]:[])],summary:insufficient?'There was not enough readable text to infer a score.':'A fictional day with thoughtful reflection, small achievements, and supportive conversations.'+(options.longText?' '+('WrappedEvidence'.repeat(45)):''),analysisSource:insufficient?'none':i%3===0?'groq':'local-fallback',entryPath:'Mood History/Entries/'+date+' (Automatic Mood History).md',providerIssue:i%3?{message:'Fictional provider issue'}:undefined};
       }
       dashboard.hidden=Boolean(options.settingsView);tab.containerEl.hidden=!options.settingsView;plugin.renderDashboard(dashboard);if(options.settingsView)tab.display();
     }

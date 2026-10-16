@@ -31,7 +31,7 @@ function fixture(disk = { json: null, files: new Map() }) {
   p.app = { vault: {
     getMarkdownFiles: () => Array.from(files.values()).filter(file => file instanceof TFile),
     getAbstractFileByPath: path => files.get(path) || null,
-    cachedRead: async file => disk.files.get(file.path) ?? "I feel calm and hopeful after a conversation with friends. This is a fictional fixture.",
+    cachedRead: async file => disk.files.get(file.path) ?? "A fictional writer feels calm and hopeful after a conversation with friends.",
     create: async (path, text) => { if (files.has(path)) throw new Error("Already exists"); const file = new TFile(path); files.set(path, file); disk.files.set(path, text); return file; },
     process: async (file, transform) => { disk.files.set(file.path, transform(disk.files.get(file.path))); },
     createFolder: async path => { files.set(path, new TFolder()); },
@@ -41,7 +41,7 @@ function fixture(disk = { json: null, files: new Map() }) {
   p.saveData = async snapshot => { disk.json = clone(snapshot); };
   p.loadData = async () => clone(disk.json);
   p.apiKey = () => "fictional"; p.providerCalls = 0;
-  p.analyzeWithGroq = async (_date, text, options = {}) => { p.providerCalls++; return options.chunk ? require('../src/analysis-pipeline').localChunkAnalysis(options.chunk) : clone(valid); };
+  p.analyzeWithGroq = async () => { p.providerCalls++; return clone(valid); };
   p.refreshRenderers = () => {};
   p.addRibbonIcon = p.addCommand = p.addSettingTab = p.registerMarkdownCodeBlockProcessor = p.registerEvent = p.register = () => {};
   return { p, disk, files, source };

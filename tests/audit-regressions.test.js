@@ -135,15 +135,14 @@ test("rename while awaiting a provider reply prevents stale-text retries", async
 
 test("a failed in-flight request after opt-out cannot restore provider error state", async () => {
   const { p } = fixture();
-  let saves = 0, savesAtDispatch;
+  let saves = 0;
   p.savePluginData = async () => { saves++; };
   p.requestGroq = async () => {
-    savesAtDispatch = saves;
     p.settings.enableGroq = false;
     throw Object.assign(new Error("Synthetic rate limit"), { status: 429 });
   };
   await p.analyzeDate(date);
-  assert.equal(saves, savesAtDispatch, "opt-out cannot persist provider error state after dispatch");
+  assert.equal(saves, 0);
   assert.equal(p.runtime.lastGroqIssue, undefined);
   assert.equal(p.groqBlockedUntil, 0);
 });
