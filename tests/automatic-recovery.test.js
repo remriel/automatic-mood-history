@@ -23,7 +23,7 @@ async function run(){
  assert.throws(()=>p.parseGroqAnalysis(response({...valid,confidenceReason:''})));
  assert.throws(()=>p.parseGroqAnalysis({choices:[{message:{content:'{"secret-note":INVALID_PRIVATE_TEXT}'}}]}),e=>!e.message.includes('PRIVATE_TEXT'),'JSON syntax errors do not disclose response text');
 
- p=fixture();const prior={...valid,date:dates[0],contentHash:'old',analysisSource:'groq',status:'complete',dateBasis:'created-at-local-date'};p.records[dates[0]]=prior;
+ p=fixture();const prior={...valid,date:dates[0],contentHash:'old',processing:{version:1,state:'complete'},analysisSource:'groq',status:'complete',dateBasis:'created-at-local-date'};p.records[dates[0]]=prior;
  p.analyzeWithGroq=async date=>{if(date===dates[0]){const e=new Error('Fictional invalid output');e.status=422;throw e;}return {...valid};};
  const result=await p.analyzeAll({silent:true});
  assert.equal(result.pending,1);assert.equal(result.groq,1);assert.equal(p.records[dates[0]],prior);assert.equal(p.records[dates[1]].analysisSource,'groq');

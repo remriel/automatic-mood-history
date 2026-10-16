@@ -142,7 +142,7 @@ test("a failed in-flight request after opt-out cannot restore provider error sta
     throw Object.assign(new Error("Synthetic rate limit"), { status: 429 });
   };
   await p.analyzeDate(date);
-  assert.equal(saves, 0);
+  assert.equal(saves, 3, "only pre-dispatch progress checkpoints are saved; opt-out cannot restore provider error state");
   assert.equal(p.runtime.lastGroqIssue, undefined);
   assert.equal(p.groqBlockedUntil, 0);
 });

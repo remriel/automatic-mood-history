@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "node": "v24.19.0",
+  "samplesPerScenario": 12,
+  "note": "Local CPU measurement including preparation/hash/interpretation/aggregation. Baseline silently truncates at 60,000 characters; current covers all eligible text. Pending metadata is deleted after durable commit.",
+  "rows": [
+    {
+      "scenario": "small",
+      "baselineMedianMilliseconds": 0.6,
+      "currentMedianMilliseconds": 0.6,
+      "eligibleCharacters": 492,
+      "chunks": 1,
+      "baselineProcessedCharacters": 496,
+      "finalEvidenceBytes": 3868,
+      "finalMappingBytes": 138,
+      "baselineRecordBytes": 2359,
+      "pendingMetadataBytes": 4445
+    },
+    {
+      "scenario": "long-date",
+      "baselineMedianMilliseconds": 11.3,
+      "currentMedianMilliseconds": 17.21,
+      "eligibleCharacters": 58314,
+      "chunks": 17,
+      "baselineProcessedCharacters": 58831,
+      "finalEvidenceBytes": 6245,
+      "finalMappingBytes": 17307,
+      "baselineRecordBytes": 2054,
+      "pendingMetadataBytes": 144098
+    },
+    {
+      "scenario": "large-date",
+      "baselineMedianMilliseconds": 13.76,
+      "currentMedianMilliseconds": 45.67,
+      "eligibleCharacters": 196155,
+      "chunks": 54,
+      "baselineProcessedCharacters": 60000,
+      "finalEvidenceBytes": 6247,
+      "finalMappingBytes": 60778,
+      "baselineRecordBytes": 2025,
+      "pendingMetadataBytes": 476045
+    },
+    {
+      "scenario": "many-files",
+      "baselineMedianMilliseconds": 11.26,
+      "currentMedianMilliseconds": 35.78,
+      "eligibleCharacters": 66890,
+      "chunks": 32,
+      "baselineProcessedCharacters": 60000,
+      "finalEvidenceBytes": 6063,
+      "finalMappingBytes": 27784,
+      "baselineRecordBytes": 1847,
+      "pendingMetadataBytes": 253751
+    }
+  ]
+}

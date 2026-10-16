@@ -102,7 +102,7 @@ plugin.gatherDate(firstDay).then(async (gathered) => {
   assert.strictEqual(plugin.records[`created:${firstDay}`].dateBasis, "created-at-local-date");
   assert.strictEqual(plugin.records[firstDay], legacyRecord, "legacy history keeps its original key and result");
   assert.strictEqual(legacyRecord.summary, "Preserved synthetic record.");
-  assert.strictEqual(saveCalls, 2);
+  assert(saveCalls >= 2, "chunk checkpoints precede the prepared-result transaction");
   console.log("all Markdown notes are grouped by creation timestamp; legacy records are preserved");
 }).catch((error) => {
   console.error(error);

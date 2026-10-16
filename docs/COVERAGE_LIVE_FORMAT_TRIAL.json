@@ -1,0 +1,1767 @@
+{
+  "version": 1,
+  "implementationHash": "bfc2bb8eac41ddc0998990c1fa3f34d6d9bfa32948a265a2f610529bff24b1a4",
+  "reusedBaselineReport": "docs/COVERAGE_LIVE_INITIAL.json",
+  "baseline": "6f17fcc8c509428e4ed71c29540896909cbcfd53",
+  "corpus": "frozen",
+  "live": true,
+  "model": "openai/gpt-oss-120b",
+  "repeats": 3,
+  "note": "Synthetic engineering labels; no clinical accuracy claim. At most two later recovery cycles resume valid staged work only after unresolved validation/budget errors. Completed incorrect scores are never retried for a more favorable result. Recovery is accelerated without waiting for the production cooldown. Initial unresolved cases and recovery cost are reported separately.",
+  "summary": {
+    "1.3.2": {
+      "moodRecall": {
+        "passed": 27,
+        "total": 27
+      },
+      "connectionRecall": {
+        "passed": 24,
+        "total": 24
+      },
+      "requiredConstraintsPassed": 57,
+      "requiredConstraints": 57,
+      "unsupportedInferences": 5,
+      "unsupportedOpportunities": 66,
+      "unresolvedCases": 0,
+      "initialUnresolvedCases": 0,
+      "recoveryCycles": 0,
+      "requests": 70,
+      "inputTokens": 174422,
+      "outputTokens": 75080,
+      "medianMilliseconds": 3760.25
+    },
+    "current": {
+      "moodRecall": {
+        "passed": 27,
+        "total": 27
+      },
+      "connectionRecall": {
+        "passed": 24,
+        "total": 24
+      },
+      "requiredConstraintsPassed": 57,
+      "requiredConstraints": 57,
+      "unsupportedInferences": 0,
+      "unsupportedOpportunities": 66,
+      "unresolvedCases": 0,
+      "initialUnresolvedCases": 1,
+      "recoveryCycles": 1,
+      "requests": 59,
+      "inputTokens": 216729,
+      "outputTokens": 118040,
+      "medianMilliseconds": 5703.05
+    }
+  },
+  "results": [
+    {
+      "id": "unseen",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [
+        "energy"
+      ],
+      "errorCode": null,
+      "milliseconds": 3924.44,
+      "requests": 1,
+      "inputTokens": 2310,
+      "outputTokens": 1339,
+      "providerMilliseconds": 3906.4663
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [
+        "energy"
+      ],
+      "errorCode": null,
+      "milliseconds": 3760.25,
+      "requests": 1,
+      "inputTokens": 2309,
+      "outputTokens": 1425,
+      "providerMilliseconds": 3726.4549000000006
+    },
+    {
+      "id": "valued",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2981.59,
+      "requests": 1,
+      "inputTokens": 2306,
+      "outputTokens": 1326,
+      "providerMilliseconds": 2980.0362999999998
+    },
+    {
+      "id": "mixed",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3608.11,
+      "requests": 1,
+      "inputTokens": 2302,
+      "outputTokens": 1624,
+      "providerMilliseconds": 3597.9998000000014
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4425.08,
+      "requests": 1,
+      "inputTokens": 2303,
+      "outputTokens": 1677,
+      "providerMilliseconds": 4422.3122
+    },
+    {
+      "id": "negation",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4217.18,
+      "requests": 1,
+      "inputTokens": 2308,
+      "outputTokens": 1039,
+      "providerMilliseconds": 4215.001700000001
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2978.47,
+      "requests": 2,
+      "inputTokens": 4706,
+      "outputTokens": 1163,
+      "providerMilliseconds": 2975.451500000003
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4684.29,
+      "requests": 1,
+      "inputTokens": 2310,
+      "outputTokens": 1577,
+      "providerMilliseconds": 4681.6993000000075
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5584.79,
+      "requests": 1,
+      "inputTokens": 2311,
+      "outputTokens": 1841,
+      "providerMilliseconds": 5583.9012000000075
+    },
+    {
+      "id": "neutral",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3710.05,
+      "requests": 2,
+      "inputTokens": 4706,
+      "outputTokens": 1017,
+      "providerMilliseconds": 3708.484700000001
+    },
+    {
+      "id": "short",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3032.78,
+      "requests": 1,
+      "inputTokens": 2294,
+      "outputTokens": 1288,
+      "providerMilliseconds": 3031.829199999993
+    },
+    {
+      "id": "spanish",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4816.71,
+      "requests": 1,
+      "inputTokens": 2306,
+      "outputTokens": 1897,
+      "providerMilliseconds": 4815.818799999994
+    },
+    {
+      "id": "french",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3968.87,
+      "requests": 1,
+      "inputTokens": 2302,
+      "outputTokens": 1333,
+      "providerMilliseconds": 3968.0745000000024
+    },
+    {
+      "id": "second-person",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3882.23,
+      "requests": 1,
+      "inputTokens": 2310,
+      "outputTokens": 1536,
+      "providerMilliseconds": 3881.356599999999
+    },
+    {
+      "id": "social-activity",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2743.81,
+      "requests": 2,
+      "inputTokens": 4702,
+      "outputTokens": 1131,
+      "providerMilliseconds": 2742.7502000000095
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3522.05,
+      "requests": 2,
+      "inputTokens": 4700,
+      "outputTokens": 1239,
+      "providerMilliseconds": 3518.7672999999777
+    },
+    {
+      "id": "temporal",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3378.21,
+      "requests": 1,
+      "inputTokens": 2304,
+      "outputTokens": 1444,
+      "providerMilliseconds": 3377.1622999999963
+    },
+    {
+      "id": "instructions",
+      "repeat": 0,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3171.3,
+      "requests": 2,
+      "inputTokens": 4712,
+      "outputTokens": 1052,
+      "providerMilliseconds": 3170.243199999968
+    },
+    {
+      "id": "unseen",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [
+        "energy"
+      ],
+      "errorCode": null,
+      "milliseconds": 4349.84,
+      "requests": 1,
+      "inputTokens": 4102,
+      "outputTokens": 1677,
+      "providerMilliseconds": 4349.189799999993
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4121.68,
+      "requests": 1,
+      "inputTokens": 2309,
+      "outputTokens": 1529,
+      "providerMilliseconds": 4120.92849999998
+    },
+    {
+      "id": "valued",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3963.75,
+      "requests": 1,
+      "inputTokens": 2306,
+      "outputTokens": 1477,
+      "providerMilliseconds": 3963.068499999994
+    },
+    {
+      "id": "mixed",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3656.53,
+      "requests": 1,
+      "inputTokens": 2302,
+      "outputTokens": 1403,
+      "providerMilliseconds": 3655.115300000005
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4871.84,
+      "requests": 1,
+      "inputTokens": 2303,
+      "outputTokens": 1409,
+      "providerMilliseconds": 4870.301600000006
+    },
+    {
+      "id": "negation",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [
+        "mood"
+      ],
+      "errorCode": null,
+      "milliseconds": 2840.31,
+      "requests": 1,
+      "inputTokens": 2308,
+      "outputTokens": 1094,
+      "providerMilliseconds": 2839.589500000002
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3323.39,
+      "requests": 2,
+      "inputTokens": 4706,
+      "outputTokens": 1291,
+      "providerMilliseconds": 3320.638200000016
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3523.26,
+      "requests": 1,
+      "inputTokens": 2310,
+      "outputTokens": 1573,
+      "providerMilliseconds": 3522.2882999999856
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3909.99,
+      "requests": 1,
+      "inputTokens": 3591,
+      "outputTokens": 1740,
+      "providerMilliseconds": 3909.2360000000044
+    },
+    {
+      "id": "neutral",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2408.25,
+      "requests": 2,
+      "inputTokens": 7010,
+      "outputTokens": 958,
+      "providerMilliseconds": 2405.0559000000067
+    },
+    {
+      "id": "short",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3255.28,
+      "requests": 1,
+      "inputTokens": 2294,
+      "outputTokens": 1064,
+      "providerMilliseconds": 3251.767300000007
+    },
+    {
+      "id": "spanish",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3999.42,
+      "requests": 1,
+      "inputTokens": 2306,
+      "outputTokens": 1738,
+      "providerMilliseconds": 3997.8770000000077
+    },
+    {
+      "id": "french",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2566.79,
+      "requests": 1,
+      "inputTokens": 2302,
+      "outputTokens": 1164,
+      "providerMilliseconds": 2566.1193000000203
+    },
+    {
+      "id": "second-person",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4131.25,
+      "requests": 1,
+      "inputTokens": 3846,
+      "outputTokens": 1525,
+      "providerMilliseconds": 4130.306799999962
+    },
+    {
+      "id": "social-activity",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3224.05,
+      "requests": 2,
+      "inputTokens": 4702,
+      "outputTokens": 1048,
+      "providerMilliseconds": 3221.436800000025
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3681.62,
+      "requests": 2,
+      "inputTokens": 4700,
+      "outputTokens": 1255,
+      "providerMilliseconds": 3679.4581999999937
+    },
+    {
+      "id": "temporal",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4255.59,
+      "requests": 1,
+      "inputTokens": 2304,
+      "outputTokens": 1568,
+      "providerMilliseconds": 4254.651500000036
+    },
+    {
+      "id": "instructions",
+      "repeat": 1,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5166.04,
+      "requests": 2,
+      "inputTokens": 4712,
+      "outputTokens": 1162,
+      "providerMilliseconds": 5165.07150000002
+    },
+    {
+      "id": "unseen",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [
+        "energy"
+      ],
+      "errorCode": null,
+      "milliseconds": 4052.55,
+      "requests": 1,
+      "inputTokens": 2310,
+      "outputTokens": 1755,
+      "providerMilliseconds": 4052.026300000027
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4600.91,
+      "requests": 1,
+      "inputTokens": 3589,
+      "outputTokens": 1705,
+      "providerMilliseconds": 4600.342400000023
+    },
+    {
+      "id": "valued",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3749.83,
+      "requests": 1,
+      "inputTokens": 2306,
+      "outputTokens": 1362,
+      "providerMilliseconds": 3749.228800000041
+    },
+    {
+      "id": "mixed",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3666.37,
+      "requests": 1,
+      "inputTokens": 2302,
+      "outputTokens": 1488,
+      "providerMilliseconds": 3665.125
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4162.97,
+      "requests": 1,
+      "inputTokens": 2303,
+      "outputTokens": 1778,
+      "providerMilliseconds": 4160.811800000025
+    },
+    {
+      "id": "negation",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5218.8,
+      "requests": 2,
+      "inputTokens": 4708,
+      "outputTokens": 1927,
+      "providerMilliseconds": 5214.59990000003
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4142.77,
+      "requests": 2,
+      "inputTokens": 4706,
+      "outputTokens": 1298,
+      "providerMilliseconds": 4139.488899999997
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3945.29,
+      "requests": 1,
+      "inputTokens": 2310,
+      "outputTokens": 1479,
+      "providerMilliseconds": 3942.675199999998
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2869.94,
+      "requests": 1,
+      "inputTokens": 2311,
+      "outputTokens": 1271,
+      "providerMilliseconds": 2868.378800000006
+    },
+    {
+      "id": "neutral",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2886.27,
+      "requests": 2,
+      "inputTokens": 4706,
+      "outputTokens": 936,
+      "providerMilliseconds": 2881.771000000008
+    },
+    {
+      "id": "short",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3322.95,
+      "requests": 1,
+      "inputTokens": 2294,
+      "outputTokens": 1134,
+      "providerMilliseconds": 3322.2029999999795
+    },
+    {
+      "id": "spanish",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4082.13,
+      "requests": 1,
+      "inputTokens": 3585,
+      "outputTokens": 1547,
+      "providerMilliseconds": 4078.8086000000476
+    },
+    {
+      "id": "french",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3338.54,
+      "requests": 1,
+      "inputTokens": 2302,
+      "outputTokens": 1341,
+      "providerMilliseconds": 3337.746199999994
+    },
+    {
+      "id": "second-person",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4240.39,
+      "requests": 1,
+      "inputTokens": 4358,
+      "outputTokens": 1589,
+      "providerMilliseconds": 4239.065999999992
+    },
+    {
+      "id": "social-activity",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2190.66,
+      "requests": 2,
+      "inputTokens": 4702,
+      "outputTokens": 893,
+      "providerMilliseconds": 2188.876600000018
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3569.11,
+      "requests": 2,
+      "inputTokens": 4700,
+      "outputTokens": 1307,
+      "providerMilliseconds": 3567.7698999999557
+    },
+    {
+      "id": "temporal",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4935.17,
+      "requests": 1,
+      "inputTokens": 2304,
+      "outputTokens": 1552,
+      "providerMilliseconds": 4933.060600000026
+    },
+    {
+      "id": "instructions",
+      "repeat": 2,
+      "engine": "1.3.2",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3310.46,
+      "requests": 2,
+      "inputTokens": 4712,
+      "outputTokens": 1095,
+      "providerMilliseconds": 3309.1701000000467
+    },
+    {
+      "id": "unseen",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 11899.28,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 4046,
+      "providerMilliseconds": 11880.9341
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 6912.51,
+      "requests": 1,
+      "inputTokens": 3667,
+      "outputTokens": 2530,
+      "providerMilliseconds": 6909.415500000001
+    },
+    {
+      "id": "valued",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5828.17,
+      "requests": 1,
+      "inputTokens": 3664,
+      "outputTokens": 1917,
+      "providerMilliseconds": 5825.767800000001
+    },
+    {
+      "id": "mixed",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4831.93,
+      "requests": 1,
+      "inputTokens": 3660,
+      "outputTokens": 1994,
+      "providerMilliseconds": 4826.843499999999
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5703.05,
+      "requests": 1,
+      "inputTokens": 3661,
+      "outputTokens": 2263,
+      "providerMilliseconds": 5698.363700000002
+    },
+    {
+      "id": "negation",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 8250.48,
+      "requests": 2,
+      "inputTokens": 7457,
+      "outputTokens": 2551,
+      "providerMilliseconds": 8247.393899999995
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2516.76,
+      "requests": 1,
+      "inputTokens": 3665,
+      "outputTokens": 823,
+      "providerMilliseconds": 2512.0691000000006
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 9884.26,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 4043,
+      "providerMilliseconds": 9882.651399999995
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 6208.52,
+      "requests": 1,
+      "inputTokens": 3669,
+      "outputTokens": 2570,
+      "providerMilliseconds": 6207.044199999997
+    },
+    {
+      "id": "neutral",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 1623.87,
+      "requests": 1,
+      "inputTokens": 3665,
+      "outputTokens": 629,
+      "providerMilliseconds": 1622.5863000000027
+    },
+    {
+      "id": "short",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5459.08,
+      "requests": 1,
+      "inputTokens": 3652,
+      "outputTokens": 1603,
+      "providerMilliseconds": 5457.892299999992
+    },
+    {
+      "id": "spanish",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 12261.68,
+      "requests": 1,
+      "inputTokens": 3664,
+      "outputTokens": 2774,
+      "providerMilliseconds": 12257.6835
+    },
+    {
+      "id": "french",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3013.3,
+      "requests": 1,
+      "inputTokens": 3660,
+      "outputTokens": 1369,
+      "providerMilliseconds": 3012.1034000000072
+    },
+    {
+      "id": "second-person",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5047.04,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 2141,
+      "providerMilliseconds": 5046.074800000002
+    },
+    {
+      "id": "social-activity",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 1986.18,
+      "requests": 1,
+      "inputTokens": 3663,
+      "outputTokens": 680,
+      "providerMilliseconds": 1985.1417999999976
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3046.36,
+      "requests": 1,
+      "inputTokens": 3662,
+      "outputTokens": 791,
+      "providerMilliseconds": 3045.474900000001
+    },
+    {
+      "id": "temporal",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 22226.19,
+      "requests": 3,
+      "inputTokens": 11162,
+      "outputTokens": 8945,
+      "providerMilliseconds": 22223.01879999999,
+      "initialUnresolved": true,
+      "recoveryCycles": 1
+    },
+    {
+      "id": "instructions",
+      "repeat": 0,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4725.28,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 712,
+      "providerMilliseconds": 4724.243100000007
+    },
+    {
+      "id": "unseen",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5253.83,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 2147,
+      "providerMilliseconds": 5252.986999999994
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5082.17,
+      "requests": 1,
+      "inputTokens": 3667,
+      "outputTokens": 2173,
+      "providerMilliseconds": 5081.2119999999995
+    },
+    {
+      "id": "valued",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5277.73,
+      "requests": 1,
+      "inputTokens": 3664,
+      "outputTokens": 2261,
+      "providerMilliseconds": 5276.704700000002
+    },
+    {
+      "id": "mixed",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 8784.59,
+      "requests": 1,
+      "inputTokens": 3660,
+      "outputTokens": 2777,
+      "providerMilliseconds": 8783.414900000003
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 6244.75,
+      "requests": 1,
+      "inputTokens": 3661,
+      "outputTokens": 2707,
+      "providerMilliseconds": 6243.533900000009
+    },
+    {
+      "id": "negation",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 10796.39,
+      "requests": 2,
+      "inputTokens": 7457,
+      "outputTokens": 4074,
+      "providerMilliseconds": 10794.48000000001
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2186.41,
+      "requests": 1,
+      "inputTokens": 3665,
+      "outputTokens": 909,
+      "providerMilliseconds": 2185.527300000016
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 11894.86,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 3748,
+      "providerMilliseconds": 11893.357199999999
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 8034.55,
+      "requests": 1,
+      "inputTokens": 3669,
+      "outputTokens": 3065,
+      "providerMilliseconds": 8033.618099999992
+    },
+    {
+      "id": "neutral",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2316.93,
+      "requests": 1,
+      "inputTokens": 3665,
+      "outputTokens": 853,
+      "providerMilliseconds": 2312.154200000019
+    },
+    {
+      "id": "short",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 4964.08,
+      "requests": 1,
+      "inputTokens": 3652,
+      "outputTokens": 2037,
+      "providerMilliseconds": 4962.970700000005
+    },
+    {
+      "id": "spanish",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 7750.93,
+      "requests": 1,
+      "inputTokens": 3664,
+      "outputTokens": 2796,
+      "providerMilliseconds": 7749.905399999989
+    },
+    {
+      "id": "french",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 7031.21,
+      "requests": 1,
+      "inputTokens": 3660,
+      "outputTokens": 2093,
+      "providerMilliseconds": 7030.361000000004
+    },
+    {
+      "id": "second-person",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 6548.8,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 2669,
+      "providerMilliseconds": 6547.858500000002
+    },
+    {
+      "id": "social-activity",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2240.62,
+      "requests": 1,
+      "inputTokens": 3663,
+      "outputTokens": 984,
+      "providerMilliseconds": 2237.6159000000043
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2133.93,
+      "requests": 1,
+      "inputTokens": 3662,
+      "outputTokens": 770,
+      "providerMilliseconds": 2131.91810000001
+    },
+    {
+      "id": "temporal",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5397.3,
+      "requests": 1,
+      "inputTokens": 3662,
+      "outputTokens": 2273,
+      "providerMilliseconds": 5396.303399999975
+    },
+    {
+      "id": "instructions",
+      "repeat": 1,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2269.55,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 647,
+      "providerMilliseconds": 2268.702099999995
+    },
+    {
+      "id": "unseen",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5668.44,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 1947,
+      "providerMilliseconds": 5667.351800000004
+    },
+    {
+      "id": "reciprocity",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 8533.52,
+      "requests": 1,
+      "inputTokens": 3667,
+      "outputTokens": 2720,
+      "providerMilliseconds": 8532.576700000005
+    },
+    {
+      "id": "valued",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5893.91,
+      "requests": 1,
+      "inputTokens": 3664,
+      "outputTokens": 2335,
+      "providerMilliseconds": 5893.033400000015
+    },
+    {
+      "id": "mixed",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 6246.03,
+      "requests": 1,
+      "inputTokens": 3660,
+      "outputTokens": 2074,
+      "providerMilliseconds": 6244.812000000005
+    },
+    {
+      "id": "agitation-depletion",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "energy": true,
+        "intensity": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 7660.88,
+      "requests": 1,
+      "inputTokens": 3661,
+      "outputTokens": 2844,
+      "providerMilliseconds": 7659.86599999998
+    },
+    {
+      "id": "negation",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 13707.98,
+      "requests": 2,
+      "inputTokens": 7457,
+      "outputTokens": 3847,
+      "providerMilliseconds": 13706.016500000027
+    },
+    {
+      "id": "quoted-speaker",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2489.05,
+      "requests": 1,
+      "inputTokens": 3665,
+      "outputTokens": 849,
+      "providerMilliseconds": 2488.1118000000133
+    },
+    {
+      "id": "personal-quotation",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 6653.53,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 2209,
+      "providerMilliseconds": 6652.582900000038
+    },
+    {
+      "id": "sarcasm",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 8964.35,
+      "requests": 1,
+      "inputTokens": 3669,
+      "outputTokens": 2798,
+      "providerMilliseconds": 8963.307499999995
+    },
+    {
+      "id": "neutral",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 1297.83,
+      "requests": 1,
+      "inputTokens": 3665,
+      "outputTokens": 556,
+      "providerMilliseconds": 1295.9801999999909
+    },
+    {
+      "id": "short",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3667.89,
+      "requests": 1,
+      "inputTokens": 3652,
+      "outputTokens": 1653,
+      "providerMilliseconds": 3666.990599999961
+    },
+    {
+      "id": "spanish",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 6978.36,
+      "requests": 1,
+      "inputTokens": 3664,
+      "outputTokens": 2523,
+      "providerMilliseconds": 6976.794500000018
+    },
+    {
+      "id": "french",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 5461.44,
+      "requests": 1,
+      "inputTokens": 3660,
+      "outputTokens": 2106,
+      "providerMilliseconds": 5460.451399999962
+    },
+    {
+      "id": "second-person",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true,
+        "connection": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 6428.87,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 2473,
+      "providerMilliseconds": 6427.9750999999815
+    },
+    {
+      "id": "social-activity",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3494.44,
+      "requests": 1,
+      "inputTokens": 3663,
+      "outputTokens": 924,
+      "providerMilliseconds": 3490.0435999999754
+    },
+    {
+      "id": "unmet-neutral",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 2321.51,
+      "requests": 1,
+      "inputTokens": 3662,
+      "outputTokens": 970,
+      "providerMilliseconds": 2320.0466000000015
+    },
+    {
+      "id": "temporal",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {
+        "mood": true
+      },
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 8386.88,
+      "requests": 1,
+      "inputTokens": 3662,
+      "outputTokens": 2982,
+      "providerMilliseconds": 8385.240500000014
+    },
+    {
+      "id": "instructions",
+      "repeat": 2,
+      "engine": "current",
+      "success": true,
+      "checks": {},
+      "unsupported": [],
+      "errorCode": null,
+      "milliseconds": 3189.63,
+      "requests": 1,
+      "inputTokens": 3668,
+      "outputTokens": 866,
+      "providerMilliseconds": 3184.6759999999776
+    }
+  ]
+}

@@ -71,14 +71,14 @@ async function run() {
     return reply(direct);
   };
   assert.equal((await p.analyzeWithGroq(date, directQuote)).energyScore, 4);
-  assert.equal(calls, 2);
+  assert.equal(calls, 3, "format fallback and per-dimension review share the bounded request allowance");
 
   // Actual persistence uses the provider result, keeps personal axes null and
   // preserves textual basis across restart. Neutral and failed outputs retain
   // the existing reliability behavior.
   const f = fixture(); p = f.p;
   f.disk.files.set(f.source.path, quote);
-  p.analyzeWithGroq = async () => analysis = p.parseGroqAnalysis(reply(result()), quote);
+  p.analyzeWithGroq = async (_date, text, options) => analysis = p.parseGroqAnalysis(reply(require("./provider-fixture").version2(result(), options.chunk)), text, options);
   await p.analyzeDate(date);
   assert.equal(p.records[date].status, "complete");
   assert.equal(p.records[date].moodScore, null);

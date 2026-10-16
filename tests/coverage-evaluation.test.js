@@ -1,0 +1,20 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const corpus = require('./fixtures/coverage-evaluation.json');
+const report = require('../docs/COVERAGE_LIVE_EVALUATION.json');
+assert.equal(report.corpus, 'frozen');
+assert.equal(report.model, 'openai/gpt-oss-120b');
+assert.equal(report.baseline, '6f17fcc8c509428e4ed71c29540896909cbcfd53');
+assert(report.repeats >= 3);
+assert.equal(report.results.filter(item => item.engine === 'current').length, corpus.cases.length * report.repeats);
+const digest = crypto.createHash('sha256').update(fs.readFileSync('src/analysis-pipeline.js')).update(fs.readFileSync('src/emotional-engine.js'))
+  .update(fs.readFileSync('src/sentiment-core.js')).update(fs.readFileSync('src/main.js', 'utf8').split('  groqPrompt(')[1].split('  async analyzeDate(')[0]).digest('hex');
+assert.equal(report.implementationHash, digest, 'semantic/source contract changes require a refreshed evaluation');
+const baseline = report.summary['1.3.2']; const current = report.summary.current;
+for (const axis of ['moodRecall', 'connectionRecall']) assert(current[axis].passed / current[axis].total >= baseline[axis].passed / baseline[axis].total, axis);
+assert.equal(current.requiredConstraintsPassed, current.requiredConstraints);
+assert.equal(current.unresolvedCases, 0);
+assert(current.unsupportedInferences / current.unsupportedOpportunities <= baseline.unsupportedInferences / baseline.unsupportedOpportunities);
+assert(report.results.filter(item => item.engine === 'current').every(item => item.success));
+console.log('PASS frozen corpus, implementation fingerprint, repeated mood/connection recall, unsupported-inference and durable-completion acceptance gates');

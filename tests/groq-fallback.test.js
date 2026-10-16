@@ -70,7 +70,7 @@ instance.groqBlockedUntil = 0;
 instance.lastGroqError = "";
 
 instance.analyzeWithGroq("2030-03-14", "I feel curious and relieved after the conversation.").then((result) => {
-  assert.strictEqual(calls, 3);
+  assert.strictEqual(calls, 4, "format fallback and missing-dimension review remain bounded");
   assert.strictEqual(result.moodScore, 3);
   assert.deepStrictEqual(result.emotions, ["curious", "relieved"]);
   console.log("Groq three-stage structured-output fallback passed");

@@ -7,7 +7,7 @@ async function run() {
   await p.savePluginData(); const original = clone(disk.json), originalMarkdown = disk.files.get(legacy.entryPath);
   const targets = p.getAnalysisTargets(); assert.equal(targets.length, 2); assert.equal(new Set(targets.map(target => target.recordKey)).size, 2);
   const save = p.saveData; let saves = 0;
-  p.saveData = async value => { if (++saves === 2) throw new Error("Fictional interrupted collision commit"); await save(value); };
+  p.saveData = async value => { if (value.records[`created:${date}`]?.processing) throw new Error("Fictional interrupted collision commit"); await save(value); };
   await p.analyzeDate(date); assert.deepEqual(p.records[date], legacy); assert.equal(disk.files.get(legacy.entryPath), originalMarkdown);
   assert(p.runtime.pendingWrites[`created:${date}`]);
   const restarted = fixture(disk).p; await restarted.onload(); await restarted.recoverPendingWrites();

@@ -2,7 +2,7 @@
 // an absent signal is unknown, never evidence for the middle of a scale.
 const AXES = ["mood", "energy", "connection", "intensity"];
 const OBSERVATION_KINDS = ["change", "ambivalence", "contradiction", "coexistence", "sarcasm", "pattern", "need", "trigger"];
-const ENGINE_VERSION = "contextual-evidence-v4";
+const ENGINE_VERSION = "contextual-evidence-v5";
 const OBSERVATION_DESCRIPTIONS = {
   ambivalence: "Positive and painful feelings coexist in the quoted evidence; neither side cancels the other.",
   contradiction: "The quoted claims appear in tension. Their relationship is unresolved, not proof of dishonesty or a hidden feeling.",
@@ -129,7 +129,7 @@ function sourceEvidenceSpan(raw, text, masked) {
 }
 
 function normalizeInsights(input, sourceText, options = {}) {
-  if (!input || typeof input !== "object" || Array.isArray(input) || input.version !== 1) return null;
+  if (!input || typeof input !== "object" || Array.isArray(input) || ![1, 2].includes(input.version)) return null;
   const evidence = [];
   const maskedSource = typeof sourceText === "string" && options.checkAttribution ? maskQuotations(sourceText.replace(/[’]/g, "'")) : null;
   const seen = new Set();
@@ -138,16 +138,20 @@ function normalizeInsights(input, sourceText, options = {}) {
     if (raw.basis !== undefined && !["personal", "textual"].includes(raw.basis)) continue;
     if (raw.basis === "textual" && raw.dimension !== "intensity") continue;
     const quote = boundedText(raw.quote, 240);
-    const start = maskedSource !== null ? sourceEvidenceSpan(raw, sourceText, maskedSource) : typeof sourceText === "string" ? sourceText.indexOf(quote) : raw.start;
+    const start = input.version === 2 && typeof sourceText === "string" ?
+      Number.isInteger(raw.start) && sourceText.slice(raw.start, raw.start + quote.length) === quote ? raw.start : -1 :
+      maskedSource !== null ? sourceEvidenceSpan(raw, sourceText, maskedSource) : typeof sourceText === "string" ? sourceText.indexOf(quote) : raw.start;
     if (!quote || typeof sourceText === "string" && start < 0) continue;
     if (!["positive", "negative", "mixed", "neutral"].includes(raw.direction)) continue;
-    const key = `${raw.dimension}:${raw.basis || "personal"}:${quote}:${raw.direction}`;
+    const key = `${raw.dimension}:${raw.basis || "personal"}:${quote}:${raw.direction}${input.version === 2 ? `:${raw.passageId}:${raw.passageStart}:${raw.temporal}` : ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
     evidence.push({ dimension: raw.dimension, quote, direction: raw.direction,
       ...(raw.basis ? { basis: raw.basis } : {}),
       emotion: boundedText(raw.emotion, 48).replace(/[^\p{L}\p{M} -]/gu, ""),
       confidence: capCertainty(raw.confidence),
+      ...(input.version === 2 ? { passageId: boundedText(raw.passageId, 32), passageStart: raw.passageStart,
+        meaning: raw.meaning, temporal: raw.temporal, support: raw.support, score: raw.score } : {}),
       ...(Number.isInteger(start) && start >= 0 ? { start, end: start + quote.length } : {}) });
   }
   const observations = [];
@@ -159,11 +163,12 @@ function normalizeInsights(input, sourceText, options = {}) {
     if (!description || !quotes.length) continue;
     if (["ambivalence", "contradiction", "change", "coexistence"].includes(raw.kind) && quotes.length < 2) continue;
     const joined = quotes.join(" ");
-    if (raw.kind === "need" && !/\b(?:need(?:ed)?|wish(?:ed)?|want(?:ed)?|long(?:ed)? for|miss(?:ed)?|crave(?:d)?)\b/i.test(joined)) continue;
-    if (raw.kind === "trigger" && !/\b(?:because|after|when|since|every time|each time|made me|makes me|left me)\b/i.test(joined)) continue;
-    if (raw.kind === "pattern" && !/\b(?:again|every time|keep|always|each time|repeatedly)\b/i.test(joined)) continue;
+    if (input.version === 1 && raw.kind === "need" && !/\b(?:need(?:ed)?|wish(?:ed)?|want(?:ed)?|long(?:ed)? for|miss(?:ed)?|crave(?:d)?)\b/i.test(joined)) continue;
+    if (input.version === 1 && raw.kind === "trigger" && !/\b(?:because|after|when|since|every time|each time|made me|makes me|left me)\b/i.test(joined)) continue;
+    if (input.version === 1 && raw.kind === "pattern" && !/\b(?:again|every time|keep|always|each time|repeatedly)\b/i.test(joined)) continue;
     observations.push({ kind: raw.kind, description, quotes,
-      confidence: raw.kind === "sarcasm" || raw.kind === "contradiction" ? "low" : capCertainty(raw.confidence) });
+      confidence: raw.kind === "sarcasm" || raw.kind === "contradiction" ? "low" : capCertainty(raw.confidence),
+      ...(input.version === 2 && Array.isArray(raw.anchors) ? { anchors: raw.anchors.slice(0, 3) } : {}) });
     if (observations.length === 8) break;
   }
   const dimensionConfidence = Object.fromEntries(AXES.map(axis => {
@@ -171,7 +176,8 @@ function normalizeInsights(input, sourceText, options = {}) {
     const opposing = signals.some(item => item.direction === "positive") && signals.some(item => item.direction === "negative");
     return [axis, !signals.length ? "none" : opposing || axis === "mood" && observations.some(item => ["sarcasm", "contradiction"].includes(item.kind)) ? "low" : signals.some(item => item.confidence === "medium") ? "medium" : "low"];
   }));
-  return { version: 1, evidence, observations, dimensionConfidence,
+  return { version: input.version, evidence, observations, dimensionConfidence,
+    ...(input.version === 2 ? { assessments: input.assessments, support: input.support, passageOutcomes: input.passageOutcomes } : {}),
     limitations: [...new Set((Array.isArray(input.limitations) ? input.limitations : []).slice(0, 6).map(value => boundedText(value, 240)).filter(Boolean))] };
 }
 
@@ -179,7 +185,7 @@ function assertProviderInsights(value) {
   const text = (value, maximum, minimum = 0) => typeof value === "string" && value.trim().length >= minimum && value.length <= maximum;
   const array = (value, maximum) => Array.isArray(value) && value.length <= maximum;
   const confidence = value => ["low", "medium", "high"].includes(value);
-  if (!value || value.version !== 1 || !array(value.evidence, 16) || !array(value.observations, 8) || !array(value.limitations, 6) ||
+  if (!value || ![1, 2].includes(value.version) || !array(value.evidence, 16) || !array(value.observations, 8) || !array(value.limitations, 6) ||
       value.evidence.some(item => !item || !AXES.includes(item.dimension) || !text(item.quote, 240, 1) ||
         item.basis !== undefined && !["personal", "textual"].includes(item.basis) ||
         item.basis === "textual" && item.dimension !== "intensity" ||
@@ -195,7 +201,7 @@ function groundedAnalysis(analysis, sourceText, options = {}) {
   if (!Object.hasOwn(analysis, "insights")) return analysis; // Historical v1 results stay valid.
   const insights = normalizeInsights(analysis.insights, sourceText, options);
   if (!insights) throw new Error("Invalid emotional evidence structure.");
-  if (options.checkAttribution && analysis.insights.evidence.length && !insights.evidence.length)
+  if (options.checkAttribution && analysis.insights.version === 1 && analysis.insights.evidence.length && !insights.evidence.length)
     throw new Error("Groq returned no valid source evidence for its emotional claims.");
   const output = { ...analysis, insights };
   if (options.checkAttribution) insights.limitations = [
@@ -413,7 +419,7 @@ function compareEmotionalHistory(current, records) {
   // date basis and engine generation. Never reread notes or build remote context.
   if (!current?.insights || !current.sourceScope || !current.analysisVersion || !current.date || !current.dateBasis) return null;
   const candidates = Object.values(records || {}).filter(record => record && record.status === "complete" && record.date < current.date &&
-    record.dateBasis === current.dateBasis && record.sourceScope === current.sourceScope && record.insights?.version === 1 &&
+    record.dateBasis === current.dateBasis && record.sourceScope === current.sourceScope && record.insights?.version === current.insights.version &&
     Array.isArray(record.insights.evidence) && record.analysisVersion === current.analysisVersion &&
     record.analysisSource === current.analysisSource && record.model === current.model)
     .sort((left, right) => right.date.localeCompare(left.date));
