@@ -61,4 +61,30 @@ assert(markdown.includes('analysis_source: "reviewed-backfill"'));
 assert(markdown.includes('date_basis: "created-at-local-date"'));
 assert(markdown.includes("[[Daily/2030-03-14]]"));
 
+
+const noEvidence = {
+  date: "2030-03-16", status: "complete", analysisSource: "groq",
+  moodScore: 3, energyScore: 3, connectionScore: 3, intensityScore: 1,
+  valence: "mixed", emotions: ["confused"],
+  summary: "No explicit emotional content was provided, making assessment uncertain.",
+  drivers: ["No emotional signals were present."], confidence: "low",
+  confidenceReason: "No content was provided for analysis, so the emotional state cannot be determined.",
+  sourcePaths: [], analyzedAt: "2030-03-16T12:00:00Z"
+};
+assert(core.hasNoEmotionalEvidence(noEvidence));
+assert(core.hasNoEmotionalEvidence({ summary: "There is no content provided for analysis." }));
+assert(core.hasNoEmotionalEvidence({ confidenceReason: "The emotional state cannot be determined from this text." }));
+assert(!core.hasNoEmotionalEvidence({ summary: "The writer is cautiously hopeful.", confidenceReason: "Low confidence because the note is short." }));
+assert(!core.hasNoEmotionalEvidence({ summary: "The writer reports feeling neutral and tired.", confidenceReason: "No clear evidence of a positive mood." }));
+const exempted = core.exemptUnscorableAssessment(noEvidence);
+assert.strictEqual(noEvidence.status, "complete", "classification does not mutate its input");
+assert.strictEqual(exempted.status, "insufficient");
+for (const field of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) assert.strictEqual(exempted[field], null);
+assert.deepStrictEqual(exempted.emotions, []);
+const noEvidenceMarkdown = core.buildEntryMarkdown(exempted);
+assert(noEvidenceMarkdown.includes('status: "insufficient"'));
+assert(noEvidenceMarkdown.includes("mood: null"));
+assert(!noEvidenceMarkdown.includes("**Mood:** 3/5"));
+assert(noEvidenceMarkdown.includes("No content was provided for analysis"));
+
 console.log("automatic-mood-history core tests passed");

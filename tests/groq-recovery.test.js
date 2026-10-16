@@ -114,6 +114,28 @@ async function run() {
   assert.strictEqual(plugin.records[dates[0]].analysisSource, "groq");
 
   plugin = fixture();
+  respond = () => success({ ...valid,
+    summary: "No explicit emotional content was provided, making assessment uncertain.",
+    confidenceReason: "No content was provided for analysis, so the emotional state cannot be determined."
+  });
+  assert.strictEqual(await plugin.analyzeDate(dates[0]), true);
+  const emptyRecord = plugin.records[dates[0]];
+  assert.strictEqual(emptyRecord.status, "insufficient");
+  assert.strictEqual(emptyRecord.analysisSource, "groq");
+  for (const key of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) assert.strictEqual(emptyRecord[key], null);
+  assert(!buildEntryMarkdown(emptyRecord).includes("**Mood:**"));
+  await plugin.analyzeDate(dates[0]);
+  assert.strictEqual(requests.length, 1, "unchanged exempt day does not waste another Groq request");
+  const historical = plugin.validateRecords({
+    [dates[0]]: { ...valid, date: dates[0], status: "complete", dateBasis: "created-at-local-date", analysisSource: "groq",
+      summary: "No explicit emotional content was provided, making assessment uncertain.", contentHash: dates[0] },
+    [dates[1]]: { ...valid, date: dates[1], status: "complete", dateBasis: "created-at-local-date", analysisSource: "groq", contentHash: dates[1] }
+  });
+  assert.strictEqual(historical[dates[0]].status, "insufficient");
+  assert.strictEqual(historical[dates[0]].moodScore, null);
+  assert.strictEqual(historical[dates[1]].status, "complete");
+
+  plugin = fixture();
   plugin.settings.enableGroq = false;
   await plugin.analyzeDate(dates[0]);
   assert.strictEqual(requests.length, 0);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.3 — 2026-10-16
+
+- Exempt dates when the assessment explicitly reports no emotional evidence or no text for analysis: no mood, energy, connection or intensity score, chart points, averages or emotion counts.
+- Reclassify existing saved records without another Groq request and refresh generated entry files through the recoverable writer.
+- Preserve low-confidence but valid emotional assessments. Add classification, Groq, history and chart regressions.
+
+
 ## 1.5.2 — 2026-10-16
 
 - Revert the plugin implementation to the 1.2.9 release, removing all functional changes from 1.3.0–1.5.1.

@@ -13,6 +13,8 @@ const {
   ANALYSIS_SCHEMA,
   buildEntryMarkdown,
   deduplicateParagraphs,
+  exemptUnscorableAssessment,
+  hasNoEmotionalEvidence,
   localSentiment,
   sha256,
   textForAnalysis,
@@ -94,7 +96,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     delete this.settings.dailyFolder;
     delete this.settings.includeOutsideDailyFolder;
     this.watchSettings();
+    // Save which existing scored entries need their generated Markdown refreshed.
+    this.exemptEntryKeys = Object.entries(isObject(loaded.records) ? loaded.records : {})
+      .filter(([, record]) => record?.status === "complete" && hasNoEmotionalEvidence(record))
+      .map(([key]) => key);
     this.records = this.validateRecords(loaded.records);
+    this.exemptEntryKeys = this.exemptEntryKeys.filter(key => this.records[key]?.status === "insufficient");
     for (const record of Object.values(this.records)) {
       if (record?.analysisSource === "assistant-backfill") record.analysisSource = "reviewed-backfill";
       if (record && !record.dateBasis) record.dateBasis = LEGACY_DATE_BASIS;
@@ -185,6 +192,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         if (this.unloaded) return;
         await this.recoverPendingWrites();
         if (this.unloaded) return;
+        await this.syncExemptEntryNotes();
+        if (this.unloaded) return;
         await this.savePluginData();
       } catch (error) {
         if (this.unloaded || error.code === "analysis_cancelled") return;
@@ -258,6 +267,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (record.drivers !== undefined) record.drivers = Array.isArray(record.drivers) ? record.drivers.filter(value => typeof value === "string").slice(0, 4) : [];
       for (const field of ["summary", "confidenceReason", "model", "contentHash", "analysisSource"]) if (record[field] !== undefined && typeof record[field] !== "string") delete record[field];
       for (const field of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) if (!Number.isInteger(record[field]) || record[field] < 1 || record[field] > 5) record[field] = null;
+      Object.assign(record, exemptUnscorableAssessment(record));
       records[key] = record;
     }
     return records;
@@ -269,6 +279,23 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     runtime.pendingWrites = isObject(runtime.pendingWrites) ? Object.fromEntries(Object.entries(runtime.pendingWrites).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && value.version === 1 && this.validateRecords({ [key]: value.record })[key] && typeof value.outputFolder === "string" && (value.expectedHash === null || typeof value.expectedHash === "string" && /^[a-f0-9]{64}$/.test(value.expectedHash)))) : {};
     if (!isObject(runtime.lastGroqIssue) || typeof runtime.lastGroqIssue.message !== "string") delete runtime.lastGroqIssue;
     return runtime;
+  }
+
+  async syncExemptEntryNotes() {
+    // Reuse the existing checkpointed, conflict-aware writer. Never touch source notes.
+    for (const key of this.exemptEntryKeys || []) {
+      const record = this.records[key];
+      if (!record || record.status !== "insufficient") continue;
+      try {
+        const assertCurrent = this.analysisGuard();
+        const pending = await this.prepareRecord(key, record, assertCurrent);
+        await this.commitPreparedRecord(key, pending, assertCurrent);
+      } catch (error) {
+        if (error.code === "analysis_cancelled") throw error;
+        console.warn("Automatic Mood History: could not refresh an exempt generated entry.", error);
+      }
+    }
+    this.exemptEntryKeys = [];
   }
 
   async savePluginData() {
@@ -739,7 +766,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       !ANALYSIS_SCHEMA.properties.confidence.enum.includes(parsed.confidence)) {
       throw new Error("Groq returned invalid analysis fields.");
     }
-    return validateAnalysis(parsed);
+    return exemptUnscorableAssessment(validateAnalysis(parsed));
   }
 
   groqPrompt(date, text) {
@@ -748,6 +775,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       "Analyze the emotional state expressed across the Markdown notes created on this date.",
       "Distinguish the author's emotions from emotions attributed to other people, quoted material, abstract analysis, hypotheticals, and negated feelings.",
       "Do not diagnose mental illness. Score only evidence present in the writing.",
+      "If no assessable emotional content exists, say so explicitly in the summary or confidence reason; these dates are exempt from scoring.",
       "Mood: 1 severe distress/strongly negative, 2 negative, 3 mixed or neutral, 4 positive, 5 strongly positive.",
       "Energy: 1 depleted/inert through 5 highly activated. Negative agitation may have high intensity but is not automatically high healthy energy.",
       "Connection: 1 isolated/unseen through 5 deeply connected/supported.",
@@ -1017,13 +1045,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         analysisSource = "local";
         model = LOCAL_ANALYZER_VERSION;
       }
-      record = {
+      record = exemptUnscorableAssessment({
         date,
         status: "complete",
         analysisSource,
         model,
         ...analysis
-      };
+      });
     }
 
     Object.assign(record, {
@@ -1403,7 +1431,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const wrapper = element.createDiv({ cls: "auto-mood-dashboard" });
     const records = Object.values(this.records).sort((a, b) => a.date.localeCompare(b.date));
     const timestampRecords = records.filter((record) => record.dateBasis === CREATED_DATE_BASIS);
-    const complete = timestampRecords.filter((record) => record.status === "complete" && Number.isFinite(record.moodScore));
+    const complete = timestampRecords.filter((record) => record.status === "complete" && !hasNoEmotionalEvidence(record) && Number.isFinite(record.moodScore));
 
     const toolbar = wrapper.createDiv({ cls: "auto-mood-toolbar" });
     toolbar.createEl("strong", { text: "AUTOMATIC MOOD HISTORY" });
@@ -1632,7 +1660,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CREATED_DATE_BASIS ? "Created timestamp" : "Legacy date" });
       const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource || "none" });
       if (record.providerIssue?.message) analyzer.setAttribute("title", record.providerIssue.message);
-      if (record.status === "insufficient") {
+      if (record.status === "insufficient" || hasNoEmotionalEvidence(record)) {
         card.createEl("p", { cls: "auto-mood-insufficient", text: "Insufficient evidence · no scores assigned" });
         card.createEl("p", { cls: "auto-mood-day-reading", text: record.summary || "No readable text was available for this date." });
         continue;
