@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.5 — 2026-10-18
+
+- Add optional offline trained Moodring classifier for text-only emotion comparisons, with clear abstention and source limits.
+- Preserve all Groq scoring, consent and caches while enriching unchanged dates without remote reanalysis.
+- Validate model inputs, bound saved metadata, document provenance and provide reproducible model release asset.
+
 ## 1.5.4 — 2026-10-18
 
 - Add GoEmotions-guided Groq interpretation with contextual and attribution safeguards.

@@ -1,0 +1,10 @@
+const fs = require("fs");
+const assert = require("assert");
+const {validatedModel,compareMoodring} = require("../src/moodring-core");
+const file=process.argv[2];
+if(!file)throw Error("Usage: node scripts/verify-moodring-model.js path");
+const bytes=fs.readFileSync(file),model=validatedModel(bytes);
+assert(model.n>1000);
+const result=compareMoodring(model,"I feel grateful and optimistic.");
+assert(result && result.coveredChars>0);
+console.log("Validated trained Moodring model",bytes.length,model.n);
