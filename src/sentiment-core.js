@@ -178,8 +178,15 @@ function countTerms(text, terms, counts) {
   }, 0);
 }
 
+const LEADING_FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+// A leading "---" is only frontmatter when the block parses as YAML properties
+// or list items. Notes that open with a horizontal rule keep their text.
+const FRONTMATTER_SHAPE = /^\s*(?:[A-Za-z_][\w.-]*\s*:|-\s+\S)/m;
+
 function stripFrontmatter(text) {
-  return text.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "");
+  const match = text.match(LEADING_FRONTMATTER);
+  if (!match || !FRONTMATTER_SHAPE.test(match[1])) return text;
+  return text.slice(match[0].length);
 }
 
 function textForAnalysis(text) {
@@ -188,11 +195,18 @@ function textForAnalysis(text) {
     .replace(/!\[[^\]]*\]\([^\n]*?\)/g, " ")
     .replace(/!\[[^\]]*\]\[[^\]]*\]/g, " ")
     .replace(/<img\b[^>]*>/gi, " ")
+    // Wikilink targets are vault paths and must not reach a provider. Keep a
+    // display alias when the writer supplied one.
+    .replace(/\[\[[^\[\]|#]*(?:#[^\[\]|]*)?\|([^\[\]]*)\]\]/g, " $1 ")
+    .replace(/\[\[[^\[\]]*\]\]/g, " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/^#.*$/gm, " ")
+    .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, " ")
+    .replace(/(^|[\s(])#[\p{L}_][\p{L}\p{N}_/-]*/gu, "$1")
     .replace(/^\s*[-*]\s*$/gm, " ")
     .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
     .trim();
 }
 

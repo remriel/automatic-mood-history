@@ -396,8 +396,15 @@ function countTerms(text, terms, counts) {
   }, 0);
 }
 
+const LEADING_FRONTMATTER = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+// A leading "---" is only frontmatter when the block parses as YAML properties
+// or list items. Notes that open with a horizontal rule keep their text.
+const FRONTMATTER_SHAPE = /^\s*(?:[A-Za-z_][\w.-]*\s*:|-\s+\S)/m;
+
 function stripFrontmatter(text) {
-  return text.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, "");
+  const match = text.match(LEADING_FRONTMATTER);
+  if (!match || !FRONTMATTER_SHAPE.test(match[1])) return text;
+  return text.slice(match[0].length);
 }
 
 function textForAnalysis(text) {
@@ -406,11 +413,18 @@ function textForAnalysis(text) {
     .replace(/!\[[^\]]*\]\([^\n]*?\)/g, " ")
     .replace(/!\[[^\]]*\]\[[^\]]*\]/g, " ")
     .replace(/<img\b[^>]*>/gi, " ")
+    // Wikilink targets are vault paths and must not reach a provider. Keep a
+    // display alias when the writer supplied one.
+    .replace(/\[\[[^\[\]|#]*(?:#[^\[\]|]*)?\|([^\[\]]*)\]\]/g, " $1 ")
+    .replace(/\[\[[^\[\]]*\]\]/g, " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/^#.*$/gm, " ")
+    .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, " ")
+    .replace(/(^|[\s(])#[\p{L}_][\p{L}\p{N}_/-]*/gu, "$1")
     .replace(/^\s*[-*]\s*$/gm, " ")
     .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
     .trim();
 }
 
@@ -849,7 +863,7 @@ const CREATED_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
 const LOCAL_ANALYZER_VERSION = "vader-sentiment-js-1.1.3-plus-heuristics-v1";
 const GROQ_PROMPT_VERSION = "creation-date-goemotions-v2";
-const TEXT_PIPELINE_VERSION = "markdown-text-v2";
+const TEXT_PIPELINE_VERSION = "markdown-text-v3";
 const MOODRING_FILENAME = "moodring-model.bin";
 const GOEMOTIONS_LABELS = Object.freeze(["admiration","amusement","anger","annoyance","approval","caring","confusion","curiosity","desire","disappointment","disapproval","disgust","embarrassment","excitement","fear","gratitude","grief","joy","love","nervousness","optimism","pride","realization","relief","remorse","sadness","surprise","neutral"]);
 
@@ -1522,16 +1536,25 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async requestGroq(payload) {
-    const response = await requestUrl({
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey()}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload),
-      throw: false
-    });
+    let response;
+    try {
+      response = await requestUrl({
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey()}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+        throw: false
+      });
+    } catch {
+      // Transport failures carry no HTTP status. Classify them explicitly so a
+      // lost connection pauses the provider instead of blaming the model.
+      const error = new Error("Groq could not be reached. Check the network connection or proxy settings.");
+      error.code = "connection";
+      throw error;
+    }
     let json;
     try { json = response.json; } catch { json = null; }
     if (response.status < 200 || response.status >= 300) {
@@ -1737,6 +1760,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         }
       } catch (error) {
         if (error.code === "analysis_cancelled") throw error;
+        // A transport failure is not an invalid model response: retrying other
+        // response formats cannot help, and the caller must record a connection
+        // issue so the provider pause engages.
+        if (error.code === "connection") throw error;
         lastFailure = error;
         failures.push({ mode: attempt.name, status: error.status || 422, code: error.code || "invalid_output" });
         if (error.status && ![400, 422].includes(error.status)) throw error;

@@ -15,7 +15,7 @@ Groq mode is disabled by default. When a user explicitly enables it, the plugin 
 - scoring instructions;
 - a JSON response schema.
 
-Notes are grouped by Obsidian's `TFile.stat.ctime` creation timestamp. The plugin excludes its generated `Mood History/` files and `.trash/` notes. It does not include vault paths or filenames in the prompt. It reads the API key from `GROQ_API_KEY` in the Obsidian process environment and does not persist the key.
+Notes are grouped by Obsidian's `TFile.stat.ctime` creation timestamp. The plugin excludes its generated `Mood History/` files and `.trash/` notes. Cleaned text removes YAML frontmatter, embeds, images, fenced code, URLs, headings, thematic breaks, inline `#tags`, and wikilink targets before hashing and before any request; a display alias written as `[[target|alias]]` is kept as plain text. The prompt does not include vault paths or filenames. It reads the API key from `GROQ_API_KEY` in the Obsidian process environment and does not persist the key.
 
 Groq controls its own processing and retention. Review [Groq's data-handling documentation](https://console.groq.com/docs/your-data) before enabling remote analysis.
 

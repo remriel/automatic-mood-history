@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fix: an unreachable Groq endpoint is reported as a connection failure, pauses the provider with the normal backoff, and is no longer retried as invalid model output or shown as a model problem.
+- Privacy: cleaned analysis text removes wikilink targets and inline `#tags` before hashing or transmission; an explicit `[[note|alias]]` alias is kept as plain text. The text pipeline moves to `markdown-text-v3`, so local records refresh and Groq-enabled groups are re-analyzed on the next authorized scan.
+- Fix: a note that opens with a `---` horizontal rule keeps its text instead of having it stripped as YAML frontmatter.
+
 ## 1.5.5 — 2026-10-18
 
 - Add optional offline trained Moodring classifier for text-only emotion comparisons, with clear abstention and source limits.

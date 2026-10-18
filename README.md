@@ -37,7 +37,7 @@ This plugin can transmit cleaned text from eligible Markdown notes created on a 
 - The API key is read only from the `GROQ_API_KEY` environment variable.
 - The API key is never written to the vault or plugin data.
 - Groq receives the local creation date, cleaned text consolidated across that day's notes, scoring instructions, and response schema.
-- Filenames and vault paths remain local and are not included in the Groq prompt.
+- Filenames and vault paths remain local and are not included in the Groq prompt. Cleaned text removes YAML frontmatter, embeds, images, fenced code, URLs, headings, thematic breaks, inline `#tags` and wikilink targets; an explicit `[[target|alias]]` alias is kept as plain text because you wrote it as prose.
 - Generated records include the analyzer used: `groq`, `local` (intentional local analysis), `local-fallback`, `reviewed-backfill` (legacy records), or `none`.
 - When Groq is enabled, eligible analysis uses Groq only. If Groq is unavailable, paused, or returns unusable output, existing records are preserved and new or changed work stays pending; it is not silently scored locally.
 
