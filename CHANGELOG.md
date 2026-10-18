@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.4 — 2026-10-18
+
+- Add GoEmotions-guided Groq interpretation with contextual and attribution safeguards.
+- Integrate offline VADER 1.1.3 for local mood polarity, preserving the existing auxiliary scores and low confidence.
+- Version caches, bundle the Apache-2.0 notice, document limitations and add regressions.
+
 ## 1.5.3 — 2026-10-16
 
 - Exempt dates when the assessment explicitly reports no emotional evidence or no text for analysis: no mood, energy, connection or intensity score, chart points, averages or emotion counts.
