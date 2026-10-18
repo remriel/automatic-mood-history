@@ -21,3 +21,8 @@ jobs:
       - run: npm test
       - run: npm run audit:release
       - run: npm run test:layout
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Train Moodring model from pinned source
+        run: bash scripts/build-moodring-model.sh

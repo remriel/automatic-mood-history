@@ -144,6 +144,14 @@ This is a reflective journaling tool. It is not a clinical, diagnostic, crisis-d
 - VADER is Copyright 2018 Comcast Cable Communications Management, LLC, licensed Apache-2.0. The complete license is included in `src/vendor/APACHE-2.0.txt` and the bundled `main.js`. Plugin-authored code remains MIT.
 - Existing Groq results remain cached after prompt changes until explicitly reanalyzed. Local records refresh on the next authorized scan when scoring semantics change.
 
+## Offline Moodring classifier (optional, 1.5.5+)
+
+The plugin supports the actual trained [Moodring](https://github.com/UsmarHaider/moodring) GoEmotions-compatible linear model as an independent local **text emotion** cross-check. Download the optional `moodring-model.bin` from the matching [GitHub release](https://github.com/remriel/automatic-mood-history/releases/latest). Copy it beside `main.js` in `.obsidian/plugins/automatic-mood-history/`, enable **Enable offline Moodring comparison**, choose **Check model**, and run **Analyze changed**. The plugin reads the file locally with Obsidian's adapter; it never downloads a model or uploads source text for Moodring.
+
+Moodring never modifies the primary Groq mood, energy, connection, intensity, emotion tags or confidence, and never triggers extra Groq calls merely to enrich previously cached daily history. It provides optional independent candidate labels, original model scores and an abstention state. Only the first 12,000 characters are scored in small windows; classifications refer to textual features and should not be mistaken for the author's confirmed emotional experience. Its model is trained on short Reddit comments, so diary accuracy is unverified. Disable it to hide saved sidecar signals.
+
+The model source/runtime comes from pinned [Moodring commit 05202588](https://github.com/UsmarHaider/moodring/tree/0520258846018979e7d24bd5597adaabccde4f87) (MIT); the public Google GoEmotions training data and research code are Apache-2.0.
+
 ## Data lifecycle
 
 - Disable **Analyze note changes automatically** to stop automatic refreshes.

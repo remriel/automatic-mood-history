@@ -20,6 +20,7 @@ const {
   textForAnalysis,
   validateAnalysis
 } = require("./sentiment-core");
+const { MOODRING_VERSION, MOODRING_LABELS, validatedModel, compareMoodring } = require("./moodring-core");
 
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
 const CREATED_DATE_BASIS = "created-at-local-date";
@@ -27,10 +28,12 @@ const LEGACY_DATE_BASIS = "legacy-note-date";
 const LOCAL_ANALYZER_VERSION = "vader-sentiment-js-1.1.3-plus-heuristics-v1";
 const GROQ_PROMPT_VERSION = "creation-date-goemotions-v2";
 const TEXT_PIPELINE_VERSION = "markdown-text-v2";
+const MOODRING_FILENAME = "moodring-model.bin";
 const GOEMOTIONS_LABELS = Object.freeze(["admiration","amusement","anger","annoyance","approval","caring","confusion","curiosity","desire","disappointment","disapproval","disgust","embarrassment","excitement","fear","gratitude","grief","joy","love","nervousness","optimism","pride","realization","relief","remorse","sadness","surprise","neutral"]);
 
 const DEFAULT_SETTINGS = {
   enableGroq: false,
+  enableMoodring: false,
   model: "openai/gpt-oss-20b",
   outputFolder: "Mood History",
   includeFolders: [],
@@ -218,12 +221,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.analysisEpoch = (this.analysisEpoch || 0) + 1;
     for (const timer of this.debounceTimers?.values() || []) window.clearTimeout(timer);
     this.debounceTimers?.clear();
+    this.moodringModelPromise = null;
     this.disposeDashboard();
     this.renderContainers?.clear();
   }
 
   watchSettings() {
-    const analysisKeys = new Set(["includeFolders", "excludeFolders", "outputFolder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
+    const analysisKeys = new Set(["enableMoodring", "includeFolders", "excludeFolders", "outputFolder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
     this.analysisEpoch ||= 0;
     this.settings = new Proxy(this.settings, { set: (target, key, value) => {
       if (analysisKeys.has(key) && JSON.stringify(target[key]) !== JSON.stringify(value)) this.analysisEpoch++;
@@ -235,7 +239,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   validateSettings(saved) {
     const settings = { ...DEFAULT_SETTINGS, includeFolders: [], excludeFolders: [] };
     if (!isObject(saved)) return settings;
-    for (const key of ["enableGroq", "autoAnalyze", "analyzeOnStartup"]) settings[key] = saved[key] === true;
+    for (const key of ["enableGroq", "enableMoodring", "autoAnalyze", "analyzeOnStartup"]) settings[key] = saved[key] === true;
     for (const [key, minimum, maximum] of [["debounceMilliseconds", 250, 60000], ["minimumCharacters", 1, 10000], ["maxCharactersPerDay", 100, 200000]]) {
       if (typeof saved[key] === "number" && Number.isFinite(saved[key])) settings[key] = Math.max(minimum, Math.min(maximum, Math.round(saved[key])));
     }
@@ -268,6 +272,21 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (record.drivers !== undefined) record.drivers = Array.isArray(record.drivers) ? record.drivers.filter(value => typeof value === "string").slice(0, 4) : [];
       for (const field of ["summary", "confidenceReason", "model", "contentHash", "analysisSource"]) if (record[field] !== undefined && typeof record[field] !== "string") delete record[field];
       for (const field of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) if (!Number.isInteger(record[field]) || record[field] < 1 || record[field] > 5) record[field] = null;
+      // Never trust saved comparison metadata loaded from a synced or edited data.json.
+      const m = record.moodring;
+      if (m !== undefined) {
+        if (!isObject(m) || m.version !== MOODRING_VERSION ||
+            typeof m.fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(m.fingerprint) ||
+            !Array.isArray(m.labels) || m.labels.length > 4 ||
+            m.labels.some(x => !isObject(x) || !MOODRING_LABELS.includes(x.label) ||
+              x.label === "neutral" || typeof x.score !== "number" || !Number.isFinite(x.score) ||
+              x.score < 0 || x.score > 1) ||
+            typeof m.abstained !== "boolean" || typeof m.truncated !== "boolean" ||
+            !Number.isInteger(m.coveredChars) || m.coveredChars < 0 || m.coveredChars > 12000) delete record.moodring;
+        else record.moodring = { version:m.version, fingerprint:m.fingerprint,
+          labels:m.labels.map(x=>({label:x.label,score:x.score})), abstained:m.abstained,
+          truncated:m.truncated,coveredChars:m.coveredChars };
+      }
       Object.assign(record, exemptUnscorableAssessment(record));
       records[key] = record;
     }
@@ -570,7 +589,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // source reads or provider replies. Never retry with stale consent/scope.
     const signature = () => JSON.stringify([
       this.settings.includeFolders, this.settings.excludeFolders,
-      this.settings.outputFolder, this.settings.enableGroq, this.settings.model,
+      this.settings.outputFolder, this.settings.enableGroq, this.settings.enableMoodring, this.settings.model,
       this.settings.minimumCharacters, this.settings.maxCharactersPerDay,
       ...(options.background ? [this.settings.autoAnalyze, this.settings.analyzeOnStartup] : [])
     ]);
@@ -643,6 +662,38 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.debounceTimers.set(date, timer);
   }
 
+  moodringPath() {
+    return `${this.app.vault.configDir || ".obsidian"}/plugins/${this.manifest.id}/${MOODRING_FILENAME}`;
+  }
+  async loadMoodring() {
+    if (!this.moodringModelPromise) this.moodringModelPromise = this.app.vault.adapter
+      .readBinary(this.moodringPath()).then(validatedModel);
+    return this.moodringModelPromise;
+  }
+  async checkMoodring() {
+    this.moodringModelPromise = null;
+    try {
+      await this.loadMoodring();
+      if (!this.unloaded) new Notice("Automatic Mood History: offline Moodring model ready. No note text uploaded.");
+      return true;
+    } catch {
+      if (!this.unloaded) new Notice("Automatic Mood History: missing or invalid moodring-model.bin. Copy it from the matching release to the plugin directory.", 9000);
+      return false;
+    }
+  }
+  async moodringFor(gathered, assertCurrent) {
+    if (!this.settings.enableMoodring || gathered.analysisText.length < this.settings.minimumCharacters) return null;
+    try {
+      const model = await this.loadMoodring();
+      assertCurrent();
+      const comparison = compareMoodring(model, gathered.analysisText);
+      return comparison ? { ...comparison, fingerprint: sha256(gathered.contentHash + "|" + MOODRING_VERSION) } : null;
+    } catch (error) {
+      if (error.code === "analysis_cancelled") throw error;
+      // Missing sidecar cannot pause Groq or corrupt an existing record.
+      return null;
+    }
+  }
   apiKey() {
     const value = globalThis.process?.env?.[GROQ_API_KEY_ENV];
     return typeof value === "string" ? value.trim() : "";
@@ -987,6 +1038,18 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return false;
     }
     if (!options.force && !retryNonGroqResult && !localSemanticsChanged && previous?.contentHash === gathered.contentHash) {
+      if (previous.dateBasis === dateBasis && previous.status === "complete" && this.settings.enableMoodring &&
+          previous.moodring?.fingerprint !== sha256(gathered.contentHash + "|" + MOODRING_VERSION)) {
+        const moodring = await this.moodringFor(gathered, assertGatheredCurrent);
+        assertGatheredCurrent();
+        if (moodring) {
+          const enriched = { ...previous, moodring };
+          const prepared = await this.prepareRecord(key, enriched, assertGatheredCurrent);
+          await this.commitPreparedRecord(key, prepared, assertGatheredCurrent);
+          this.refreshRenderers();
+          return true;
+        }
+      }
       if (previous.dateBasis === dateBasis) { await this.clearDatePending(key); return false; }
       const promoted = { ...previous, dateBasis };
       const pending = await this.prepareRecord(key, promoted, assertGatheredCurrent);
@@ -1058,6 +1121,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       });
     }
 
+    if (record.status === "complete" && this.settings.enableMoodring) {
+      const priorValid = previous?.contentHash === gathered.contentHash &&
+        previous?.moodring?.fingerprint === sha256(gathered.contentHash + "|" + MOODRING_VERSION);
+      const comparison = priorValid ? previous.moodring : await this.moodringFor(gathered, assertGatheredCurrent);
+      assertGatheredCurrent();
+      if (comparison) record.moodring = comparison;
+    }
     Object.assign(record, {
       dateBasis,
       recordIdentity: `v2:${dateBasis}:${date}`,
@@ -1681,6 +1751,13 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       const emotions = card.createDiv({ cls: "auto-mood-day-emotions", attr: { "aria-label": "Emotions" } });
       for (const emotion of record.emotions || []) emotions.createEl("span", { cls: "auto-mood-emotion", text: emotion });
+      if (this.settings.enableMoodring && record.moodring) {
+        const m = record.moodring;
+        const labels = m.labels.map(x => `${x.label} (${Math.round(x.score * 100)} model score)`).join(", ");
+        card.createEl("p", { cls: "auto-mood-day-reading", text:
+          m.abstained ? "Moodring local text signals: no label passed its threshold." :
+          `Moodring local text signals: ${labels}.${m.truncated ? " First 12,000 characters only." : ""}` });
+      }
       card.createEl("p", { cls: "auto-mood-day-reading", text: record.summary || "No summary available." });
     }
   }
@@ -1708,6 +1785,15 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           await this.plugin.updateSetting("enableGroq", value);
         }));
+    new Setting(containerEl)
+      .setName("Enable offline Moodring comparison")
+      .setDesc("Optional text-based emotion suggestions beside Groq, without changing mood scores or uploading text. Requires local moodring-model.bin from the release. Off by default.")
+      .addToggle(toggle => toggle.setValue(this.plugin.settings.enableMoodring)
+        .onChange(async value => { await this.plugin.updateSetting("enableMoodring", value); }));
+    new Setting(containerEl)
+      .setName("Check local Moodring model")
+      .setDesc("Reload the optional binary. Run Analyze changed after installation.")
+      .addButton(button => button.setButtonText("Check model").onClick(() => { void this.plugin.checkMoodring(); }));
     new Setting(containerEl)
       .setName("Groq model")
       .setDesc("A production model that supports chat completions.")
