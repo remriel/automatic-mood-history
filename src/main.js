@@ -24,9 +24,10 @@ const {
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
 const CREATED_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
-const LOCAL_ANALYZER_VERSION = "deterministic-lexicon-v1";
-const GROQ_PROMPT_VERSION = "creation-date-prompt-v1";
+const LOCAL_ANALYZER_VERSION = "vader-sentiment-js-1.1.3-plus-heuristics-v1";
+const GROQ_PROMPT_VERSION = "creation-date-goemotions-v2";
 const TEXT_PIPELINE_VERSION = "markdown-text-v2";
+const GOEMOTIONS_LABELS = Object.freeze(["admiration","amusement","anger","annoyance","approval","caring","confusion","curiosity","desire","disappointment","disapproval","disgust","embarrassment","excitement","fear","gratitude","grief","joy","love","nervousness","optimism","pride","realization","relief","remorse","sadness","surprise","neutral"]);
 
 const DEFAULT_SETTINGS = {
   enableGroq: false,
@@ -774,6 +775,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       `Local creation date: ${date}`,
       "Analyze the emotional state expressed across the Markdown notes created on this date.",
       "Distinguish the author's emotions from emotions attributed to other people, quoted material, abstract analysis, hypotheticals, and negated feelings.",
+      `Use the GoEmotions taxonomy as the preferred vocabulary for the author's evidenced emotions: ${GOEMOTIONS_LABELS.join(", ")}.`,
+      "This taxonomy is a vocabulary guide, not a separate classifier. Analyze the entire context; do not assign feelings based on keywords or a topic's emotional connotations.",
+      "Use neutral only for an evidenced neutral state. If no personal emotional evidence is assessable, explicitly state 'No assessable emotional evidence' in the summary or confidence reason.",
       "Do not diagnose mental illness. Score only evidence present in the writing.",
       "If no assessable emotional content exists, say so explicitly in the summary or confidence reason; these dates are exempt from scoring.",
       "Mood: 1 severe distress/strongly negative, 2 negative, 3 mixed or neutral, 4 positive, 5 strongly positive.",

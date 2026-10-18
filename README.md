@@ -6,7 +6,7 @@ Full scans build a temporary date-to-files index once. Source eligibility, file 
 
 Generated provider summaries, drivers and confidence explanations are bounded plain text. Markdown punctuation is serialized as literal characters and line breaks are collapsed, so narrative fields cannot create links, images, embeds or HTML. Intended source-note links remain available separately. Summaries and confidence explanations are limited to 500 characters; each of up to four drivers is limited to 250 characters. Native Obsidian 1.14.4 synthetic checks verify literal readable output with no narrative link/image/embed/script elements.
 
-Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Local scoring remains a simple English word-pattern estimate: it does not implement the Groq prompt's attribution, quotation or negation reasoning, and its confidence remains low.
+Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Local scoring uses the Apache-2.0 VADER JavaScript engine for written polarity plus simple English keyword heuristics for energy, connection, intensity and emotion suggestions. VADER handles common negation and emphasis, but neither local component performs Groq's full speaker attribution or contextual reasoning; confidence remains low.
 
 ![Automatic Mood History for Obsidian: mood and energy trends presented in a colorful dashboard-style graphic with illustrative data.](assets/readme-banner.svg)
 
@@ -14,15 +14,15 @@ Empty, standard Markdown image-only, wikilink image-only, HTML image-only and fr
 
 Automatic sentiment history for notes in [Obsidian](https://obsidian.md/).
 
-The plugin groups eligible Markdown notes by the local calendar date of their Obsidian creation timestamp, consolidates permitted notes across folders, and renders a native dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local analysis is the default. Groq analysis is optional and must be enabled explicitly.
+The plugin groups eligible Markdown notes by the local calendar date of their Obsidian creation timestamp, consolidates permitted notes across folders, and renders a native dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local VADER-based analysis is the default. Groq analysis is optional and must be enabled explicitly. GoEmotions informs Groq's emotion vocabulary; no separate GoEmotions model is downloaded or run.
 
 ## Features
 
 - Optional automatic analysis after changes to included notes
 - Folder include/exclude lists, with subfolder support and exclusions taking precedence
 - One consolidated result per calendar date
-- Optional Groq structured-output analysis with a validated three-stage JSON fallback
-- Local deterministic analysis that works without a network connection or API key
+- Optional Groq structured-output analysis with GoEmotions-informed vocabulary and a validated three-stage JSON fallback
+- Local VADER sentiment scoring that works without a network connection or API key
 - Native Markdown entry notes and an Obsidian Base
 - Mood, energy, connection, and intensity scores from 1–5, all plotted in the trend chart
 - Dominant-emotion history and day-by-day source links
@@ -111,7 +111,7 @@ The dashboard is designed for vertical scrolling only. Charts redraw for the not
 
 Existing plugin-owned dashboard notes have only their exact Base embed replaced by a link; custom writing and metadata are preserved. The optional native Base table remains available as a separate Obsidian view with its own table behavior, but it is no longer embedded in the dashboard.
 
-Local analysis is the default. Automatic note watching and startup analysis are off for new installs. Enabling Groq can send the cleaned text from every eligible note in an analyzed creation-date group or saved legacy-date group to Groq; review the opt-in settings before running a full scan. Text below the minimum evidence threshold remains marked insufficient without scores.
+Local VADER-based analysis is the default. Automatic note watching and startup analysis are off for new installs. Enabling Groq can send the cleaned text from every eligible note in an analyzed creation-date group or saved legacy-date group to Groq; review the opt-in settings before running a full scan. Text below the minimum evidence threshold remains marked insufficient without scores.
 
 Generated files are stored under `Mood History/` by default:
 
@@ -136,6 +136,13 @@ Mood History/
 The analyzer is instructed to distinguish the author's feelings from quotations, abstract analysis, negation, and feelings attributed to other people. Results remain inferences, not diagnoses or objective facts.
 
 This is a reflective journaling tool. It is not a clinical, diagnostic, crisis-detection, or safety-monitoring system.
+
+## Analysis methods and licenses
+
+- **Groq (opt-in):** Uses the 28-category [GoEmotions](https://github.com/google-research/google-research/tree/master/goemotions) taxonomy as an emotion vocabulary, with instructions to assess the author's own feelings and abstain when evidence is absent. This is prompt guidance, not the GoEmotions trained model.
+- **Local:** Uses [VADER Sentiment JS](https://github.com/vaderSentiment/vaderSentiment-js) v1.1.3 for text polarity, retaining deterministic heuristics for energy, connection, intensity and emotion labels. Local output remains low confidence and is never silently substituted if Groq is enabled.
+- VADER is Copyright 2018 Comcast Cable Communications Management, LLC, licensed Apache-2.0. The complete license is included in `src/vendor/APACHE-2.0.txt` and the bundled `main.js`. Plugin-authored code remains MIT.
+- Existing Groq results remain cached after prompt changes until explicitly reanalyzed. Local records refresh on the next authorized scan when scoring semantics change.
 
 ## Data lifecycle
 

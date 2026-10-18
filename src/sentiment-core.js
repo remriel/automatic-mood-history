@@ -1,3 +1,5 @@
+const { SentimentIntensityAnalyzer } = require("./vendor/vaderSentiment.bundle");
+
 const ALLOWED_EMOTIONS = [
   "affectionate",
   "amused",
@@ -327,12 +329,14 @@ function localSentiment(text, topic = "") {
   const positive = count(POSITIVE_WORDS);
   const negative = count(NEGATIVE_WORDS);
   const total = positive + negative;
-  const ratio = total ? (positive - negative) / total : 0;
+  // VADER handles negation and emphasis, but does not know who owns the feelings.
+  const vader = SentimentIntensityAnalyzer.polarity_scores(text);
+  const compound = Number.isFinite(vader.compound) ? vader.compound : 0;
   let moodScore = 3;
-  if (ratio <= -0.45) moodScore = 1;
-  else if (ratio < -0.12) moodScore = 2;
-  else if (ratio >= 0.5) moodScore = 5;
-  else if (ratio > 0.15) moodScore = 4;
+  if (compound <= -0.75) moodScore = 1;
+  else if (compound <= -0.05) moodScore = 2;
+  else if (compound >= 0.75) moodScore = 5;
+  else if (compound >= 0.05) moodScore = 4;
 
   const energyUp = count(ENERGY_UP);
   const energyDown = count(ENERGY_DOWN);
@@ -358,7 +362,7 @@ function localSentiment(text, topic = "") {
     .slice(0, 6)
     .map(([emotion]) => emotion);
 
-  const drivers = [];
+  const drivers = [`VADER estimates textual polarity at ${compound.toFixed(2)}; speaker attribution remains uncertain.`];
   if (negative > positive) drivers.push("Negative emotional language outweighs positive language.");
   if (positive > negative) drivers.push("Positive and possibility-oriented language outweighs negative language.");
   if (disconnected > connected) drivers.push("Isolation or disconnection language is prominent.");
@@ -376,7 +380,7 @@ function localSentiment(text, topic = "") {
     summary: topic || "Local sentiment estimate from the day's writing.",
     drivers: drivers.slice(0, 4),
     confidence: "low",
-    confidenceReason: "This entry uses deterministic word-pattern scoring and should be treated as directional."
+    confidenceReason: "VADER measures wording, while local keyword rules estimate the other axes. Quoted, negated or attributed feelings may still be misread."
   });
 }
 
