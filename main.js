@@ -835,6 +835,7 @@ function compareMoodring(model, text) {
 const {
   Component,
   Notice,
+  Platform,
   Plugin,
   PluginSettingTab,
   Setting,
@@ -845,6 +846,7 @@ const {
 
 
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
+const GROQ_API_KEY_SECRET = "automatic-mood-history-groq";
 const CREATED_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
 const LOCAL_ANALYZER_VERSION = "vader-sentiment-js-1.1.3-plus-heuristics-v1";
@@ -937,7 +939,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (!this.runtime.lastGroqIssue) delete this.runtime.lastGroqError;
     this.runtime.lastLoadedAt = new Date().toISOString();
     this.runtime.version = this.manifest.version;
-    this.runtime.apiKeyDetected = Boolean(globalThis.process?.env?.[GROQ_API_KEY_ENV]);
+    this.runtime.apiKeyDetected = Boolean(this.apiKey());
     this.runtime.lastLoadStatus = "loaded";
     this.debounceTimers = new Map();
     this.renderContainers = new Set();
@@ -1026,6 +1028,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         console.error("Automatic Mood History could not prepare its history files", error);
         new Notice(`Automatic Mood History loaded, but could not prepare its history files: ${error.message}`, 9000);
       }
+      this.registerForegroundRecovery();
       if (this.settings.analyzeOnStartup || this.settings.autoAnalyze) {
         const startupTimer = window.setTimeout(() => {
           if (this.unloaded) return;
@@ -1041,6 +1044,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   onunload() {
     this.unloaded = true;
     this.analysisEpoch = (this.analysisEpoch || 0) + 1;
+    if (this.foregroundRecoveryTimer) window.clearTimeout(this.foregroundRecoveryTimer);
     for (const timer of this.debounceTimers?.values() || []) window.clearTimeout(timer);
     this.debounceTimers?.clear();
     this.moodringModelPromise = null;
@@ -1212,6 +1216,35 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       ].filter(Boolean));
       for (const date of affectedDates) this.scheduleDate(date);
     }));
+  }
+
+  isMobileBackground() {
+    return Boolean(Platform?.isMobileApp && typeof document !== "undefined" && document.visibilityState === "hidden");
+  }
+
+  registerForegroundRecovery() {
+    if (this.unloaded || typeof document === "undefined") return;
+    let wasHidden = document.visibilityState === "hidden";
+    const resume = () => {
+      if (this.unloaded) return;
+      if (document.visibilityState === "hidden") { wasHidden = true; return; }
+      // An interrupted background scan may have cancelled before it could
+      // record pending dates. Reconcile sources on a real foreground return.
+      if (wasHidden) { this.lastAutomaticReconcileAt = 0; wasHidden = false; }
+      this.runtime.apiKeyDetected = Boolean(this.apiKey());
+      this.refreshRenderers();
+      if (!this.settings.autoAnalyze) return;
+      if (this.foregroundRecoveryTimer) window.clearTimeout(this.foregroundRecoveryTimer);
+      // Mobile timers stop while suspended. Coalesce resume/online/focus events
+      // and let the existing recovery policy enforce backoff and consent.
+      this.foregroundRecoveryTimer = window.setTimeout(() => {
+        this.foregroundRecoveryTimer = null;
+        void this.runAutomaticRecovery();
+      }, 1800);
+    };
+    this.registerDomEvent(document, "visibilitychange", resume);
+    this.registerDomEvent(window, "focus", resume);
+    this.registerDomEvent(window, "online", resume);
   }
 
   get outputFolder() {
@@ -1419,7 +1452,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const epoch = this.analysisEpoch || 0;
     return () => {
       if (this.unloaded || this.storageReadFailed || this.settingsValidationError || this.settingsSaveFailed || (this.analysisEpoch || 0) !== epoch || signature() !== initial ||
-        options.background && !this.settings.autoAnalyze && !(options.startup && this.settings.analyzeOnStartup)) this.cancelAnalysis();
+        options.background && (this.isMobileBackground() || !this.settings.autoAnalyze && !(options.startup && this.settings.analyzeOnStartup))) this.cancelAnalysis();
     };
   }
 
@@ -1518,20 +1551,53 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
   apiKey() {
     const value = globalThis.process?.env?.[GROQ_API_KEY_ENV];
-    return typeof value === "string" ? value.trim() : "";
+    if (typeof value === "string" && value.trim()) return value.trim();
+    // A fixed secret ID prevents synced settings from selecting unrelated secrets.
+    try {
+      const secret = this.app?.secretStorage?.getSecret(GROQ_API_KEY_SECRET);
+      return typeof secret === "string" ? secret.trim() : "";
+    } catch { return ""; }
+  }
+
+  setGroqKey(value) {
+    if (this.unloaded) return false;
+    const storage = this.app?.secretStorage;
+    if (typeof storage?.setSecret !== "function") {
+      new Notice("Automatic Mood History: update to Obsidian 1.11.4 or newer to save a Groq key on this device. Local analysis remains available.", 9000);
+      return false;
+    }
+    try {
+      storage.setSecret(GROQ_API_KEY_SECRET, value.trim());
+    } catch {
+      new Notice("Automatic Mood History: Obsidian could not save the Groq key. The key was not added to plugin settings.", 9000);
+      return false;
+    }
+    this.analysisEpoch = (this.analysisEpoch || 0) + 1;
+    this.clearGroqPause();
+    this.runtime.apiKeyDetected = Boolean(this.apiKey());
+    this.refreshRenderers();
+    return true;
   }
 
   async requestGroq(payload) {
-    const response = await requestUrl({
-      url: "https://api.groq.com/openai/v1/chat/completions",
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey()}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload),
-      throw: false
-    });
+    let response;
+    try {
+      response = await requestUrl({
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey()}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload),
+        throw: false
+      });
+    } catch {
+      // A phone losing connectivity is a transport failure, not malformed JSON.
+      const error = new Error("Groq could not be reached.");
+      error.code = "connection";
+      throw error;
+    }
     let json;
     try { json = response.json; } catch { json = null; }
     if (response.status < 200 || response.status >= 300) {
@@ -1572,7 +1638,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     let delay = 60 * 1000;
     if (error.code === "missing_key") {
       kind = "configuration";
-      message = "Obsidian has no GROQ_API_KEY in its environment.";
+      message = "No Groq API key is available. Add a key in Automatic Mood History settings.";
       delay = 5 * 60 * 1000;
     } else if (status === 401 || status === 403) {
       kind = "authentication";
@@ -1670,7 +1736,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return this.requestGroq(payload);
     };
     if (!this.apiKey()) {
-      const error = new Error(`Environment variable ${GROQ_API_KEY_ENV} is missing.`);
+      const error = new Error("No Groq API key is available. Add a key in Automatic Mood History settings.");
       error.code = "missing_key";
       throw error;
     }
@@ -1739,7 +1805,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         if (error.code === "analysis_cancelled") throw error;
         lastFailure = error;
         failures.push({ mode: attempt.name, status: error.status || 422, code: error.code || "invalid_output" });
-        if (error.status && ![400, 422].includes(error.status)) throw error;
+        if (error.code === "connection" || error.status && ![400, 422].includes(error.status)) throw error;
       }
     }
     const error = new Error("Groq could not produce a complete valid analysis after structured-output retries.");
@@ -1792,7 +1858,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async runAutomaticRecovery() {
-    if (this.unloaded || !this.settings.autoAnalyze || this.activeScan || this.checkingGroq || this.automaticRecoveryRunning || Date.now() < this.groqBlockedUntil) return;
+    if (this.unloaded || this.isMobileBackground() || !this.settings.autoAnalyze || this.activeScan || this.checkingGroq || this.automaticRecoveryRunning || Date.now() < this.groqBlockedUntil) return;
     this.automaticRecoveryRunning = true;
     try {
       // Periodic reconciliation catches edits made while closed, missed events, and sync recovery.
@@ -2068,7 +2134,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async recoverFallbacksWithGroq() {
     if (!this.settings.enableGroq || !this.apiKey()) {
-      new Notice("Automatic Mood History: enable Groq analysis and start Obsidian with GROQ_API_KEY before retrying fallbacks.");
+      new Notice("Automatic Mood History: enable Groq analysis and add a Groq API key in settings before retrying fallbacks.");
       return;
     }
     return this.analyzeAll({ onlyFallbacks: true, forceGroq: true });
@@ -2079,7 +2145,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const pendingCount = Object.keys(this.runtime.pendingDates || {}).length;
     if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups pending. Existing results are preserved. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
     if (!this.settings.enableGroq) return { kind: "local", text: "LOCAL MODE · Groq is disabled. Analysis stays on this device." };
-    if (!this.apiKey()) return { kind: "warning", text: "GROQ KEY MISSING · Start Obsidian with GROQ_API_KEY in its environment." };
+    if (!this.apiKey()) return { kind: "warning", text: "GROQ KEY MISSING · Add a Groq API key in Automatic Mood History settings (Obsidian 1.11.4+), or set GROQ_API_KEY on desktop." };
     if (this.checkingGroq) return { kind: "ready", text: "CHECKING GROQ · Sending fictional sample text." };
     if (this.activeScan) return { kind: "ready", text: "ANALYZING · Notes are grouped by their creation timestamps." };
     const issue = this.runtime.lastGroqIssue;
@@ -2249,7 +2315,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     assertCurrent();
     const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by the local calendar day of their Obsidian creation timestamp. Include/exclude folder settings control which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
-const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes are grouped by the local calendar day of their Obsidian creation timestamp, TFile.stat.ctime. Include/exclude folder settings determine eligibility; filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key is read from the process environment and is never saved in this vault. Every completed entry records its analyzer.\n`;
+const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes are grouped by the local calendar day of their Obsidian creation timestamp, TFile.stat.ctime. Include/exclude folder settings determine eligibility; filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key comes from the desktop GROQ_API_KEY environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, dashboard, false);
     assertCurrent();
     await this.upgradeDashboardLayout();
@@ -2597,8 +2663,40 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.classList.add("auto-mood-settings");
     containerEl.createEl("h2", { text: "Automatic Mood History" });
     containerEl.createEl("p", {
-      text: "Markdown notes are grouped by Obsidian creation date. Folder rules below control which notes are analyzed. All folders are included by default. Local analysis is the default. Optional Groq analysis uses GROQ_API_KEY from the process environment."
+      text: "Markdown notes are grouped by Obsidian creation date. Folder rules below control which notes are analyzed. All folders are included by default. Local analysis works offline on desktop, Android and iPhone. Groq analysis is optional."
     });
+    let keyInput;
+    const keySetting = new Setting(containerEl)
+      .setName("Groq API key")
+      .setDesc("Save to Obsidian secret storage (requires Obsidian 1.11.4+). The key is never saved in plugin data or notes. Desktop GROQ_API_KEY takes precedence. Saving a key does not enable Groq or send notes.")
+      .addText(text => {
+        keyInput = text;
+        text.inputEl.type = "password";
+        text.inputEl.autocomplete = "off";
+        text.inputEl.spellcheck = false;
+        text.inputEl.setAttribute("autocapitalize", "none");
+        text.inputEl.setAttribute("aria-label", "Groq API key");
+        text.inputEl.placeholder = "Paste a Groq API key";
+      })
+      .addButton(button => button.setButtonText("Save key").onClick(() => {
+        if (!keyInput.getValue().trim()) {
+          new Notice("Automatic Mood History: enter a Groq API key first.");
+          return;
+        }
+        if (this.plugin.setGroqKey(keyInput.getValue())) {
+          keyInput.setValue("");
+          new Notice("Automatic Mood History: Groq key saved in Obsidian secret storage. Enable Groq analysis when you want to use it.");
+        }
+      }))
+      .addButton(button => button.setButtonText("Clear saved key").onClick(() => {
+        if (this.plugin.setGroqKey("")) {
+          keyInput.setValue("");
+          new Notice("Automatic Mood History: saved Groq key cleared. Any desktop GROQ_API_KEY remains active.");
+        }
+      }));
+    if (typeof this.plugin.app?.secretStorage?.setSecret !== "function") {
+      keySetting.setDesc("Update to Obsidian 1.11.4 or newer to save a Groq key on Android or iPhone. Local analysis works without a key. Desktop can also use GROQ_API_KEY.");
+    }
     new Setting(containerEl)
       .setName("Enable Groq analysis")
       .setDesc("Only text from notes allowed by folder rules is sent to Groq. Failed or paused requests remain pending. This setting is off by default.")
@@ -2652,7 +2750,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     });
     new Setting(containerEl)
       .setName("Analyze note changes automatically")
-      .setDesc("Reanalyze the note's creation-date group after any included note changes.")
+      .setDesc("Reanalyze the note's creation-date group after any included note changes. On phones, analysis resumes while Obsidian is open; Android and iOS may suspend it in the background.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.autoAnalyze)
         .onChange(async (value) => {

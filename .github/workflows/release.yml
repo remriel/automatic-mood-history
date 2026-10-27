@@ -23,10 +23,12 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - run: npm test
+      - run: npm run test:mobile
       - run: npm run audit:release
       - run: npm run test:layout
+      - run: npm run test:mobile-layout
       - name: Resolve and verify release version
         id: version
         shell: bash

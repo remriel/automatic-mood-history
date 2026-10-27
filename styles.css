@@ -102,7 +102,7 @@
   font-weight: 800;
   padding: 7px 10px;
   height: auto;
-  min-height: 36px;
+  min-height: 44px;
   max-width: 100%;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -384,6 +384,12 @@
   font-weight: 800;
 }
 
+.auto-mood-day-date a.internal-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
 .auto-mood-dashboard button:focus-visible,
 .auto-mood-dashboard a:focus-visible {
   outline: 3px solid var(--interactive-accent);
@@ -460,9 +466,22 @@
 
 .auto-mood-settings textarea,
 .auto-mood-settings input[type="text"],
+.auto-mood-settings input[type="password"],
 .auto-mood-settings button {
   max-width: 100%;
   min-width: 0;
+}
+
+.auto-mood-settings input,
+.auto-mood-settings button {
+  min-height: 44px;
+}
+
+@media (pointer: coarse) {
+  .auto-mood-settings input,
+  .auto-mood-settings textarea {
+    font-size: max(16px, 1rem);
+  }
 }
 
 @container auto-mood (max-width: 620px) {
@@ -537,7 +556,9 @@
     max-width: 100%;
   }
 
-  .auto-mood-settings input[type="text"] {
+  .auto-mood-settings input[type="text"],
+  .auto-mood-settings input[type="password"],
+  .auto-mood-settings textarea {
     width: 100%;
   }
 
@@ -559,7 +580,7 @@
 /* Series legend buttons retain keyboard focus while the plot updates. */
 .auto-mood-chart-legend .auto-mood-series-toggle {
   display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  height: auto; min-height: 36px; max-width: 100%; padding: 6px 10px;
+  height: auto; min-height: 44px; max-width: 100%; padding: 6px 10px;
   color: var(--amh-text); background: var(--amh-surface);
   border: 2px solid var(--amh-frame); box-shadow: 2px 2px 0 var(--amh-shadow);
   font: inherit; font-weight: 800; white-space: normal; cursor: pointer;

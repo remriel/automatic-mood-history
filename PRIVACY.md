@@ -15,7 +15,11 @@ Groq mode is disabled by default. When a user explicitly enables it, the plugin 
 - scoring instructions;
 - a JSON response schema.
 
-Notes are grouped by Obsidian's `TFile.stat.ctime` creation timestamp. The plugin excludes its generated `Mood History/` files and `.trash/` notes. It does not include vault paths or filenames in the prompt. It reads the API key from `GROQ_API_KEY` in the Obsidian process environment and does not persist the key.
+Notes are grouped by Obsidian's `TFile.stat.ctime` creation timestamp. The plugin excludes its generated `Mood History/` files and `.trash/` notes. It does not include vault paths or filenames in the prompt.
+
+On desktop, `GROQ_API_KEY` in the Obsidian process environment takes precedence. On Android, iPhone and desktop with Obsidian 1.11.4+, you can save a key using Obsidian's native secret storage. The fixed secret ID is `automatic-mood-history-groq`. Keys entered in the masked settings field are passed only to Obsidian secret storage and are never written to plugin `data.json`, generated notes or logs. The plugin does not implement its own encryption or control Obsidian's secret-storage and sync behavior. Configure the key on each device where needed. Clearing the saved key does not remove a desktop environment variable.
+
+Saving a key does not enable Groq or initiate analysis. Automatic analysis remains opt-in. Android and iOS may suspend the app in the background; automatic catch-up runs when Obsidian returns to the foreground, subject to existing consent, source filters and retry pauses.
 
 Groq controls its own processing and retention. Review [Groq's data-handling documentation](https://console.groq.com/docs/your-data) before enabling remote analysis.
 

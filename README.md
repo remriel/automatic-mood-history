@@ -1,23 +1,20 @@
 # Automatic Mood History
 
-Analysis caching uses a versioned fingerprint covering the source hash, text pipeline, analyzer/prompt/model, evidence thresholds and local topic semantics. Local results with fingerprints refresh when those semantics change. Unchanged Groq results are preserved after model or prompt changes until you explicitly choose **Retry all with Groq** or analyze the active note; a model change alone does not spend provider quota. Changed source text is analyzed during the next authorized scan. Records without fingerprints keep their historical provenance and result until source changes or explicit reanalysis; no missing provenance is invented.
+![Automatic Mood History: an illustrated desktop and phone dashboard with colorful mood trends. Desktop, Android and iPhone. Local first, with optional Groq AI.](assets/readme-banner.png)
 
-Full scans build a temporary date-to-files index once. Source eligibility, file identity and metadata are checked again before reads and requests; changed scope cancels the scan. The index retains file references and paths only, and is discarded after each scan. It does not cache note text or reduce provider latency.
+**Your notes. Your emotional timeline.**
 
-Generated provider summaries, drivers and confidence explanations are bounded plain text. Markdown punctuation is serialized as literal characters and line breaks are collapsed, so narrative fields cannot create links, images, embeds or HTML. Intended source-note links remain available separately. Summaries and confidence explanations are limited to 500 characters; each of up to four drivers is limited to 250 characters. Native Obsidian 1.14.4 synthetic checks verify literal readable output with no narrative link/image/embed/script elements.
+Turn your [Obsidian](https://obsidian.md/) journal into a mood history you can explore on **desktop, Android and iPhone**. See mood, energy, connection and intensity trends, emotion patterns, and the original notes behind each day.
 
-Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Local scoring uses the Apache-2.0 VADER JavaScript engine for written polarity plus simple English keyword heuristics for energy, connection, intensity and emotion suggestions. VADER handles common negation and emphasis, but neither local component performs Groq's full speaker attribution or contextual reasoning; confidence remains low.
+Start with offline analysis that runs inside Obsidian. Optionally connect Groq for contextual AI analysis, or add the offline Moodring emotion classifier. You choose which folders to include and whether analysis runs automatically.
 
-![Automatic Mood History for Obsidian: mood and energy trends presented in a colorful dashboard-style graphic with illustrative data.](assets/readme-banner.svg)
+**[Download the latest release](https://github.com/remriel/automatic-mood-history/releases/latest)** · [Mobile setup](#android-and-iphone) · [Installation](#installation) · [Privacy](#privacy)
 
-**[Download the latest Obsidian plugin files](https://github.com/remriel/automatic-mood-history/releases/latest)** · [Installation](#installation) · [Privacy](#privacy)
-
-Automatic sentiment history for notes in [Obsidian](https://obsidian.md/).
-
-The plugin groups eligible Markdown notes by the local calendar date of their Obsidian creation timestamp, consolidates permitted notes across folders, and renders a native dashboard with mood, energy, connection, intensity, emotions, confidence, and source links. Local VADER-based analysis is the default. Groq analysis is optional and must be enabled explicitly. GoEmotions informs Groq's emotion vocabulary; no separate GoEmotions model is downloaded or run.
+*Banner artwork is illustrative; it does not show personal mood data or an exact app screenshot.*
 
 ## Features
 
+- Desktop, Android and iPhone support, with responsive layouts and touch-friendly controls
 - Optional automatic analysis after changes to included notes
 - Folder include/exclude lists, with subfolder support and exclusions taking precedence
 - One consolidated result per calendar date
@@ -34,8 +31,8 @@ The plugin groups eligible Markdown notes by the local calendar date of their Ob
 
 This plugin can transmit cleaned text from eligible Markdown notes created on a selected day to Groq for analysis **only after you enable Groq analysis in the plugin settings**. Folder filters restrict which notes can be read and sent.
 
-- The API key is read only from the `GROQ_API_KEY` environment variable.
-- The API key is never written to the vault or plugin data.
+- Save a Groq key through Obsidian secret storage (Obsidian 1.11.4+), or use `GROQ_API_KEY` on desktop.
+- Keys are never written to plugin data, generated notes or intentional logs. Obsidian manages secret storage separately.
 - Groq receives the local creation date, cleaned text consolidated across that day's notes, scoring instructions, and response schema.
 - Filenames and vault paths remain local and are not included in the Groq prompt.
 - Generated records include the analyzer used: `groq`, `local` (intentional local analysis), `local-fallback`, `reviewed-backfill` (legacy records), or `none`.
@@ -50,8 +47,9 @@ Generated mood summaries, scores, emotions, source paths, and timestamps are sto
 ## Requirements
 
 - Obsidian 1.5.0 or newer
-- Desktop Obsidian
-- An optional Groq API key for remote analysis
+- Desktop, Android or iPhone/iPad
+- Obsidian 1.11.4+ to save an optional Groq API key through secret storage; older desktop versions can use an environment key
+- No API key or connection is needed for local analysis
 
 The default model is `openai/gpt-oss-20b`, configurable in settings.
 
@@ -70,11 +68,31 @@ The default model is `openai/gpt-oss-20b`, configurable in settings.
 4. Restart Obsidian.
 5. Enable **Automatic Mood History** under **Settings → Community plugins**.
 
+### Android and iPhone
+
+The same release files run on desktop and mobile. You can install directly on your phone using the community plugin [BRAT](https://github.com/TfTHacker/obsidian42-brat):
+
+1. In **Settings → Community plugins → Browse**, install and enable **BRAT**.
+2. In BRAT settings, choose **Add beta plugin** and enter `https://github.com/remriel/automatic-mood-history`.
+3. Enable **Automatic Mood History** in Community plugins, then use the command palette to open **Mood history dashboard**.
+
+You can also install the release files on desktop and sync community plugins to your phone using your vault's supported plugin-sync settings. Check that the phone has all three matching release files, then restart Obsidian. On Android, manual installation into the vault's `.obsidian/plugins/automatic-mood-history/` folder is another option; enable hidden files in your file manager.
+
+Local analysis is ready without a key. For Groq, configure a key on each device where needed using the steps below. The optional Moodring model must also be present beside the plugin files on that device.
+
+Android and iOS may suspend Obsidian in the background. Automatic catch-up runs while the app is open and after returning to the foreground, respecting your automatic-analysis setting and retry pauses. **Analyze on startup** alone does not enable repeated resume scans. File creation dates come from the local vault's timestamps; sync tools can handle those timestamps differently across devices.
+
 ### Set the Groq key
 
-To use Groq, set `GROQ_API_KEY` in the environment before starting Obsidian, then enable **Enable Groq analysis** in the plugin settings. On Windows, a user-level environment variable may require restarting Obsidian or signing out and back in before GUI applications inherit it.
+On **Android, iPhone or desktop with Obsidian 1.11.4+**:
 
-The key value is not stored by the plugin. The environment-variable name is fixed so vault data cannot select an arbitrary environment secret.
+1. Open **Settings → Automatic Mood History**.
+2. Paste your key into **Groq API key** and tap **Save key**. The field clears after saving; Obsidian secret storage keeps the value under `automatic-mood-history-groq`.
+3. Enable **Enable Groq analysis**, then use **Check Groq** on the dashboard to test with fictional sample text.
+
+Saving a key does not enable remote analysis or send notes. **Clear saved key** clears the Obsidian secret; it does not remove a desktop environment key. Obsidian controls its secret-storage and sync behavior. The plugin never stores a key in its own `data.json` or generated notes.
+
+On **desktop**, you can keep using `GROQ_API_KEY` in the environment before starting Obsidian. This takes precedence over a saved secret. On Windows, restart Obsidian after setting a user-level environment variable. Environment-variable and secret names are fixed so synced plugin data cannot select unrelated secrets.
 
 ## Usage
 
@@ -161,10 +179,26 @@ The model source/runtime comes from pinned [Moodring commit 05202588](https://gi
 - Disable the plugin before deleting its `data.json` if you want to reset cached history.
 - Generated entry files carry an ownership marker. If an expected entry path contains an unrelated note, the plugin creates a conflict-safe file instead of overwriting it.
 
+## Reliability and rendering
+
+Analysis caching uses a versioned fingerprint covering the source hash, text pipeline, analyzer/prompt/model, evidence thresholds and local topic semantics. Local results with fingerprints refresh when those semantics change. Unchanged Groq results are preserved after model or prompt changes until you explicitly choose **Retry all with Groq** or analyze the active note; a model change alone does not spend provider quota. Changed source text is analyzed during the next authorized scan. Records without fingerprints keep their historical provenance and result until source changes or explicit reanalysis; no missing provenance is invented.
+
+Full scans build a temporary date-to-files index once. Source eligibility, file identity and metadata are checked again before reads and requests; changed scope cancels the scan. The index retains file references and paths only, and is discarded after each scan. It does not cache note text or reduce provider latency.
+
+Generated provider summaries, drivers and confidence explanations are bounded plain text. Markdown punctuation is serialized as literal characters and line breaks are collapsed, so narrative fields cannot create links, images, embeds or HTML. Intended source-note links remain available separately. Summaries and confidence explanations are limited to 500 characters; each of up to four drivers is limited to 250 characters. Native Obsidian 1.14.4 synthetic checks verify literal readable output with no narrative link/image/embed/script elements.
+
+Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Local scoring uses the Apache-2.0 VADER JavaScript engine for written polarity plus simple English keyword heuristics for energy, connection, intensity and emotion suggestions. VADER handles common negation and emphasis, but neither local component performs Groq's full speaker attribution or contextual reasoning; confidence remains low.
+
 ## Development
 
 ```bash
+npm ci
+npx playwright install --with-deps chromium webkit
 npm test
+npm run test:mobile
+npm run test:layout
+npm run test:mobile-layout
+npm run audit:release
 npm run build
 ```
 

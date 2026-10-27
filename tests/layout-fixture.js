@@ -6,7 +6,7 @@ function fixtureHTML() {
   const root = path.resolve(__dirname, "..");
   const bundle = fs.readFileSync(path.join(root, "main.js"), "utf8").replace(/<\/script/gi, "<\\/script");
   const css = fs.readFileSync(path.join(root, "styles.css"), "utf8");
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Automatic Mood History - synthetic layout fixture</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Automatic Mood History - synthetic layout fixture</title>
   <style>
     :root { font-size:16px; --font-interface:system-ui,sans-serif; --font-monospace:ui-monospace,monospace; --text-normal:#e8e5eb; --text-muted:#b8b3bf; --text-faint:#6f6777; --background-primary:#211d26; --background-secondary:#2a2431; --interactive-accent:#a477e5; --link-color:#d6acff; }
     body { margin:0; background:var(--background-primary); color:var(--text-normal); font-family:var(--font-interface); }
@@ -28,7 +28,7 @@ function fixtureHTML() {
       setName(text){this.name=text;this.info.createDiv({cls:'setting-item-name',text});return this;}
       setDesc(text){this.info.createDiv({cls:'setting-item-description',text});return this;}
       addToggle(callback){const el=this.control.createEl('button',{text:'Off',attr:{role:'switch','aria-label':this.name}});const api={setValue(v){el.textContent=v?'On':'Off';el.setAttribute('aria-checked',String(v));return api;},onChange(fn){el.addEventListener('click',()=>{const v=el.getAttribute('aria-checked')!=='true';api.setValue(v);void fn(v);});return api;}};callback(api);return this;}
-      addText(callback){const el=this.control.createEl('input',{attr:{type:'text','aria-label':this.name}});const api={setValue(v){el.value=v;return api;},onChange(fn){el.addEventListener('input',()=>void fn(el.value));return api;}};callback(api);return this;}
+      addText(callback){const el=this.control.createEl('input',{attr:{type:'text','aria-label':this.name}});const api={inputEl:el,getValue(){return el.value;},setValue(v){el.value=v;return api;},onChange(fn){el.addEventListener('input',()=>void fn(el.value));return api;}};callback(api);return this;}
       addTextArea(callback){const el=this.control.createEl('textarea',{attr:{'aria-label':this.name,rows:'4'}});const api={setPlaceholder(v){el.placeholder=v;return api;},setValue(v){el.value=v;return api;},onChange(fn){el.addEventListener('input',()=>void fn(el.value));return api;}};callback(api);return this;}
       addButton(callback){const el=this.control.createEl('button');const api={setButtonText(t){el.textContent=t;return api;},setCta(){return api;},onClick(fn){el.addEventListener('click',fn);return api;}};callback(api);return this;}
     }
@@ -36,6 +36,7 @@ function fixtureHTML() {
     const require=(name)=>{if(name==='obsidian')return {Component:class{},Notice:class{},Plugin:class{},PluginSettingTab:class{},Setting:FixtureSetting,TFile:class{},TFolder:class{},requestUrl:async()=>{throw new Error('Network disabled in layout fixture');}};throw new Error(name);};
     ${bundle}
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
+    const secrets=new Map();plugin.app={secretStorage:{getSecret:id=>secrets.get(id)||null,setSecret:(id,value)=>secrets.set(id,value)}};
     plugin.settings={outputFolder:'Mood History',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
     const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};
     let statusText='SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0 — 2026-10-27
+
+- Enable the plugin on Android and iPhone as well as desktop; local analysis works without Node.js or a network connection.
+- Add a masked Groq key field backed by Obsidian secret storage (Obsidian 1.11.4+), keeping keys out of plugin data and preserving desktop environment keys.
+- Resume opted-in automatic recovery after app foreground/online events, respecting retry pauses and opt-out; skip automatic analysis while the mobile app is hidden.
+- Treat lost network connections as transport failures, without repeating structured-output retries.
+- Improve touch targets and mobile settings inputs; verify Android Chromium and iPhone WebKit portrait/landscape layouts.
+- Refresh the README banner, description and mobile installation guide. Existing records and analysis preferences are preserved.
+
 ## 1.5.5 — 2026-10-18
 
 - Add optional offline trained Moodring classifier for text-only emotion comparisons, with clear abstention and source limits.
