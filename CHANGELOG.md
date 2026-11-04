@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+- Separate the four series into aligned plots and add average intensity to the summary.
+- Space trend points by calendar date and add 30-day, 90-day, 365-day and full-history windows.
+- Explore exact recorded-day scores with a keyboard/touch slider or by selecting the chart.
+- Preserve series visibility settings and explain that lines connect observations rather than estimate missing days.
+
+
 ## 1.6.0 — 2026-10-27
 
 - Enable the plugin on Android and iPhone as well as desktop; local analysis works without Node.js or a network connection.

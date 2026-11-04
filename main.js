@@ -2428,7 +2428,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       ["DAYS SCORED", String(complete.length)],
       ["AVG MOOD", this.average(complete, "moodScore")?.toFixed(1) || "—"],
       ["AVG ENERGY", this.average(complete, "energyScore")?.toFixed(1) || "—"],
-      ["AVG CONNECTION", this.average(complete, "connectionScore")?.toFixed(1) || "—"]
+      ["AVG CONNECTION", this.average(complete, "connectionScore")?.toFixed(1) || "—"],
+      ["AVG INTENSITY", this.average(complete, "intensityScore")?.toFixed(1) || "—"]
     ];
     for (const [label, value] of cardData) {
       const card = cards.createDiv({ cls: "auto-mood-card" });
@@ -2495,6 +2496,11 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       const visibleLabels = view.series.filter(([, property]) => !hidden.has(property)).map(([label]) => label);
       view.empty.hidden = visibleLabels.length > 0;
       svg.setAttribute("aria-label", `${view.description}. Visible series: ${visibleLabels.join(", ") || "none"}.`);
+      const signature = visibleLabels.join(",");
+      if (view.redraw && view.signature !== signature) {
+        view.signature = signature;
+        view.redraw();
+      }
     }
   }
 
@@ -2502,7 +2508,23 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
   renderTrendChart(parent, records) {
     const section = parent.createDiv({ cls: "auto-mood-section" });
     section.createEl("h3", { text: "TREND" });
-    section.createEl("p", { cls: "auto-mood-chart-range", text: `${records[0].date} to ${records[records.length - 1].date} · creation-date groups · scores 1–5` });
+    const rangeText = section.createEl("p", { cls: "auto-mood-chart-range" });
+    const rangeControls = section.createDiv({ cls: "auto-mood-range-controls", attr: { role: "group", "aria-label": "Trend time window" } });
+    const windows = [["30 days", 30], ["90 days", 90], ["1 year", 365], ["All", 0]];
+    let shown = records;
+    let selected = records.length - 1;
+    let redraw = () => {};
+    const rangeButtons = windows.map(([label, days]) => {
+      const button = rangeControls.createEl("button", { text: label, attr: { type: "button", "aria-pressed": String(days === 0) } });
+      button.addEventListener("click", () => {
+        const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
+        shown = days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
+        selected = shown.length - 1;
+        for (const control of rangeButtons) control.button.setAttribute("aria-pressed", String(control.days === days));
+        redraw();
+      });
+      return { button, days };
+    });
     const chart = section.createDiv({ cls: "auto-mood-chart" });
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("width", "100%");
@@ -2528,17 +2550,40 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     }
 
     this.installChartSeriesControls(svg, legend, series);
+    const explorer = section.createDiv({ cls: "auto-mood-explorer" });
+    const explorerLabel = explorer.createEl("label", { text: "Explore a recorded day", attr: { for: `amh-day-${Math.random().toString(36).slice(2)}` } });
+    const slider = explorer.createEl("input", { cls: "auto-mood-day-slider", attr: { type: "range", id: explorerLabel.getAttribute("for"), min: "0", step: "1" } });
+    const readout = explorer.createDiv({ cls: "auto-mood-day-readout", attr: { "aria-live": "polite", "aria-atomic": "true" } });
+    const updateReadout = () => {
+      const record = shown[selected];
+      slider.max = String(shown.length - 1);
+      slider.value = String(selected);
+      slider.disabled = shown.length === 1;
+      slider.setAttribute("aria-valuetext", record.date);
+      readout.empty();
+      readout.createEl("strong", { cls: "auto-mood-readout-date", text: record.date });
+      for (const [label, property] of series) {
+        const value = Number.isFinite(record[property]) ? `${record[property]}/5` : "—";
+        readout.createEl("span", { cls: "auto-mood-readout-value", text: `${label} ${value}`, attr: { "data-metric": property } });
+      }
+    };
+    slider.addEventListener("input", () => { selected = Number(slider.value); redraw(); });
     let previousWidth = 0;
     const draw = (availableWidth) => {
       const width = Math.max(1, Math.floor(availableWidth));
-      if (width === previousWidth) return;
       previousWidth = width;
-      const height = 260;
+      rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded days; gaps are not estimates.`);
+      updateReadout();
+      const hidden = new Set(this.settings.hiddenChartSeries || []);
+      const active = series.filter(([, property]) => !hidden.has(property));
+      const rowHeight = 132;
+      const height = Math.max(1, active.length) * rowHeight + 34;
       const left = 32;
       const right = 14;
-      const top = 20;
+      const top = 25;
       const plotWidth = Math.max(1, width - left - right);
-      const chartHeight = height - top - 38;
+      svg.setAttribute("height", String(height));
+      svg.style.height = `${height}px`;
       svg.replaceChildren();
       svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
       const make = (name, attributes, text, target = svg) => {
@@ -2549,31 +2594,55 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         return node;
       };
       make("title", {}, "Mood, energy, connection, and intensity trend. Full daily values are listed below.");
-      const x = (index) => left + (records.length === 1 ? plotWidth / 2 : index * plotWidth / (records.length - 1));
-      const y = (score) => top + (5 - score) * (chartHeight / 4);
-      for (let score = 1; score <= 5; score += 1) {
-        make("line", { x1: left, y1: y(score), x2: width - right, y2: y(score), class: "grid" });
-        make("text", { x: 12, y: y(score) + 4, class: "axis-label" }, String(score));
-      }
-      for (const [label, property, color, dashArray] of series) {
-        const valid = records.map((record, index) => ({ record, index })).filter(({ record }) => Number.isFinite(record[property]));
-        make("polyline", { points: valid.map(({ record, index }) => `${x(index)},${y(record[property])}`).join(" "), fill: "none", stroke: color, "stroke-width": 2.5, "stroke-dasharray": dashArray, class: "series", "data-series": property, "vector-effect": "non-scaling-stroke" });
+      const times = shown.map(record => Date.parse(`${record.date}T00:00:00Z`));
+      const span = times[times.length - 1] - times[0];
+      const x = (index) => left + (span ? (times[index] - times[0]) * plotWidth / span : plotWidth / 2);
+      make("line", { x1: x(selected), y1: top, x2: x(selected), y2: height - 36, class: "selection-guide", "aria-hidden": "true" });
+      active.forEach(([label, property, color, dashArray], row) => {
+        const rowTop = row * rowHeight;
+        const y = score => rowTop + top + (5 - score) * 22;
+        make("text", { x: left, y: rowTop + 16, class: "series-heading" }, label.toUpperCase());
+        for (let score = 1; score <= 5; score += 1) {
+          make("line", { x1: left, y1: y(score), x2: width - right, y2: y(score), class: "grid", "data-grid": property });
+          make("text", { x: 12, y: y(score) + 4, class: "axis-label" }, String(score));
+        }
+        const valid = shown.map((record, index) => ({ record, index })).filter(({ record }) => Number.isFinite(record[property]));
+        make("polyline", { points: valid.map(({ record, index }) => `${x(index)},${y(record[property])}`).join(" "), fill: "none", stroke: color, "stroke-width": 3, "stroke-dasharray": dashArray, class: "series", "data-series": property, "vector-effect": "non-scaling-stroke" });
         for (const { record, index } of valid) {
           const point = make("circle", { cx: x(index), cy: y(record[property]), r: 3.5, fill: color, stroke: "var(--amh-chart-outline)", "stroke-width": 1.5, "data-series": property });
           make("title", {}, `${record.date}: ${label} ${record[property]}/5`, point);
         }
-      }
+      });
       // Keep every data point, but limit date labels to the actual pane width.
       // Redrawing in CSS-pixel coordinates keeps text legible rather than
       // shrinking a desktop-sized SVG into a narrow pane.
-      const labelCount = Math.min(records.length, Math.max(2, Math.floor(plotWidth / 80)));
-      const indices = new Set(Array.from({ length: labelCount }, (_, i) => labelCount === 1 ? 0 : Math.round(i * (records.length - 1) / (labelCount - 1))));
+      const labelCount = Math.min(shown.length, Math.max(2, Math.floor(plotWidth / 110)));
+      const indices = new Set([0, shown.length - 1]);
+      for (let i = 1; i < labelCount - 1; i += 1) {
+        const target = times[0] + span * i / (labelCount - 1);
+        let nearest = 0;
+        for (let j = 1; j < times.length; j += 1) if (Math.abs(times[j] - target) < Math.abs(times[nearest] - target)) nearest = j;
+        if (x(nearest) >= left + 100 && x(nearest) <= width - right - 100 && [...indices].every(index => Math.abs(x(index) - x(nearest)) >= 100)) indices.add(nearest);
+      }
       for (const index of indices) {
-        make("text", { x: x(index), y: height - 10, class: "date-label", "text-anchor": records.length === 1 ? "middle" : index === 0 ? "start" : index === records.length - 1 ? "end" : "middle" }, records[index].date.slice(5));
+        make("text", { x: x(index), y: height - 10, class: "date-label", "text-anchor": shown.length === 1 ? "middle" : index === 0 ? "start" : index === shown.length - 1 ? "end" : "middle" }, shown[index].date);
       }
       this.updateChartSeriesVisibility();
     };
-    draw(chart.clientWidth || 640);
+    redraw = () => draw(chart.clientWidth || previousWidth || 640);
+    const chartView = this.chartSeriesViews.get(svg);
+    chartView.redraw = redraw;
+    chartView.signature = series.filter(([, property]) => !(this.settings.hiddenChartSeries || []).includes(property)).map(([label]) => label).join(",");
+    svg.addEventListener("click", event => {
+      const bounds = svg.getBoundingClientRect();
+      const px = (event.clientX - bounds.left) * previousWidth / bounds.width;
+      const left = 32, plotWidth = Math.max(1, previousWidth - left - 14);
+      const times = shown.map(record => Date.parse(`${record.date}T00:00:00Z`));
+      const target = times[0] + Math.max(0, Math.min(1, (px - left) / plotWidth)) * (times[times.length - 1] - times[0]);
+      selected = times.reduce((best, time, index) => Math.abs(time - target) < Math.abs(times[best] - target) ? index : best, 0);
+      redraw();
+    });
+    redraw();
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver((entries) => {
         const width = entries[0]?.contentRect.width;

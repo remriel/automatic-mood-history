@@ -1,3 +1,24 @@
+# Project state — current (2026-11-04)
+
+Automatic Mood History is an Obsidian plugin for desktop and mobile. `src/main.js` owns dashboard rendering, lifecycle, records, and settings; `src/sentiment-core.js` and `src/moodring-core.js` implement analysis; `scripts/build.js` creates the tracked `main.js`. `styles.css` supplies the dashboard styling. Tests use synthetic records only.
+
+## Trend chart decisions
+
+- Version 1.7.0 uses four separately labeled, aligned plots with shared time positions and a new average-intensity summary card. Hiding a series collapses its plot; the readout still shows all scores.
+- Version 1.7.0 plots creation-date complete records with actual calendar spacing. Lines join recorded points and are not estimates for missing days. Legacy and insufficient-evidence records remain excluded as before.
+- Time windows are inclusive rolling 30, 90, and 365 calendar days ending at the latest scored date, plus all history. They only filter the chart; summary cards and history are unchanged. Window and selected day are transient; series visibility remains saved.
+- The chart and slider select the nearest recorded date and show all scores. Series use distinct colors and line patterns; legend buttons preserve existing persistence and save-failure rollback. Slider, labels, readout and controls support keyboard, touch, resizing and light/dark layouts.
+- Relevant code: `renderTrendChart`, `installChartSeriesControls`, `updateChartSeriesVisibility` in `src/main.js`; CSS at the end of `styles.css`; `tests/layout.test.js` and `tests/mobile-layout.test.js`.
+- Avoid treating connected lines as estimates, filtering the underlying records, or using private vaults for QA. Physical devices and native Obsidian were not tested for this change.
+
+## RESUME HERE
+
+Read `docs/PROGRESS.md`, inspect Git and the latest release/CI before continuing. The release workflow is triggered by a `manifest.json` change on main, runs all tests, trains the optional Moodring model, attests and publishes four assets. Confirm workflow and release status rather than assuming success.
+
+---
+
+## Historical project state (stale; preserved for context)
+
 # Automatic Mood History — project state
 
 ## Active follow-up (2026-10-13)

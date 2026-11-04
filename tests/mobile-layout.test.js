@@ -16,7 +16,7 @@ async function inspect(page, label) {
     });
   });
   assert.deepEqual(overflow, [], `${label}: no horizontal overflow`);
-  const smallTargets = await page.locator(".auto-mood-actions button,.auto-mood-series-toggle,.auto-mood-day-date a,.auto-mood-settings button,.auto-mood-settings input").evaluateAll(elements =>
+  const smallTargets = await page.locator(".auto-mood-actions button,.auto-mood-series-toggle,.auto-mood-range-controls button,.auto-mood-day-slider,.auto-mood-day-date a,.auto-mood-settings button,.auto-mood-settings input").evaluateAll(elements =>
     elements.filter(el => el.getBoundingClientRect().width && el.getBoundingClientRect().height < 44).map(el => el.textContent || el.getAttribute("aria-label")));
   assert.deepEqual(smallTargets, [], `${label}: controls and entry links have 44px touch targets`);
 }
@@ -42,6 +42,13 @@ async function run() {
       }
       await page.setViewportSize({ width: 390, height: 844 });
       await page.evaluate(() => fixture.configure({ count: 32 }));
+      await page.getByRole("button", { name: "30 days", exact: true }).tap();
+      assert.equal(await page.getByRole("button", { name: "30 days", exact: true }).getAttribute("aria-pressed"), "true");
+      const slider = page.getByRole("slider", { name: "Explore a recorded day" });
+      const latest = await slider.getAttribute("aria-valuetext");
+      await slider.tap({ position: { x: 5, y: 22 } });
+      assert.notEqual(await slider.getAttribute("aria-valuetext"), latest, "touch selects another recorded day");
+      await page.getByRole("button", { name: "All", exact: true }).tap();
       for (const label of ["Mood", "Energy", "Connection", "Intensity"]) {
         const button = page.getByRole("button", { name: label, exact: true });
         await button.tap();
