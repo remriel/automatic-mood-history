@@ -1,17 +1,15 @@
 # Progress — trend chart release (2026-11-04)
 
-**Objective:** improve the mood history charts and publish a verified release.
+**Objective:** improve chart legibility and publish a release.
 
-**Progress: 85%** — implementation, functional tests and desktop layout verified; release and final verification remain.
+**Progress: 100%** — version 1.7.0 is published and verified.
 
-- [x] Inspect current repository, history, release workflow and existing chart behavior.
-- [x] Implement separate aligned plots, average-intensity card, calendar-scaled trend, time windows, selected-day readout and keyboard/touch controls.
-- [x] Add regression coverage for irregular spacing, boundaries and selection; document behavior.
-- [x] Finish desktop layout, mobile runtime, privacy audit and release metadata review.
-- [ ] Complete the updated mobile touch tests.
-- [ ] Push a review branch, verify CI, merge, and verify release workflow, assets and source commit.
-- [ ] Update this file and project wisdom with actual results.
+- [x] Separate all four scores into aligned, labeled plots; add average intensity.
+- [x] Add calendar spacing, time windows and accessible recorded-day exploration.
+- [x] Test functional regressions, mobile runtime, desktop layouts, Android Chromium and iPhone WebKit touch/layout emulation, and release privacy. `npm audit` found zero advisories.
+- [x] Merge [PR #14](https://github.com/remriel/automatic-mood-history/pull/14), pass GitHub CI and publish [1.7.0](https://github.com/remriel/automatic-mood-history/releases/tag/1.7.0).
+- [x] Verify release/tag commit `6ea69593aabfd56ed4b13af2bb5e4673bc6cf831`, all four assets, source blob parity for the three plugin files and the main.js GitHub provenance attestation.
 
-Local `npm test`, mobile runtime, desktop layout, release audit and dependency audit passed. Android Chromium and iPhone WebKit emulation passed before the latest added touch assertions; the updated suite is running. No personal vault, physical device or native Obsidian was used.
+Release workflow: https://github.com/remriel/automatic-mood-history/actions/runs/41935793660. Both main CI and release workflows succeeded. No personal vault, native Obsidian installation or physical mobile device was tested.
 
-**Next steps:** run remaining checks; commit and push the candidate; wait for CI; merge to main and monitor the version-triggered release; verify assets and finish the handoff.
+**Next steps:** install the release in a test vault and inspect real history on physical devices; collect feedback on readability, date windows and gap interpretation.

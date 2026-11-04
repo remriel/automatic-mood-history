@@ -13,7 +13,7 @@ Automatic Mood History is an Obsidian plugin for desktop and mobile. `src/main.j
 
 ## RESUME HERE
 
-Read `docs/PROGRESS.md`, inspect Git and the latest release/CI before continuing. The release workflow is triggered by a `manifest.json` change on main, runs all tests, trains the optional Moodring model, attests and publishes four assets. Confirm workflow and release status rather than assuming success.
+Version 1.7.0 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.7.0 from merge commit `6ea69593aabfd56ed4b13af2bb5e4673bc6cf831`. Release and main CI passed; the three plugin assets match source blobs and main.js provenance verified. Read `docs/PROGRESS.md`, inspect Git and current release/CI before continuing. The release workflow is triggered by a `manifest.json` change on main, runs tests, trains the optional Moodring model, attests and publishes four assets. Next, verify native Obsidian and physical devices with a test vault.
 
 ---
 
