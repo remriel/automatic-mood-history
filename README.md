@@ -224,6 +224,12 @@ The dashboard shows whether automatic analysis is enabled. With **Analyze note c
 
 If a cloud-only source note is unreadable, make it available locally and check the cloud sync client. That date stays pending without sending a partial source set; other readable dates continue. Valid natural emotion labels are accepted even when they are outside the local lexicon.
 
+### Exploring the trend
+
+Each score has its own aligned plot, making trends easier to follow without overlapping lines. The trend uses calendar spacing, so a longer gap between recorded days occupies more space. Lines connect recorded days; they do not estimate scores on missing dates. Choose **30 days**, **90 days**, **1 year** (365 days), or **All** to change the chart window. Windows end on the latest scored day, even if it is not today, and include that day. These controls affect the chart only; the summary cards and history still cover all records.
+
+Use the **Explore a recorded day** slider with a keyboard or touch, or select the chart, to inspect the date and all four values. The guide marks that day on the chart. The chart window and selected day reset when the dashboard refreshes; series visibility is saved separately.
+
 ### Chart series visibility
 
 Click a series label in the chart legend to show or hide its line and points. All four series start visible. The selected visibility is saved across refreshes and restarts; this changes only the chart, never scores or analysis. Keyboard users can Tab to each button and use Space or Enter.

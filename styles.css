@@ -133,6 +133,7 @@
 .auto-mood-card:nth-child(2) { background: #ffe67d; }
 .auto-mood-card:nth-child(3) { background: #7ee4f2; }
 .auto-mood-card:nth-child(4) { background: #a9e879; }
+.auto-mood-card:nth-child(5) { background: #d6baff; }
 
 .auto-mood-card-label {
   font-size: 0.7rem;
@@ -593,3 +594,26 @@
 }
 .auto-mood-chart-empty { color: var(--amh-text); font-weight: 700; }
 .auto-mood-chart-empty[hidden] { display: none; }
+
+/* Trend controls and the selected-day detail work in narrow panes and on touch. */
+.auto-mood-range-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.auto-mood-range-controls button {
+  min-height: 44px; height: auto; padding: 7px 12px; border: 2px solid var(--amh-frame);
+  border-radius: 0; background: var(--amh-surface); color: var(--amh-text);
+  font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer;
+}
+.auto-mood-range-controls button[aria-pressed="true"] { background: var(--amh-yellow); color: var(--amh-on-accent); box-shadow: 3px 3px 0 var(--amh-shadow); }
+.auto-mood-range-controls button:focus-visible, .auto-mood-day-slider:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
+.auto-mood-svg .selection-guide { stroke: var(--amh-text); stroke-width: 1.5; stroke-dasharray: 2 4; opacity: .7; pointer-events: none; }
+.auto-mood-explorer { margin-top: 14px; padding: 12px; border: 2px solid var(--amh-frame); background: var(--amh-surface-alt); }
+.auto-mood-explorer label { display: block; font-size: .75rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.auto-mood-day-slider { display: block; width: 100%; min-height: 44px; margin: 4px 0; accent-color: var(--amh-series-mood); }
+.auto-mood-day-readout { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .8rem; }
+.auto-mood-readout-date, .auto-mood-readout-value { padding: 5px 8px; border: 2px solid var(--amh-frame); background: var(--amh-surface); font-weight: 800; }
+.auto-mood-readout-date { background: var(--amh-yellow); color: var(--amh-on-accent); }
+.auto-mood-readout-value[data-metric="moodScore"] { border-left: 6px solid var(--amh-series-mood); }
+.auto-mood-readout-value[data-metric="energyScore"] { border-left: 6px solid var(--amh-series-energy); }
+.auto-mood-readout-value[data-metric="connectionScore"] { border-left: 6px solid var(--amh-series-connection); }
+.auto-mood-readout-value[data-metric="intensityScore"] { border-left: 6px solid var(--amh-series-intensity); }
+
+.auto-mood-svg .series-heading { fill: var(--amh-text); font-family: var(--font-interface); font-size: 11px; font-weight: 900; letter-spacing: .08em; }

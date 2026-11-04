@@ -67,8 +67,10 @@ async function inspectLayout(page, label) {
       if (marks.length !== records.length - 1) throw new Error('Missing intensity is omitted rather than plotted as zero');
       const mark = marks[0];
       if (!mark.querySelector('title').textContent.includes(records[1].date + ': Intensity 5/5')) throw new Error('Intensity tooltip uses saved score and date');
-      const top = Number(svg.querySelectorAll('.grid')[4].getAttribute('y1'));
+      const top = Number(svg.querySelectorAll('.grid[data-grid="intensityScore"]')[4].getAttribute('y1'));
       if (Number(mark.getAttribute('cy')) !== top) throw new Error('Intensity five aligns with the five gridline');
+      if (svg.querySelectorAll('.series-heading').length !== 4) throw new Error('Each metric has a separate labeled chart');
+      if (!document.querySelector('.auto-mood-cards').textContent.includes('AVG INTENSITY')) throw new Error('Intensity average is present');
       const traces = [...svg.querySelectorAll('.series')];
       if (new Set(traces.map(t => t.getAttribute('stroke-dasharray'))).size !== 4) throw new Error('Series have distinct line patterns');
       if (![...document.querySelectorAll('.auto-mood-chart-legend li')].some(li => li.textContent === 'Intensity')) throw new Error('Intensity legend is visible');
@@ -103,6 +105,33 @@ async function inspectLayout(page, label) {
       await inspectLayout(page, JSON.stringify(options));
     }
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
+    await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
+    // Irregular calendar gaps and window boundaries must not become equally spaced observations.
+    await page.evaluate(() => {
+      fixture.configure({ paneWidth: 640, count: 4 });
+      const values = Object.values(fixture.plugin.records);
+      const dates = ['2099-01-01', '2099-01-02', '2099-01-11', '2099-04-01'];
+      fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'created-at-local-date', status: 'complete' }]));
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    assert.equal(await page.locator('.auto-mood-card').filter({ hasText: 'AVG INTENSITY' }).locator('.auto-mood-card-value').innerText(), '3.5', 'intensity card averages scored records');
+    const positions = await page.locator('.auto-mood-svg circle[data-series="moodScore"]').evaluateAll(nodes => nodes.map(node => Number(node.getAttribute('cx'))));
+    assert(Math.abs((positions[2] - positions[1]) / (positions[1] - positions[0]) - 9) < .01, 'calendar gaps use proportional spacing');
+    const slider = page.getByRole('slider', { name: 'Explore a recorded day' });
+    await slider.focus();
+    await page.keyboard.press('Home');
+    assert.equal(await slider.getAttribute('aria-valuetext'), '2099-01-01');
+    assert((await page.locator('.auto-mood-day-readout').innerText()).includes('Mood 1/5'), 'keyboard selection exposes values');
+    await page.getByRole('button', { name: '90 days', exact: true }).click();
+    assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 3, 'window includes its 90-day boundary and excludes older records');
+    assert.equal(await slider.getAttribute('aria-valuetext'), '2099-04-01');
+    await page.getByRole('button', { name: '30 days', exact: true }).click();
+    assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 1);
+    assert(await slider.isDisabled(), 'one-day window has a disabled selector');
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 4);
+    await page.locator('.auto-mood-svg').click({ position: { x: 32, y: 80 } });
+    assert.equal(await slider.getAttribute('aria-valuetext'), '2099-01-01', 'chart selection picks the nearest recorded day');
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
     const recordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
     for (const [label, property] of [['Mood','moodScore'],['Energy','energyScore'],['Connection','connectionScore'],['Intensity','intensityScore']]) {
