@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.3
+
+- Update the average-score and Days scored tiles above the chart to reflect the selected trend window; keep history unfiltered.
+
 ## 1.7.2
 
 - Add 7-day, 14-day, and 60-day trend windows and open the chart at 14 days by default.

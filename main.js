@@ -2424,20 +2424,26 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     }
 
     const cards = wrapper.createDiv({ cls: "auto-mood-cards" });
-    const cardData = [
-      ["DAYS SCORED", String(complete.length)],
-      ["AVG MOOD", this.average(complete, "moodScore")?.toFixed(1) || "—"],
-      ["AVG ENERGY", this.average(complete, "energyScore")?.toFixed(1) || "—"],
-      ["AVG CONNECTION", this.average(complete, "connectionScore")?.toFixed(1) || "—"],
-      ["AVG INTENSITY", this.average(complete, "intensityScore")?.toFixed(1) || "—"]
+    const cardMetrics = [
+      ["DAYS SCORED", null],
+      ["AVG MOOD", "moodScore"],
+      ["AVG ENERGY", "energyScore"],
+      ["AVG CONNECTION", "connectionScore"],
+      ["AVG INTENSITY", "intensityScore"]
     ];
-    for (const [label, value] of cardData) {
+    const cardValues = cardMetrics.map(([label, property]) => {
       const card = cards.createDiv({ cls: "auto-mood-card" });
       card.createDiv({ cls: "auto-mood-card-label", text: label });
-      card.createDiv({ cls: "auto-mood-card-value", text: value });
-    }
+      return { property, element: card.createDiv({ cls: "auto-mood-card-value" }) };
+    });
+    const updateSummaryCards = visibleRecords => {
+      for (const { property, element } of cardValues) {
+        element.setText(property ? this.average(visibleRecords, property)?.toFixed(1) || "—" : String(visibleRecords.length));
+      }
+    };
+    updateSummaryCards(complete);
 
-    if (complete.length) this.renderTrendChart(wrapper, complete);
+    if (complete.length) this.renderTrendChart(wrapper, complete, updateSummaryCards);
     this.renderEmotionBars(wrapper, complete);
     this.renderHistoryCards(wrapper, records);
 
@@ -2505,7 +2511,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
   }
 
 
-  renderTrendChart(parent, records) {
+  renderTrendChart(parent, records, updateSummaryCards) {
     const section = parent.createDiv({ cls: "auto-mood-section" });
     section.createEl("h3", { text: "TREND" });
     const rangeText = section.createEl("p", { cls: "auto-mood-chart-range" });
@@ -2515,12 +2521,14 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
     const recordsInWindow = days => days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
     let shown = recordsInWindow(defaultDays);
+    updateSummaryCards(shown);
     let selected = shown.length - 1;
     let redraw = () => {};
     const rangeButtons = windows.map(([label, days]) => {
       const button = rangeControls.createEl("button", { text: label, attr: { type: "button", "aria-pressed": String(days === defaultDays) } });
       button.addEventListener("click", () => {
         shown = recordsInWindow(days);
+        updateSummaryCards(shown);
         selected = shown.length - 1;
         for (const control of rangeButtons) control.button.setAttribute("aria-pressed", String(control.days === days));
         redraw();
