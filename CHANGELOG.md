@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.2
+
+- Add 7-day, 14-day, and 60-day trend windows and open the chart at 14 days by default.
+
 ## 1.7.1
 
 - Draw each metric as a solid line with a matching legend and clearer selected-day values.

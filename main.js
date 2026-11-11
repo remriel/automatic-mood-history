@@ -2510,15 +2510,17 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     section.createEl("h3", { text: "TREND" });
     const rangeText = section.createEl("p", { cls: "auto-mood-chart-range" });
     const rangeControls = section.createDiv({ cls: "auto-mood-range-controls", attr: { role: "group", "aria-label": "Trend time window" } });
-    const windows = [["30 days", 30], ["90 days", 90], ["1 year", 365], ["All", 0]];
-    let shown = records;
-    let selected = records.length - 1;
+    const windows = [["7 days", 7], ["14 days", 14], ["30 days", 30], ["60 days", 60], ["90 days", 90], ["1 year", 365], ["All", 0]];
+    const defaultDays = 14;
+    const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
+    const recordsInWindow = days => days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
+    let shown = recordsInWindow(defaultDays);
+    let selected = shown.length - 1;
     let redraw = () => {};
     const rangeButtons = windows.map(([label, days]) => {
-      const button = rangeControls.createEl("button", { text: label, attr: { type: "button", "aria-pressed": String(days === 0) } });
+      const button = rangeControls.createEl("button", { text: label, attr: { type: "button", "aria-pressed": String(days === defaultDays) } });
       button.addEventListener("click", () => {
-        const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
-        shown = days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
+        shown = recordsInWindow(days);
         selected = shown.length - 1;
         for (const control of rangeButtons) control.button.setAttribute("aria-pressed", String(control.days === days));
         redraw();
