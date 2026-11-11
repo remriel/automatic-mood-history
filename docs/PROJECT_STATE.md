@@ -1,4 +1,22 @@
-# Project state — current (2026-11-04)
+# Project state — chart update (2026-11-10)
+
+Automatic Mood History is a local-first Obsidian plugin for desktop and mobile. `src/main.js` owns dashboard rendering; `scripts/build.js` bundles it with the analysis modules into tracked `main.js`; `styles.css` supplies the dashboard styling. The public repository must never contain private vault records or credentials.
+
+## 1.7.1 chart changes
+
+- Four aligned SVG plots use solid, separately labeled traces and matching legend swatches. The controls precede the chart, remain keyboard/touch accessible, and retain saved visibility.
+- Recorded scores retain calendar spacing. An explicit missing metric value breaks that metric's path; a span between recorded dates is still a connection, not an estimate for days without records. All valid points remain present; their radius shrinks in dense plots.
+- A guide and emphasized point identify the selected date; each lane displays the selected score. The slider/readout, date windows and saved-series behavior remain unchanged. Distinct labels and separate lanes avoid relying on color alone.
+- Relevant files: `renderTrendChart` in `src/main.js`, the generated `main.js`, `styles.css`, `tests/layout.test.js`, `tests/mobile-layout.test.js`, and `docs/RELEASE_NOTES_1.7.1.md`.
+- Local functional and mobile runtime tests passed with synthetic data. This Windows sandbox denied Node child-process creation, preventing the local Playwright runner and Node-based release audit from starting; GitHub CI must run those checks before release. A synthetic narrow browser preview was inspected. Native Obsidian and physical devices remain unverified.
+
+## RESUME HERE
+
+Version 1.7.1 is prepared but not yet published. Build the bundle after the last source edit, commit and push a branch, run the repository CI on a pull request, then merge only after checks pass. The manifest change on `main` triggers the release workflow; wait for completion and verify the tag, four assets and source parity. Update `docs/PROGRESS.md` and this section with observed results.
+
+---
+
+# Previous project state (2026-11-04)
 
 Automatic Mood History is an Obsidian plugin for desktop and mobile. `src/main.js` owns dashboard rendering, lifecycle, records, and settings; `src/sentiment-core.js` and `src/moodring-core.js` implement analysis; `scripts/build.js` creates the tracked `main.js`. `styles.css` supplies the dashboard styling. Tests use synthetic records only.
 

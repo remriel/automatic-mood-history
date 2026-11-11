@@ -166,12 +166,6 @@
   letter-spacing: 0.09em;
 }
 
-.auto-mood-legend-swatch[data-series="intensity"] {
-  border-top: 0;
-  height: 3px;
-  background: repeating-linear-gradient(to right, var(--amh-series-intensity) 0 12px, transparent 12px 16px, var(--amh-series-intensity) 16px 19px, transparent 19px 23px);
-}
-
 .auto-mood-chart {
   width: 100%;
   max-width: 100%;
@@ -180,6 +174,7 @@
 .auto-mood-chart-range {
   margin: 0 0 12px;
   font-size: 0.75rem;
+  line-height: 1.5;
   color: var(--amh-text);
 }
 
@@ -189,7 +184,7 @@
   gap: 8px 18px;
   list-style: none;
   padding: 0;
-  margin: 12px 0 0;
+  margin: 0 0 14px;
   font-size: 0.8rem;
   font-weight: 800;
 }
@@ -218,7 +213,11 @@
 .auto-mood-svg .grid {
   stroke: var(--amh-grid);
   stroke-width: 1;
-  stroke-dasharray: 4 4;
+  opacity: 0.7;
+}
+
+.auto-mood-svg .grid[data-score="3"] {
+  opacity: 1;
 }
 
 .auto-mood-svg .axis-label,
@@ -586,6 +585,9 @@
   border: 2px solid var(--amh-frame); box-shadow: 2px 2px 0 var(--amh-shadow);
   font: inherit; font-weight: 800; white-space: normal; cursor: pointer;
 }
+.auto-mood-chart-legend .auto-mood-series-toggle:hover {
+  background: var(--amh-surface-alt);
+}
 .auto-mood-chart-legend .auto-mood-series-toggle[aria-pressed="false"] {
   border-style: dashed; box-shadow: none; text-decoration: line-through; opacity: .65;
 }
@@ -604,7 +606,9 @@
 }
 .auto-mood-range-controls button[aria-pressed="true"] { background: var(--amh-yellow); color: var(--amh-on-accent); box-shadow: 3px 3px 0 var(--amh-shadow); }
 .auto-mood-range-controls button:focus-visible, .auto-mood-day-slider:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
-.auto-mood-svg .selection-guide { stroke: var(--amh-text); stroke-width: 1.5; stroke-dasharray: 2 4; opacity: .7; pointer-events: none; }
+.auto-mood-svg .series-lane { fill: var(--amh-surface-alt); opacity: .55; }
+.auto-mood-svg .selection-guide { stroke: var(--amh-text); stroke-width: 1.5; stroke-dasharray: 2 4; opacity: .55; pointer-events: none; }
+.auto-mood-svg .selected-point { pointer-events: none; }
 .auto-mood-explorer { margin-top: 14px; padding: 12px; border: 2px solid var(--amh-frame); background: var(--amh-surface-alt); }
 .auto-mood-explorer label { display: block; font-size: .75rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
 .auto-mood-day-slider { display: block; width: 100%; min-height: 44px; margin: 4px 0; accent-color: var(--amh-series-mood); }
@@ -617,3 +621,4 @@
 .auto-mood-readout-value[data-metric="intensityScore"] { border-left: 6px solid var(--amh-series-intensity); }
 
 .auto-mood-svg .series-heading { fill: var(--amh-text); font-family: var(--font-interface); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+.auto-mood-svg .selected-score { fill: var(--amh-text); font-family: var(--font-monospace); font-size: 12px; font-weight: 900; }

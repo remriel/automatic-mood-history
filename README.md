@@ -226,9 +226,9 @@ If a cloud-only source note is unreadable, make it available locally and check t
 
 ### Exploring the trend
 
-Each score has its own aligned plot, making trends easier to follow without overlapping lines. The trend uses calendar spacing, so a longer gap between recorded days occupies more space. Lines connect recorded days; they do not estimate scores on missing dates. Choose **30 days**, **90 days**, **1 year** (365 days), or **All** to change the chart window. Windows end on the latest scored day, even if it is not today, and include that day. These controls affect the chart only; the summary cards and history still cover all records.
+Each score has its own labeled plot with a solid line, making trends easier to follow without overlapping series. The trend uses calendar spacing, so a longer gap between recorded days occupies more space. Lines connect recorded scores; they do not estimate scores on unrecorded days. If a recorded day has no score for a metric, its line breaks at that day. Choose **30 days**, **90 days**, **1 year** (365 days), or **All** to change the chart window. Windows end on the latest scored day, even if it is not today, and include that day. These controls affect the chart only; the summary cards and history still cover all records.
 
-Use the **Explore a recorded day** slider with a keyboard or touch, or select the chart, to inspect the date and all four values. The guide marks that day on the chart. The chart window and selected day reset when the dashboard refreshes; series visibility is saved separately.
+Use the **Explore a recorded day** slider with a keyboard or touch, or select the chart, to inspect the date and all four values. The guide and highlighted points mark that day, and each plot shows its selected value at the upper right. The chart window and selected day reset when the dashboard refreshes; series visibility is saved separately.
 
 ### Chart series visibility
 

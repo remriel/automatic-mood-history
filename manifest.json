@@ -1,7 +1,7 @@
 {
   "id": "automatic-mood-history",
   "name": "Automatic Mood History",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "minAppVersion": "1.5.0",
   "description": "Track mood, energy and emotions from dated notes on desktop, Android and iPhone, with offline scoring and optional Groq analysis.",
   "author": "remriel",
