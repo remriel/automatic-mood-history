@@ -238,3 +238,5 @@ Click a series label in the chart legend to show or hide its line and points. Al
 
 - [Untitled Auto Title](https://github.com/remriel/obsidian-untitled-auto-title): generate meaningful filenames from untitled Markdown notes.
 - [Acid Xerox](https://github.com/remriel/acid-xerox-theme): a colorful, 90s-inspired Obsidian theme.
+
+If you find this project useful, you can [buy me a coffee](https://buymeacoffee.com/remriel).
