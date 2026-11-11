@@ -1,4 +1,23 @@
-# Progress — trend chart release (2026-11-04)
+# Progress — solid-line chart release (2026-11-10)
+
+**Objective:** make the four trend plots clearer and more sophisticated, use solid lines for each, and publish a verified release.
+
+**Progress: 60%** — chart changes and release metadata prepared; CI and publication remain.
+
+- [x] Identify the live repository, current chart and existing release workflow.
+- [x] Improve the trend plots, selected-day presentation, and missing-score handling without changing stored data.
+- [ ] Verify solid traces, calendar spacing, accessibility, responsive layouts, and existing functionality with synthetic records. Functional and mobile runtime tests pass locally; GitHub CI must run the browser and release-audit checks.
+- [ ] Prepare versioned release notes, publish through the existing workflow, and verify the release and assets.
+
+**Current state:** changes based on `main` at `34a6a120`; published baseline is 1.7.0. Version 1.7.1 is prepared locally. The chart uses solid lines, labeled selected values, density-aware points, and a path break for an explicitly missing score; saved series visibility and transient window/day selection are preserved. A narrow synthetic browser preview was inspected.
+
+**Blockers:** Node child-process creation is denied in this Windows sandbox, so Playwright and the Node-based privacy audit cannot run locally. GitHub CI can run the unchanged release checks. Native Obsidian and physical-device verification have not been performed.
+
+**Next steps:** rebuild the final bundle; commit and push a branch; open a PR and wait for functional, browser, privacy and model CI; resolve any failures; merge to trigger the release; verify the release, tag and assets; update this handoff.
+
+---
+
+# Prior progress — trend chart release (2026-11-04)
 
 **Objective:** improve chart legibility and publish a release.
 

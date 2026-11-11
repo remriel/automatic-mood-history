@@ -50,7 +50,7 @@ async function inspectLayout(page, label) {
         await page.evaluate(options => fixture.configure(options), { theme, paneWidth: width, count: 32, longText: true });
         await inspectLayout(page, `${theme} ${width}px pane inside a 1600px window`);
         assert.strictEqual(await page.locator(".auto-mood-day").count(), 32, "all days remain available");
-        const pointCounts = await page.evaluate(() => ({ expected: Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').length * 4, actual: document.querySelectorAll('.auto-mood-svg circle').length }));
+        const pointCounts = await page.evaluate(() => ({ expected: Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').length * 4, actual: document.querySelectorAll('.auto-mood-svg .data-point').length }));
         assert.strictEqual(pointCounts.actual, pointCounts.expected, "every chart series retains every valid day");
         const graph = await page.locator(".auto-mood-svg").evaluate(svg => ({ width: svg.viewBox.baseVal.width, cssWidth: svg.clientWidth, labels: svg.querySelectorAll(".date-label").length }));
         assert(Math.abs(graph.width - graph.cssWidth) <= 5, "chart redraws for its actual width");
@@ -61,10 +61,11 @@ async function inspectLayout(page, label) {
       const records = Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').sort((a, b) => a.date.localeCompare(b.date));
       records[0].intensityScore = null;
       records[1].intensityScore = 5;
+      records[2].intensityScore = null;
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
       const svg = document.querySelector('.auto-mood-svg');
       const marks = [...svg.querySelectorAll('circle[data-series="intensityScore"]')];
-      if (marks.length !== records.length - 1) throw new Error('Missing intensity is omitted rather than plotted as zero');
+      if (marks.length !== records.length - 2) throw new Error('Missing intensity is omitted rather than plotted as zero');
       const mark = marks[0];
       if (!mark.querySelector('title').textContent.includes(records[1].date + ': Intensity 5/5')) throw new Error('Intensity tooltip uses saved score and date');
       const top = Number(svg.querySelectorAll('.grid[data-grid="intensityScore"]')[4].getAttribute('y1'));
@@ -72,9 +73,17 @@ async function inspectLayout(page, label) {
       if (svg.querySelectorAll('.series-heading').length !== 4) throw new Error('Each metric has a separate labeled chart');
       if (!document.querySelector('.auto-mood-cards').textContent.includes('AVG INTENSITY')) throw new Error('Intensity average is present');
       const traces = [...svg.querySelectorAll('.series')];
-      if (new Set(traces.map(t => t.getAttribute('stroke-dasharray'))).size !== 4) throw new Error('Series have distinct line patterns');
+      if (traces.length !== 4 || traces.some(t => getComputedStyle(t).strokeDasharray !== 'none')) throw new Error('Each series has a solid line');
+      if ([...document.querySelectorAll('.auto-mood-legend-swatch')].some(swatch => getComputedStyle(swatch).borderTopStyle !== 'solid')) throw new Error('Legend swatches match the solid lines');
+      const intensityPath = svg.querySelector('.series[data-series="intensityScore"]').getAttribute('d');
+      if ((intensityPath.match(/M/g) || []).length !== 2) throw new Error('A missing score breaks the intensity line');
       if (![...document.querySelectorAll('.auto-mood-chart-legend li')].some(li => li.textContent === 'Intensity')) throw new Error('Intensity legend is visible');
       if (!svg.getAttribute('aria-label').includes('intensity')) throw new Error('Accessible chart description includes intensity');
+      const slider = document.querySelector('.auto-mood-day-slider');
+      slider.value = '2';
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+      if (!document.querySelector('.auto-mood-readout-value[data-metric="intensityScore"]').textContent.includes('—')) throw new Error('Missing selected score is shown in the readout');
+      if (svg.querySelectorAll('.selected-point').length !== 3) throw new Error('Missing score has no selected point');
     });
     await page.evaluate(() => {
       fixture.configure({ paneWidth: 680, count: 6 });
@@ -84,7 +93,7 @@ async function inspectLayout(page, label) {
       records[0].confidenceReason = "No content was provided for analysis, so the emotional state cannot be determined.";
       fixture.plugin.records = fixture.plugin.validateRecords(fixture.plugin.records);
       fixture.plugin.renderDashboard(document.getElementById("dashboard"));
-      const marks = [...document.querySelectorAll(".auto-mood-svg circle")];
+      const marks = [...document.querySelectorAll(".auto-mood-svg .data-point")];
       if (marks.length !== 20) throw new Error("Exempt date must have zero chart points");
       if (marks.some(mark => mark.querySelector("title")?.textContent.includes(excludedDate))) throw new Error("Exempt date plotted");
       if (!document.querySelector(".auto-mood-insufficient")) throw new Error("Exempt date must show no scores in the history");
@@ -122,6 +131,9 @@ async function inspectLayout(page, label) {
     await page.keyboard.press('Home');
     assert.equal(await slider.getAttribute('aria-valuetext'), '2099-01-01');
     assert((await page.locator('.auto-mood-day-readout').innerText()).includes('Mood 1/5'), 'keyboard selection exposes values');
+    assert.equal(await page.locator('.auto-mood-svg .selected-score').first().textContent(), '1/5', 'each plot labels the selected score');
+    const selectedX = await page.locator('.auto-mood-svg .selected-point').first().getAttribute('cx');
+    assert.equal(Number(selectedX), positions[0], 'selected point follows the keyboard-selected day');
     await page.getByRole('button', { name: '90 days', exact: true }).click();
     assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 3, 'window includes its 90-day boundary and excludes older records');
     assert.equal(await slider.getAttribute('aria-valuetext'), '2099-04-01');

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.1
+
+- Draw each metric as a solid line with a matching legend and clearer selected-day values.
+- Reduce point clutter in dense histories and highlight the selected day in each plot.
+- Break a metric's line at explicitly missing scores, while retaining calendar spacing and all recorded points.
+
 ## 1.7.0
 
 - Separate the four series into aligned plots and add average intensity to the summary.

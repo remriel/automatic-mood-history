@@ -2525,6 +2525,21 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       });
       return { button, days };
     });
+    const series = [
+      ["Mood", "moodScore", "var(--amh-series-mood)"],
+      ["Energy", "energyScore", "var(--amh-series-energy)"],
+      ["Connection", "connectionScore", "var(--amh-series-connection)"],
+      ["Intensity", "intensityScore", "var(--amh-series-intensity)"]
+    ];
+    const legend = section.createEl("ul", { cls: "auto-mood-chart-legend", attr: { "aria-label": "Chart series" } });
+    for (const [label, , color] of series) {
+      const item = legend.createEl("li");
+      const swatch = item.createEl("span", { cls: "auto-mood-legend-swatch", attr: { "aria-hidden": "true" } });
+      swatch.style.borderTopColor = color;
+      swatch.dataset.series = label.toLowerCase();
+      item.createEl("span", { text: label });
+    }
+
     const chart = section.createDiv({ cls: "auto-mood-chart" });
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("width", "100%");
@@ -2533,22 +2548,6 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     svg.setAttribute("aria-label", "Mood, energy, connection, and intensity scores by date on a one-to-five scale");
     svg.classList.add("auto-mood-svg");
     chart.appendChild(svg);
-    const series = [
-      ["Mood", "moodScore", "var(--amh-series-mood)", "none"],
-      ["Energy", "energyScore", "var(--amh-series-energy)", "10 5"],
-      ["Connection", "connectionScore", "var(--amh-series-connection)", "3 5"],
-      ["Intensity", "intensityScore", "var(--amh-series-intensity)", "12 4 3 4"]
-    ];
-    const legend = section.createEl("ul", { cls: "auto-mood-chart-legend", attr: { "aria-label": "Chart series" } });
-    for (const [label, , color, dashArray] of series) {
-      const item = legend.createEl("li");
-      const swatch = item.createEl("span", { cls: "auto-mood-legend-swatch", attr: { "aria-hidden": "true" } });
-      swatch.style.borderTopColor = color;
-      swatch.style.borderTopStyle = dashArray === "none" ? "solid" : label === "Connection" ? "dotted" : "dashed";
-      swatch.dataset.series = label.toLowerCase();
-      item.createEl("span", { text: label });
-    }
-
     this.installChartSeriesControls(svg, legend, series);
     const explorer = section.createDiv({ cls: "auto-mood-explorer" });
     const explorerLabel = explorer.createEl("label", { text: "Explore a recorded day", attr: { for: `amh-day-${Math.random().toString(36).slice(2)}` } });
@@ -2572,7 +2571,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const draw = (availableWidth) => {
       const width = Math.max(1, Math.floor(availableWidth));
       previousWidth = width;
-      rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded days; gaps are not estimates.`);
+      rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded scores, not estimates for unrecorded days. A missing score breaks its line. Values at right reflect the selected day.`);
       updateReadout();
       const hidden = new Set(this.settings.hiddenChartSeries || []);
       const active = series.filter(([, property]) => !hidden.has(property));
@@ -2593,24 +2592,39 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         target.appendChild(node);
         return node;
       };
-      make("title", {}, "Mood, energy, connection, and intensity trend. Full daily values are listed below.");
+      make("title", {}, "Mood, energy, connection, and intensity trend. Select a recorded day to see its scores below.");
       const times = shown.map(record => Date.parse(`${record.date}T00:00:00Z`));
       const span = times[times.length - 1] - times[0];
       const x = (index) => left + (span ? (times[index] - times[0]) * plotWidth / span : plotWidth / 2);
+      active.forEach((_, row) => {
+        if (row % 2 === 0) make("rect", { x: 0, y: row * rowHeight, width, height: rowHeight, class: "series-lane", "aria-hidden": "true" });
+      });
       make("line", { x1: x(selected), y1: top, x2: x(selected), y2: height - 36, class: "selection-guide", "aria-hidden": "true" });
-      active.forEach(([label, property, color, dashArray], row) => {
+      active.forEach(([label, property, color], row) => {
         const rowTop = row * rowHeight;
         const y = score => rowTop + top + (5 - score) * 22;
         make("text", { x: left, y: rowTop + 16, class: "series-heading" }, label.toUpperCase());
+        const selectedScore = shown[selected][property];
+        make("text", { x: width - right, y: rowTop + 16, class: "selected-score", "text-anchor": "end", fill: color }, Number.isFinite(selectedScore) ? `${selectedScore}/5` : "—");
         for (let score = 1; score <= 5; score += 1) {
-          make("line", { x1: left, y1: y(score), x2: width - right, y2: y(score), class: "grid", "data-grid": property });
+          make("line", { x1: left, y1: y(score), x2: width - right, y2: y(score), class: "grid", "data-grid": property, "data-score": score });
           make("text", { x: 12, y: y(score) + 4, class: "axis-label" }, String(score));
         }
         const valid = shown.map((record, index) => ({ record, index })).filter(({ record }) => Number.isFinite(record[property]));
-        make("polyline", { points: valid.map(({ record, index }) => `${x(index)},${y(record[property])}`).join(" "), fill: "none", stroke: color, "stroke-width": 3, "stroke-dasharray": dashArray, class: "series", "data-series": property, "vector-effect": "non-scaling-stroke" });
+        let previousIndex = -2;
+        const path = valid.map(({ record, index }) => {
+          const command = index === previousIndex + 1 ? "L" : "M";
+          previousIndex = index;
+          return `${command}${x(index)},${y(record[property])}`;
+        }).join(" ");
+        make("path", { d: path, fill: "none", stroke: color, "stroke-width": 3, "stroke-linecap": "round", "stroke-linejoin": "round", class: "series", "data-series": property, "vector-effect": "non-scaling-stroke" });
+        const pointRadius = Math.max(1.4, Math.min(3.5, plotWidth / Math.max(valid.length, 1) / 3));
         for (const { record, index } of valid) {
-          const point = make("circle", { cx: x(index), cy: y(record[property]), r: 3.5, fill: color, stroke: "var(--amh-chart-outline)", "stroke-width": 1.5, "data-series": property });
+          const point = make("circle", { cx: x(index), cy: y(record[property]), r: pointRadius, fill: color, class: "data-point", "data-series": property });
           make("title", {}, `${record.date}: ${label} ${record[property]}/5`, point);
+        }
+        if (Number.isFinite(selectedScore)) {
+          make("circle", { cx: x(selected), cy: y(selectedScore), r: 6, fill: color, stroke: "var(--amh-surface)", "stroke-width": 2.5, class: "selected-point", "aria-hidden": "true" });
         }
       });
       // Keep every data point, but limit date labels to the actual pane width.
