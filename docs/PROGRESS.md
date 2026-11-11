@@ -2,18 +2,18 @@
 
 **Objective:** make the four trend plots clearer and more sophisticated, use solid lines for each, and publish a verified release.
 
-**Progress: 60%** — chart changes and release metadata prepared; CI and publication remain.
+**Progress: 100%** — version 1.7.1 is published and its release assets are verified against the merged source.
 
 - [x] Identify the live repository, current chart and existing release workflow.
 - [x] Improve the trend plots, selected-day presentation, and missing-score handling without changing stored data.
-- [ ] Verify solid traces, calendar spacing, accessibility, responsive layouts, and existing functionality with synthetic records. Functional and mobile runtime tests pass locally; GitHub CI must run the browser and release-audit checks.
-- [ ] Prepare versioned release notes, publish through the existing workflow, and verify the release and assets.
+- [x] Verify solid traces, calendar spacing, accessibility, responsive layouts, and existing functionality with synthetic records.
+- [x] Publish [1.7.1](https://github.com/remriel/automatic-mood-history/releases/tag/1.7.1), verify the release/tag and compare the three plugin files with their merged source blobs; validate the optional model.
 
-**Current state:** changes based on `main` at `34a6a120`; published baseline is 1.7.0. Version 1.7.1 is prepared locally. The chart uses solid lines, labeled selected values, density-aware points, and a path break for an explicitly missing score; saved series visibility and transient window/day selection are preserved. A narrow synthetic browser preview was inspected.
+**Current state:** PR #15 merged as `fdb536a6536a01abb642ab4a48727d0f36c6842b`, the release tag points to that commit, and all four assets are published. The chart uses solid lines, labeled selected values, density-aware points, and a path break for an explicitly missing score; saved series visibility and transient window/day selection are preserved.
 
-**Blockers:** Node child-process creation is denied in this Windows sandbox, so Playwright and the Node-based privacy audit cannot run locally. GitHub CI can run the unchanged release checks. Native Obsidian and physical-device verification have not been performed.
+**Verification:** local functional/mobile-runtime tests and a narrow synthetic browser preview passed. [PR CI](https://github.com/remriel/automatic-mood-history/actions/runs/42982248734), [main CI](https://github.com/remriel/automatic-mood-history/actions/runs/42982845268), and [release checks](https://github.com/remriel/automatic-mood-history/actions/runs/42982845506) passed, including browser emulation and the privacy audit. The release workflow produced attestations, but local Sigstore verification could not initialize; file-to-source blob comparison passed.
 
-**Next steps:** rebuild the final bundle; commit and push a branch; open a PR and wait for functional, browser, privacy and model CI; resolve any failures; merge to trigger the release; verify the release, tag and assets; update this handoff.
+**Remaining checks:** native Obsidian and physical-device testing have not been performed. Next, install 1.7.1 in a separate test vault, inspect sparse/dense histories on desktop and phones, and gather feedback on gap interpretation and the separate-plot layout.
 
 ---
 

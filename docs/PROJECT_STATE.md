@@ -8,11 +8,12 @@ Automatic Mood History is a local-first Obsidian plugin for desktop and mobile. 
 - Recorded scores retain calendar spacing. An explicit missing metric value breaks that metric's path; a span between recorded dates is still a connection, not an estimate for days without records. All valid points remain present; their radius shrinks in dense plots.
 - A guide and emphasized point identify the selected date; each lane displays the selected score. The slider/readout, date windows and saved-series behavior remain unchanged. Distinct labels and separate lanes avoid relying on color alone.
 - Relevant files: `renderTrendChart` in `src/main.js`, the generated `main.js`, `styles.css`, `tests/layout.test.js`, `tests/mobile-layout.test.js`, and `docs/RELEASE_NOTES_1.7.1.md`.
-- Local functional and mobile runtime tests passed with synthetic data. This Windows sandbox denied Node child-process creation, preventing the local Playwright runner and Node-based release audit from starting; GitHub CI must run those checks before release. A synthetic narrow browser preview was inspected. Native Obsidian and physical devices remain unverified.
+- Functional, mobile runtime, privacy, desktop layout, Android Chromium/iPhone WebKit emulation and Moodring model checks passed in [PR CI](https://github.com/remriel/automatic-mood-history/actions/runs/42982248734), [main CI](https://github.com/remriel/automatic-mood-history/actions/runs/42982845268), and the [release workflow](https://github.com/remriel/automatic-mood-history/actions/runs/42982845506). A narrow synthetic browser preview was also inspected. Native Obsidian and physical devices remain unverified.
+- This Windows sandbox denied Node child-process creation, so the full local Playwright runner and Node-based release audit could not run; CI ran them successfully. Release workflow attestation succeeded, but local `gh attestation verify` could not initialize a Sigstore verifier, so independent cryptographic verification was not established.
 
 ## RESUME HERE
 
-Version 1.7.1 is prepared but not yet published. Build the bundle after the last source edit, commit and push a branch, run the repository CI on a pull request, then merge only after checks pass. The manifest change on `main` triggers the release workflow; wait for completion and verify the tag, four assets and source parity. Update `docs/PROGRESS.md` and this section with observed results.
+Version [1.7.1](https://github.com/remriel/automatic-mood-history/releases/tag/1.7.1) is published from merge/tag `fdb536a6536a01abb642ab4a48727d0f36c6842b`. All four assets were downloaded; `main.js`, `manifest.json`, and `styles.css` matched the corresponding Git blobs, and the optional Moodring model passed its validator. Next, inspect the released plugin in an isolated Obsidian test vault and on physical phones; use real user feedback to assess gap interpretation and whether a combined comparison mode is desirable.
 
 ---
 
