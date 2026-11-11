@@ -42,6 +42,12 @@ async function run() {
       }
       await page.setViewportSize({ width: 390, height: 844 });
       await page.evaluate(() => fixture.configure({ count: 32 }));
+      assert.equal(await page.getByRole("button", { name: "14 days", exact: true }).getAttribute("aria-pressed"), "true", "14 days is the default on mobile");
+      for (const label of ["7 days", "60 days", "14 days"]) {
+        await page.getByRole("button", { name: label, exact: true }).tap();
+        assert.equal(await page.getByRole("button", { name: label, exact: true }).getAttribute("aria-pressed"), "true");
+        await inspect(page, `${name}: ${label} window`);
+      }
       await page.getByRole("button", { name: "30 days", exact: true }).tap();
       assert.equal(await page.getByRole("button", { name: "30 days", exact: true }).getAttribute("aria-pressed"), "true");
       const slider = page.getByRole("slider", { name: "Explore a recorded day" });

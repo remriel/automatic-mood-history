@@ -50,6 +50,7 @@ async function inspectLayout(page, label) {
         await page.evaluate(options => fixture.configure(options), { theme, paneWidth: width, count: 32, longText: true });
         await inspectLayout(page, `${theme} ${width}px pane inside a 1600px window`);
         assert.strictEqual(await page.locator(".auto-mood-day").count(), 32, "all days remain available");
+        await page.getByRole("button", { name: "All", exact: true }).click();
         const pointCounts = await page.evaluate(() => ({ expected: Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').length * 4, actual: document.querySelectorAll('.auto-mood-svg .data-point').length }));
         assert.strictEqual(pointCounts.actual, pointCounts.expected, "every chart series retains every valid day");
         const graph = await page.locator(".auto-mood-svg").evaluate(svg => ({ width: svg.viewBox.baseVal.width, cssWidth: svg.clientWidth, labels: svg.querySelectorAll(".date-label").length }));
@@ -63,6 +64,7 @@ async function inspectLayout(page, label) {
       records[1].intensityScore = 5;
       records[2].intensityScore = null;
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+      [...document.querySelectorAll('.auto-mood-range-controls button')].find(button => button.textContent === 'All').click();
       const svg = document.querySelector('.auto-mood-svg');
       const marks = [...svg.querySelectorAll('circle[data-series="intensityScore"]')];
       if (marks.length !== records.length - 2) throw new Error('Missing intensity is omitted rather than plotted as zero');
@@ -115,6 +117,38 @@ async function inspectLayout(page, label) {
     }
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
+    // Check inclusive calendar boundaries, default selection and unchanged history.
+    await page.evaluate(() => {
+      fixture.configure({ paneWidth: 640, count: 10 });
+      const values = Object.values(fixture.plugin.records);
+      const dates = ['2099-01-31', '2099-02-01', '2099-02-02', '2099-03-18', '2099-03-19', '2099-03-20', '2099-03-25', '2099-03-26', '2099-03-27', '2099-04-01'];
+      fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'created-at-local-date', status: 'complete' }]));
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    const rangeRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
+    const historyBefore = await page.locator('.auto-mood-day').count();
+    const cardsBefore = await page.locator('.auto-mood-cards').innerText();
+    const windowDates = {
+      '7 days': ['2099-03-26', '2099-03-27', '2099-04-01'],
+      '14 days': ['2099-03-19', '2099-03-20', '2099-03-25', '2099-03-26', '2099-03-27', '2099-04-01'],
+      '60 days': ['2099-02-01', '2099-02-02', '2099-03-18', '2099-03-19', '2099-03-20', '2099-03-25', '2099-03-26', '2099-03-27', '2099-04-01']
+    };
+    const chartDates = () => page.locator('.auto-mood-svg circle[data-series="moodScore"]').evaluateAll(nodes => nodes.map(node => node.querySelector('title').textContent.slice(0, 10)));
+    assert.equal(await page.getByRole('button', { name: '14 days', exact: true }).getAttribute('aria-pressed'), 'true', '14 days is selected on opening');
+    assert.deepStrictEqual(await chartDates(), windowDates['14 days'], 'default includes the 14-day boundary');
+    for (const label of ['7 days', '14 days', '60 days']) {
+      await page.getByRole('button', { name: label, exact: true }).click();
+      assert.equal(await page.getByRole('button', { name: label, exact: true }).getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.locator('.auto-mood-range-controls button[aria-pressed="true"]').count(), 1, 'only the selected window is pressed');
+      assert.deepStrictEqual(await chartDates(), windowDates[label], `${label} includes its boundary and excludes the previous day`);
+      assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).getAttribute('aria-valuetext'), '2099-04-01');
+    }
+    assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), rangeRecordsBefore, 'changing range does not alter records');
+    assert.equal(await page.locator('.auto-mood-day').count(), historyBefore, 'changing range does not filter history');
+    assert.equal(await page.locator('.auto-mood-cards').innerText(), cardsBefore, 'changing range does not filter summary cards');
+    await page.evaluate(() => fixture.plugin.renderDashboard(document.getElementById('dashboard')));
+    assert.equal(await page.getByRole('button', { name: '14 days', exact: true }).getAttribute('aria-pressed'), 'true', 'opening the dashboard again restores the default');
+    assert.deepStrictEqual(await chartDates(), windowDates['14 days']);
     // Irregular calendar gaps and window boundaries must not become equally spaced observations.
     await page.evaluate(() => {
       fixture.configure({ paneWidth: 640, count: 4 });
@@ -122,6 +156,7 @@ async function inspectLayout(page, label) {
       const dates = ['2099-01-01', '2099-01-02', '2099-01-11', '2099-04-01'];
       fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'created-at-local-date', status: 'complete' }]));
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+      [...document.querySelectorAll('.auto-mood-range-controls button')].find(button => button.textContent === 'All').click();
     });
     assert.equal(await page.locator('.auto-mood-card').filter({ hasText: 'AVG INTENSITY' }).locator('.auto-mood-card-value').innerText(), '3.5', 'intensity card averages scored records');
     const positions = await page.locator('.auto-mood-svg circle[data-series="moodScore"]').evaluateAll(nodes => nodes.map(node => Number(node.getAttribute('cx'))));

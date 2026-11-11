@@ -387,7 +387,7 @@
 .auto-mood-day-date a.internal-link {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 45px;
 }
 
 .auto-mood-dashboard button:focus-visible,
