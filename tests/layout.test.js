@@ -127,28 +127,51 @@ async function inspectLayout(page, label) {
     });
     const rangeRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
     const historyBefore = await page.locator('.auto-mood-day').count();
-    const cardsBefore = await page.locator('.auto-mood-cards').innerText();
     const windowDates = {
       '7 days': ['2099-03-26', '2099-03-27', '2099-04-01'],
       '14 days': ['2099-03-19', '2099-03-20', '2099-03-25', '2099-03-26', '2099-03-27', '2099-04-01'],
       '60 days': ['2099-02-01', '2099-02-02', '2099-03-18', '2099-03-19', '2099-03-20', '2099-03-25', '2099-03-26', '2099-03-27', '2099-04-01']
     };
+    const windowCards = {
+      '7 days': ['3', '4.0', '2.7', '2.0', '3.3'],
+      '14 days': ['6', '3.3', '2.8', '3.0', '2.7'],
+      '30 days': ['7', '3.4', '2.6', '2.9', '3.0'],
+      '60 days': ['9', '3.2', '3.0', '2.9', '3.1'],
+      '90 days': ['10', '3.0', '3.0', '3.0', '3.0'],
+      '1 year': ['10', '3.0', '3.0', '3.0', '3.0'],
+      'All': ['10', '3.0', '3.0', '3.0', '3.0']
+    };
     const chartDates = () => page.locator('.auto-mood-svg circle[data-series="moodScore"]').evaluateAll(nodes => nodes.map(node => node.querySelector('title').textContent.slice(0, 10)));
+    const cardValues = () => page.locator('.auto-mood-card-value').allTextContents();
     assert.equal(await page.getByRole('button', { name: '14 days', exact: true }).getAttribute('aria-pressed'), 'true', '14 days is selected on opening');
     assert.deepStrictEqual(await chartDates(), windowDates['14 days'], 'default includes the 14-day boundary');
-    for (const label of ['7 days', '14 days', '60 days']) {
+    assert.deepStrictEqual(await cardValues(), windowCards['14 days'], 'default summary reflects the 14-day window');
+    for (const label of ['7 days', '14 days', '30 days', '60 days', '90 days', '1 year', 'All']) {
       await page.getByRole('button', { name: label, exact: true }).click();
       assert.equal(await page.getByRole('button', { name: label, exact: true }).getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('.auto-mood-range-controls button[aria-pressed="true"]').count(), 1, 'only the selected window is pressed');
-      assert.deepStrictEqual(await chartDates(), windowDates[label], `${label} includes its boundary and excludes the previous day`);
+      if (windowDates[label]) assert.deepStrictEqual(await chartDates(), windowDates[label], `${label} includes its boundary and excludes the previous day`);
+      assert.deepStrictEqual(await cardValues(), windowCards[label], `${label} summary uses the same records as the chart`);
       assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).getAttribute('aria-valuetext'), '2099-04-01');
     }
     assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), rangeRecordsBefore, 'changing range does not alter records');
     assert.equal(await page.locator('.auto-mood-day').count(), historyBefore, 'changing range does not filter history');
-    assert.equal(await page.locator('.auto-mood-cards').innerText(), cardsBefore, 'changing range does not filter summary cards');
     await page.evaluate(() => fixture.plugin.renderDashboard(document.getElementById('dashboard')));
     assert.equal(await page.getByRole('button', { name: '14 days', exact: true }).getAttribute('aria-pressed'), 'true', 'opening the dashboard again restores the default');
     assert.deepStrictEqual(await chartDates(), windowDates['14 days']);
+    assert.deepStrictEqual(await cardValues(), windowCards['14 days']);
+    await page.evaluate(() => {
+      for (const date of ['2099-03-26', '2099-03-27']) fixture.plugin.records[date].energyScore = null;
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    await page.getByRole('button', { name: '7 days', exact: true }).click();
+    assert.equal((await cardValues())[2], '2.0', 'missing scores are excluded from the average');
+    await page.evaluate(() => {
+      fixture.plugin.records['2099-04-01'].energyScore = null;
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    await page.getByRole('button', { name: '7 days', exact: true }).click();
+    assert.equal((await cardValues())[2], '—', 'a metric without scores in the selected window has no average');
     // Irregular calendar gaps and window boundaries must not become equally spaced observations.
     await page.evaluate(() => {
       fixture.configure({ paneWidth: 640, count: 4 });

@@ -46,6 +46,7 @@ async function run() {
       for (const label of ["7 days", "60 days", "14 days"]) {
         await page.getByRole("button", { name: label, exact: true }).tap();
         assert.equal(await page.getByRole("button", { name: label, exact: true }).getAttribute("aria-pressed"), "true");
+        assert.equal(await page.locator(".auto-mood-card").filter({ hasText: "DAYS SCORED" }).locator(".auto-mood-card-value").innerText(), String(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count()), "summary follows the visible chart days");
         await inspect(page, `${name}: ${label} window`);
       }
       await page.getByRole("button", { name: "30 days", exact: true }).tap();
