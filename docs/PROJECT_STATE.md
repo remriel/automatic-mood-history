@@ -1,8 +1,31 @@
-# Project state — chart update (2026-11-10)
+# Project state — range-aware summaries (2026-11-11)
 
 Automatic Mood History is a local-first Obsidian plugin for desktop and mobile. `src/main.js` owns dashboard rendering; `scripts/build.js` bundles it with the analysis modules into tracked `main.js`; `styles.css` supplies the dashboard styling. The public repository must never contain private vault records or credentials.
 
-## 1.7.1 chart changes
+## 1.7.3 range-aware summaries (published)
+
+- Explicit user follow-up: make the summary averages reflect the selected trend range and publish 1.7.3.
+- Implementation behavior: the Days scored tile follows the selected range too; history remains unfiltered. Treat the Days scored tile behavior as an implementation extension of the explicit average request.
+- Version [1.7.3](https://github.com/remriel/automatic-mood-history/releases/tag/1.7.3) is published from PR #17 merge `73245bdfa2a0ba5bf83dadb84efb72fa3ca0fa61`. Main CI [43092864719](https://github.com/remriel/automatic-mood-history/actions/runs/43092864719) and release workflow [43092864700](https://github.com/remriel/automatic-mood-history/actions/runs/43092864700) passed; local build/check and desktop/mobile layouts also passed.
+- 1.7.2 installation observation: the version changed to 1.7.2 during a pre-replacement check, without a change made by this task. Its files matched the official 1.7.2 assets at that check. Do not infer who performed the update.
+- Relevant files: src/main.js, main.js, tests/layout.test.js, tests/mobile-layout.test.js, manifest.json, package.json, package-lock.json, versions.json, README.md, CHANGELOG.md, and docs/RELEASE_NOTES_1.7.3.md.
+
+## RESUME HERE
+
+The installed Remy plugin is on 1.7.3. Its manifest and stylesheet match the release assets byte-for-byte; its bundle matches with the existing `/* nosourcemap */` suffix. All release asset SHA-256 values matched GitHub. No vault file was modified by the installation check, and `data.json` and mood entries were not read. Native Obsidian interaction remains unverified.
+
+---
+
+## 1.7.2 chart-window update (published; previous release)
+
+- Explicit user request: add 7-, 14-, and 60-day trend windows, default to 14 days, and publish 1.7.2.
+- Inherited chart design: preserve the existing 30-day, 90-day, 365-day, and all-history choices; fixed windows remain inclusive through the latest scored date. Version 1.7.3 makes summary cards follow these ranges too.
+- [Version 1.7.2](https://github.com/remriel/automatic-mood-history/releases/tag/1.7.2) is published from PR #16 merge `d6565cf9d2c07cebfb8eb6079b44ab2c6bac22fc`, with four release assets. PR CI 43090961133, main CI 43091108921, and release workflow 43091109134 passed. Local desktop/mobile layout checks passed, including mobile layout after the 45px touch-target fix. Minimum supported Obsidian version remains 1.5.0.
+- Relevant files: src/main.js, main.js, tests/layout.test.js, tests/mobile-layout.test.js, manifest.json, package.json, package-lock.json, versions.json, README.md, CHANGELOG.md, and docs/RELEASE_NOTES_1.7.2.md.
+
+---
+
+## 1.7.1 chart changes (published)
 
 - Four aligned SVG plots use solid, separately labeled traces and matching legend swatches. The controls precede the chart, remain keyboard/touch accessible, and retain saved visibility.
 - Recorded scores retain calendar spacing. An explicit missing metric value breaks that metric's path; a span between recorded dates is still a connection, not an estimate for days without records. All valid points remain present; their radius shrinks in dense plots.
@@ -11,7 +34,7 @@ Automatic Mood History is a local-first Obsidian plugin for desktop and mobile. 
 - Functional, mobile runtime, privacy, desktop layout, Android Chromium/iPhone WebKit emulation and Moodring model checks passed in [PR CI](https://github.com/remriel/automatic-mood-history/actions/runs/42982248734), [main CI](https://github.com/remriel/automatic-mood-history/actions/runs/42982845268), and the [release workflow](https://github.com/remriel/automatic-mood-history/actions/runs/42982845506). A narrow synthetic browser preview was also inspected. Native Obsidian and physical devices remain unverified.
 - This Windows sandbox denied Node child-process creation, so the full local Playwright runner and Node-based release audit could not run; CI ran them successfully. Release workflow attestation succeeded, but local `gh attestation verify` could not initialize a Sigstore verifier, so independent cryptographic verification was not established.
 
-## RESUME HERE
+## 1.7.1 resume point (historical)
 
 Version [1.7.1](https://github.com/remriel/automatic-mood-history/releases/tag/1.7.1) is published from merge/tag `fdb536a6536a01abb642ab4a48727d0f36c6842b`. All four assets were downloaded; `main.js`, `manifest.json`, and `styles.css` matched the corresponding Git blobs, and the optional Moodring model passed its validator. Next, inspect the released plugin in an isolated Obsidian test vault and on physical phones; use real user feedback to assess gap interpretation and whether a combined comparison mode is desirable.
 
@@ -30,7 +53,7 @@ Automatic Mood History is an Obsidian plugin for desktop and mobile. `src/main.j
 - Relevant code: `renderTrendChart`, `installChartSeriesControls`, `updateChartSeriesVisibility` in `src/main.js`; CSS at the end of `styles.css`; `tests/layout.test.js` and `tests/mobile-layout.test.js`.
 - Avoid treating connected lines as estimates, filtering the underlying records, or using private vaults for QA. Physical devices and native Obsidian were not tested for this change.
 
-## RESUME HERE
+## 1.7.0 resume point (historical)
 
 Version 1.7.0 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.7.0 from merge commit `6ea69593aabfd56ed4b13af2bb5e4673bc6cf831`. Release and main CI passed; the three plugin assets match source blobs and main.js provenance verified. Read `docs/PROGRESS.md`, inspect Git and current release/CI before continuing. The release workflow is triggered by a `manifest.json` change on main, runs tests, trains the optional Moodring model, attests and publishes four assets. Next, verify native Obsidian and physical devices with a test vault.
 
@@ -116,7 +139,7 @@ Audit baseline was `493f53c` (release 1.2.8). The follow-up candidate versions t
 - Legacy/current groups with the same date compete for one record key. Existing legacy-source priority must be preserved until an explicit migration is designed.
 - Value snapshots cannot detect settings that change away and back between awaits. An epoch counter across all mutation paths is a future hardening option.
 
-## RESUME HERE
+## 1.2.9 audit resume point (historical)
 
 Read this file, `docs/PROGRESS.md`, `docs/AUDIT_REPORT.md`, and `docs/SOL_6_1_PLAN.md`, then inspect Git status/diff and the actual code. The audit fixes are on `fix/audit-reliability-handoff`; do not redo them. Start the follow-up with persistence recovery, lifecycle completion, and settings/path validation as ordered in the Sol 6.1 plan. Preserve existing records, provider consent, legacy routing, and private installed extensions. Merge/release/native-install status must be verified from GitHub and the progress file; do not infer publication from the unchanged manifest version.
 

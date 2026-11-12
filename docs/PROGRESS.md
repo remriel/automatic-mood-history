@@ -1,4 +1,26 @@
-# Progress — solid-line chart release (2026-11-10)
+# Progress — 1.7.3 range-aware summaries (2026-11-11)
+
+**Objective:** update the average-score tiles to reflect the selected chart range and publish 1.7.3. The Days scored tile also follows the range so its count matches the averages.
+
+**Progress: 100%** — version 1.7.3 is published and the installed plugin files are verified.
+
+- [x] Add all seven ranges and default the chart to 14 days in 1.7.2.
+- [x] Update the average and Days scored tiles as the range changes in 1.7.3; preserve full history.
+- [x] Pass local desktop and Android/iPhone layout checks; pass main CI and release workflow.
+- [x] Publish [1.7.3](https://github.com/remriel/automatic-mood-history/releases/tag/1.7.3); tag points to merge `73245bdfa2a0ba5bf83dadb84efb72fa3ca0fa61`.
+- [x] Verify installed version 1.7.3 and all three plugin files against the release assets.
+
+**Current state:** [1.7.3](https://github.com/remriel/automatic-mood-history/releases/tag/1.7.3) is published from PR #17 merge `73245bdfa2a0ba5bf83dadb84efb72fa3ca0fa61`. Its four release assets are available. The average tiles and Days scored count use the selected range; history remains full.
+
+**Verification:** main CI [43092864719](https://github.com/remriel/automatic-mood-history/actions/runs/43092864719) and [release workflow 43092864700](https://github.com/remriel/automatic-mood-history/actions/runs/43092864700) passed, along with local build/check and desktop/mobile layout tests. Native Obsidian and physical-device behavior remain unverified.
+
+**Blockers:** none for the requested work.
+
+**Exact next steps:** none required. Native Obsidian interaction and physical-device rendering remain optional follow-up checks.
+
+---
+
+## Previous progress — solid-line chart release (2026-11-10)
 
 **Objective:** make the four trend plots clearer and more sophisticated, use solid lines for each, and publish a verified release.
 
