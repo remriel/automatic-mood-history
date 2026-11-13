@@ -1,3 +1,9 @@
+# 1.7.7
+
+- Add a toggleable 7-calendar-day moving average to each trend plot.
+- Show the seven most common emotions in Composition over time without an aggregated category.
+- Calculate each period?s percentages from the seven displayed emotions only.
+
 # 1.7.6
 
 - Filter Common Emotions by the selected preset or custom date range.

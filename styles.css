@@ -606,6 +606,11 @@
 }
 .auto-mood-range-controls button[aria-pressed="true"] { background: var(--amh-yellow); color: var(--amh-on-accent); box-shadow: 3px 3px 0 var(--amh-shadow); }
 .auto-mood-range-controls button:focus-visible, .auto-mood-day-slider:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
+.auto-mood-average-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; }
+.auto-mood-average-toggle { min-height: 44px; max-width: 100%; padding: 7px 12px; border: 2px solid var(--amh-frame); border-radius: 0; background: var(--amh-surface); color: var(--amh-text); font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; }
+.auto-mood-average-toggle[aria-pressed="true"] { background: var(--amh-yellow); color: var(--amh-on-accent); box-shadow: 3px 3px 0 var(--amh-shadow); }
+.auto-mood-average-toggle:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
+.auto-mood-average-info { flex: 1 1 240px; min-width: 0; margin: 0; font-size: .8rem; color: var(--amh-text); }
 .auto-mood-svg .series-lane { fill: var(--amh-surface-alt); opacity: .55; }
 .auto-mood-svg .selection-guide { stroke: var(--amh-text); stroke-width: 1.5; stroke-dasharray: 2 4; opacity: .55; pointer-events: none; }
 .auto-mood-svg .selected-point { pointer-events: none; }

@@ -183,3 +183,27 @@ Summary callback now disposes/clears/rebuilds an emotion host for selected recor
 
 
 RESUME HERE ? 1.7.6 complete: range-filtered Common Emotions and Composition over time published at https://github.com/remriel/automatic-mood-history/releases/tag/1.7.6. Source merge 4d8df335d62959b33626a2c029ff86bbc6e00c40 (PR #20). CI 43525218693 and Release 43525218747 passed. Four asset digests/source parity and main.js attestation verified. Native testing remains with user. No reanalysis is needed for this display-only update.
+
+
+## Composition top seven ? 1.7.7 in progress
+
+- `renderEmotionComposition` ranks the seven most common distinct-per-record labels across the selected range; remaining labels are excluded from the graph and its per-period denominator. A period containing none of the selected labels stays blank and says ?No top-seven emotions recorded.? Ties are sorted by label as before.
+- There is no synthetic catch-all category. Chart legend, bars, titles and Period details use the actual displayed labels only. The explanation makes the denominator explicit.
+- `tests/layout.test.js` exercises more than seven labels, the exclusion/denominator, blank periods, custom-range reranking and record preservation. The full functional, mobile runtime, desktop/mobile layout and privacy checks passed.
+- Shared AI Brain was unavailable at both configured paths in this session. Do not replace the personal installed bundle and its private extensions with the public bundle.
+
+## RESUME HERE ? top seven
+
+Finish layout checks and review the diff, then publish and verify stable 1.7.7. This is a display-only change and requires no reanalysis.
+
+
+## 1.7.7 moving average and top-seven update in progress
+
+- `trailingMovingAverage` computes each series from available scores in the current and previous six calendar days within the displayed range. It ignores missing scores and emits a point only on scored dates with at least two scores in the window. A sliding window keeps calculation linear in records.
+- `renderTrendChart` draws toggleable dashed average paths and hollow diamond path markers. Marker paths use a separate class from raw score circles; existing chart interactions and raw-score counts remain intact. The readout includes the selected date's average. Defaults to on; range and toggle selections are transient.
+- Composition displays only the top seven emotions within the selected range. Period percentages use only those displayed labels; periods containing none are blank and identified in details. Existing records and the personal installed bundle are untouched.
+- Regression tests cover inclusive date boundaries, null values, custom range boundaries, one-score windows, toggle/series hiding, date readout, top-seven ranking and no mutation. Functional/mobile runtime and desktop/mobile layout checks pass; the privacy audit also passes.
+
+## RESUME HERE ? 1.7.7 combined update
+
+Finish mobile verification, review and publish the release at the user's explicit request, then verify CI and asset hashes. No reanalysis is necessary. The shared AI Brain vault was unavailable at both configured paths.

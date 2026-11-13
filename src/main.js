@@ -57,6 +57,22 @@ function validDate(value) {
   const parsed = new Date(`${value}T12:00:00Z`);
   return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }
+
+// A trailing seven-calendar-day average of scores in the displayed range.
+// Missing values do not contribute, and a point needs two observed scores.
+function trailingMovingAverage(records, times, property) {
+  const windowLength = 6 * 86400000;
+  let first = 0, sum = 0, count = 0;
+  return records.map((record, index) => {
+    while (first < index && times[first] < times[index] - windowLength) {
+      const old = records[first++][property];
+      if (Number.isFinite(old)) { sum -= old; count--; }
+    }
+    const score = record[property];
+    if (Number.isFinite(score)) { sum += score; count++; }
+    return Number.isFinite(score) && count >= 2 ? sum / count : null;
+  });
+}
 const dateFromKey = key => typeof key === "string" && /^(?:created:|detected:|legacy:)?\d{4}-\d{2}-\d{2}$/.test(key) ? key.slice(-10) : "";
 
 function vaultPath(value) {
@@ -1795,6 +1811,15 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       customButton.setAttribute("aria-pressed", "true");
       redraw();
     });
+    let showMovingAverage = true;
+    const averageControls = section.createDiv({ cls: "auto-mood-average-controls" });
+    const averageToggle = averageControls.createEl("button", { cls: "auto-mood-average-toggle", text: "7-day moving average", attr: { type: "button", "aria-pressed": "true" } });
+    averageToggle.addEventListener("click", () => {
+      showMovingAverage = !showMovingAverage;
+      averageToggle.setAttribute("aria-pressed", String(showMovingAverage));
+      redraw();
+    });
+    averageControls.createEl("p", { cls: "auto-mood-average-info", text: "Dashed lines show a trailing 7-calendar-day average of available scores in this range. Each point requires at least two scores." });
     const series = [
       ["Mood", "moodScore", "var(--amh-series-mood)"],
       ["Energy", "energyScore", "var(--amh-series-energy)"],
@@ -1815,7 +1840,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "260");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Mood, energy, connection, and intensity scores by date on a one-to-five scale");
+    svg.setAttribute("aria-label", "Mood, energy, connection, and intensity scores by date on a one-to-five scale, with optional seven-day moving averages");
     svg.classList.add("auto-mood-svg");
     chart.appendChild(svg);
     this.installChartSeriesControls(svg, legend, series);
@@ -1823,7 +1848,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const explorerLabel = explorer.createEl("label", { text: "Explore a recorded day", attr: { for: `amh-day-${Math.random().toString(36).slice(2)}` } });
     const slider = explorer.createEl("input", { cls: "auto-mood-day-slider", attr: { type: "range", id: explorerLabel.getAttribute("for"), min: "0", step: "1" } });
     const readout = explorer.createDiv({ cls: "auto-mood-day-readout", attr: { "aria-live": "polite", "aria-atomic": "true" } });
-    const updateReadout = () => {
+    const updateReadout = averages => {
       const record = shown[selected];
       slider.max = String(shown.length - 1);
       slider.value = String(selected);
@@ -1834,6 +1859,11 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       for (const [label, property] of series) {
         const value = Number.isFinite(record[property]) ? `${record[property]}/5` : "—";
         readout.createEl("span", { cls: "auto-mood-readout-value", text: `${label} ${value}`, attr: { "data-metric": property } });
+        if (showMovingAverage) {
+          const average = averages[property][selected];
+          const averageText = Number.isFinite(average) ? `${average.toFixed(1)}/5` : "—";
+          readout.createEl("span", { cls: "auto-mood-readout-value auto-mood-readout-average", text: `${label} 7-day average ${averageText}`, attr: { "data-average-for": property } });
+        }
       }
     };
     slider.addEventListener("input", () => { selected = Number(slider.value); redraw(); });
@@ -1853,7 +1883,9 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         return;
       }
       rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded scores, not estimates for unrecorded days. A missing score breaks its line. Values at right reflect the selected day.`);
-      updateReadout();
+      const times = shown.map(record => Date.parse(`${record.date}T00:00:00Z`));
+      const averages = Object.fromEntries(series.map(([, property]) => [property, trailingMovingAverage(shown, times, property)]));
+      updateReadout(averages);
       const hidden = new Set(this.settings.hiddenChartSeries || []);
       const active = series.filter(([, property]) => !hidden.has(property));
       const rowHeight = 132;
@@ -1874,7 +1906,6 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         return node;
       };
       make("title", {}, "Mood, energy, connection, and intensity trend. Select a recorded day to see its scores below.");
-      const times = shown.map(record => Date.parse(`${record.date}T00:00:00Z`));
       const span = times[times.length - 1] - times[0];
       const x = (index) => left + (span ? (times[index] - times[0]) * plotWidth / span : plotWidth / 2);
       active.forEach((_, row) => {
@@ -1899,6 +1930,22 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
           return `${command}${x(index)},${y(record[property])}`;
         }).join(" ");
         make("path", { d: path, fill: "none", stroke: color, "stroke-width": 3, "stroke-linecap": "round", "stroke-linejoin": "round", class: "series", "data-series": property, "vector-effect": "non-scaling-stroke" });
+        if (showMovingAverage) {
+          let previousAverageIndex = -2;
+          const averagePath = averages[property].map((value, index) => {
+            if (!Number.isFinite(value)) return "";
+            const command = index === previousAverageIndex + 1 ? "L" : "M";
+            previousAverageIndex = index;
+            return `${command}${x(index)},${y(value)}`;
+          }).filter(Boolean).join(" ");
+          make("path", { d: averagePath, fill: "none", stroke: color, "stroke-width": 2, "stroke-dasharray": "6 4", "stroke-linecap": "round", class: "moving-average-path", "data-series": property, "vector-effect": "non-scaling-stroke" });
+          averages[property].forEach((value, index) => {
+            if (!Number.isFinite(value)) return;
+            const px = x(index), py = y(value);
+            const marker = make("path", { d: `M${px},${py - 3.5} L${px + 3.5},${py} L${px},${py + 3.5} L${px - 3.5},${py} Z`, fill: "var(--amh-surface)", stroke: color, "stroke-width": 2, class: "moving-average-point", "data-series": property, "data-date": shown[index].date, "data-average": value });
+            make("title", {}, `${shown[index].date}: ${label} 7-day average ${value.toFixed(2)}/5`, marker);
+          });
+        }
         const pointRadius = Math.max(1.4, Math.min(3.5, plotWidth / Math.max(valid.length, 1) / 3));
         for (const { record, index } of valid) {
           const point = make("circle", { cx: x(index), cy: y(record[property]), r: pointRadius, fill: color, class: "data-point", "data-series": property });
@@ -1982,26 +2029,24 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const iso = time => new Date(time).toISOString().slice(0, 10);
     const totals = new Map();
     for (const record of records) for (const label of new Set(record.emotions || [])) totals.set(label, (totals.get(label) || 0) + 1);
-    const leaders = [...totals].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 8).map(([label]) => label);
+    const leaders = [...totals].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 7).map(([label]) => label);
     if (!leaders.length) { section.createEl("p", { text: "No recorded emotions in this range." }); return; }
-    const other = Symbol("Other emotions");
-    const labels = [...leaders, ...([...totals.keys()].some(label => !leaders.includes(label)) ? [other] : [])];
-    const colors = ["#b85000", "#335eea", "#9c31a9", "#12774c", "#b72f55", "#6a56bd", "#087d8a", "#957000", "#777777"];
-    const display = label => label === other ? "Other emotions" : label;
+    const labels = leaders;
+    const colors = ["#b85000", "#335eea", "#9c31a9", "#12774c", "#b72f55", "#6a56bd", "#087d8a"];
     const buckets = Array.from({ length: Math.floor((last - first) / day / step) + 1 }, (_, i) => ({ start: first + i * step * day, counts: new Map(), total: 0 }));
     for (const record of records) {
       const bucket = buckets[Math.floor((Date.parse(`${record.date}T00:00:00Z`) - first) / day / step)];
       for (const emotion of new Set(record.emotions || [])) {
-        const label = leaders.includes(emotion) ? emotion : other;
-        bucket.counts.set(label, (bucket.counts.get(label) || 0) + 1); bucket.total++;
+        if (!leaders.includes(emotion)) continue;
+        bucket.counts.set(emotion, (bucket.counts.get(emotion) || 0) + 1); bucket.total++;
       }
     }
-    section.createEl("p", { text: `Share of recorded emotion labels per ${step === 1 ? "day" : `${step}-day period`}. Top emotions in the selected range; remaining labels are grouped as Other emotions. Blank periods have no recorded emotions. Shares describe labels, not emotional intensity.` });
+    section.createEl("p", { text: `Share of the top seven emotion labels in the selected range, per ${step === 1 ? "day" : `${step}-day period`}. Percentages include only the displayed emotions; remaining labels are excluded. Blank periods have no top-seven emotions. Shares describe labels, not emotional intensity.` });
     const legend = section.createEl("ul", { cls: "auto-mood-composition-legend", attr: { "aria-label": "Emotion colors" } });
     labels.forEach((label, i) => {
       const item = legend.createEl("li");
       const swatch = item.createEl("span", { cls: "auto-mood-composition-swatch", attr: { "aria-hidden": "true" } });
-      swatch.style.backgroundColor = colors[i]; item.createEl("span", { text: display(label) });
+      swatch.style.backgroundColor = colors[i]; item.createEl("span", { text: label });
     });
     const chart = section.createDiv({ cls: "auto-mood-composition-chart" });
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -2028,8 +2073,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
           const count = bucket.counts.get(label) || 0;
           if (!count) return;
           const percent = count / bucket.total * 100;
-          const rect = make("rect", { x: left + i * column + 1, y: 208 - (used + percent) * 1.8, width: Math.max(1, column - 2), height: percent * 1.8, fill: colors[color], "data-period": iso(bucket.start), "data-emotion": display(label), "data-share": percent });
-          make("title", {}, `${iso(bucket.start)}: ${display(label)} ${percent.toFixed(1)}% (${count} labels)`, rect);
+          const rect = make("rect", { x: left + i * column + 1, y: 208 - (used + percent) * 1.8, width: Math.max(1, column - 2), height: percent * 1.8, fill: colors[color], "data-period": iso(bucket.start), "data-emotion": label, "data-share": percent });
+          make("title", {}, `${iso(bucket.start)}: ${label} ${percent.toFixed(1)}% (${count} labels)`, rect);
           used += percent;
         });
       });
@@ -2046,8 +2091,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const list = details.createEl("ul", { cls: "auto-mood-composition-details" });
     for (const bucket of buckets) {
       const end = Math.min(last, bucket.start + (step - 1) * day);
-      const values = labels.filter(label => bucket.counts.has(label)).map(label => `${display(label)}: ${bucket.counts.get(label)} (${(bucket.counts.get(label) / bucket.total * 100).toFixed(1)}%)`);
-      list.createEl("li", { text: `${iso(bucket.start)}${end === bucket.start ? "" : ` to ${iso(end)}`}: ${values.join("; ") || "No recorded emotions"}.` });
+      const values = labels.filter(label => bucket.counts.has(label)).map(label => `${label}: ${bucket.counts.get(label)} (${(bucket.counts.get(label) / bucket.total * 100).toFixed(1)}%)`);
+      list.createEl("li", { text: `${iso(bucket.start)}${end === bucket.start ? "" : ` to ${iso(end)}`}: ${values.join("; ") || "No top-seven emotions recorded"}.` });
     }
   }
 
