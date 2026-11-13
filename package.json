@@ -1,6 +1,6 @@
 {
   "name": "automatic-mood-history",
-  "version": "1.7.3",
+  "version": "1.7.4-beta.1",
   "private": true,
   "description": "Local-first mood history for dated Obsidian notes, with optional Groq analysis.",
   "scripts": {
@@ -13,6 +13,7 @@
     "audit:release": "node scripts/audit-release.js"
   },
   "devDependencies": {
+    "moment": "^2.31.0",
     "playwright": "1.62.1"
   },
   "license": "MIT"

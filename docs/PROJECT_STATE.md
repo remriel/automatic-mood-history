@@ -144,3 +144,16 @@ Audit baseline was `493f53c` (release 1.2.8). The follow-up candidate versions t
 Read this file, `docs/PROGRESS.md`, `docs/AUDIT_REPORT.md`, and `docs/SOL_6_1_PLAN.md`, then inspect Git status/diff and the actual code. The audit fixes are on `fix/audit-reliability-handoff`; do not redo them. Start the follow-up with persistence recovery, lifecycle completion, and settings/path validation as ordered in the Sol 6.1 plan. Preserve existing records, provider consent, legacy routing, and private installed extensions. Merge/release/native-install status must be verified from GitHub and the progress file; do not infer publication from the unchanged manifest version.
 
 Audit publication: PR #1 is open at https://github.com/remriel/automatic-mood-history/pull/1. Final implementation commit 74e251c833447ee842d94d0f3d924da9ff913989 passed GitHub CI run 38485124172 (Node 20 functional/privacy/layout). Later completion edits are documentation-only. No merge, new release, or native installation has occurred.
+
+
+## Automatic filename date detection ? in progress
+
+- Worktree `feat/automatic-date-detection` is based on upstream 1.7.3. The earlier 1.2.8 checkout has a pre-existing modified bundle; do not overwrite it.
+- Morning Pages 0.5.4 uses strict Moment parsing of the configured Daily Notes format plus 12 preset filename formats and skips dates with multiple interpretations. Mood History now uses the same presets, examines basenames at any included folder depth, and falls back to creation timestamps for undated names. Folder exclusions, output/trash exclusions, and legacy record handling remain in place.
+- IMPORTANT: Existing creation-date records can remain stale or be recalculated with a partial source set after regrouping. The existing `created-at-local-date` basis and entry identity cannot accurately describe this change. Design and test an explicit non-destructive migration, including rename/deletion and old-date records, before installing or publishing. Never silently delete user records. Installed personal 1.7.3 bundle has private extensions and must not be replaced by the public build.
+- `tests/timestamp-grouping.test.js` includes synthetic preset, ambiguity, custom Daily Notes format and fallback tests. `npm test`, `npm run test:mobile`, and `npm run audit:release` passed. No native installation or actual-vault migration was attempted.
+
+## RESUME HERE ? date detection
+
+Review the current diff, then implement a safe, explicit migration and correct record provenance/display. Update all user-facing descriptions, test collisions, missing sources, rename/delete and restart recovery. Integrate into the personal installed plugin without overwriting its private extensions or data, validate in a separate test vault, and synchronize the finished work to GitHub. The requested AI Brain paths were unavailable in this session.
+`n## Prerelease decision`nPublish 1.7.4-beta.1 for separate-vault testing only. Release workflow now marks hyphenated versions as prereleases. Preserve migration blocker; do not promote this build to stable.

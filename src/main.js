@@ -7,6 +7,7 @@ const {
   Setting,
   TFile,
   TFolder,
+  moment,
   requestUrl
 } = require("obsidian");
 
@@ -25,6 +26,8 @@ const { MOODRING_VERSION, MOODRING_LABELS, validatedModel, compareMoodring } = r
 
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
 const GROQ_API_KEY_SECRET = "automatic-mood-history-groq";
+const AUTO_DATE_FORMATS = ["YYYY-MM-DD", "YYYY.MM.DD", "YYYY_MM_DD", "YYYYMMDD", "DD-MM-YYYY", "MM-DD-YYYY", "D MMM YYYY", "MMMM D, YYYY", "MMMM D YYYY", "D MMMM YYYY", "MMM D YYYY", "MMM D, YYYY"];
+
 const CREATED_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
 const LOCAL_ANALYZER_VERSION = "vader-sentiment-js-1.1.3-plus-heuristics-v1";
@@ -167,7 +170,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         const file = this.app.workspace.getActiveFile();
         const date = file ? this.getCreationDateForFile(file) : null;
         if (!date) {
-          new Notice("Automatic Mood History: the active note has no creation timestamp.");
+          new Notice("Automatic Mood History: the active note has an ambiguous date or no creation timestamp.");
           return;
         }
         const updated = await this.analyzeDate(date, { force: true, forceGroq: false });
@@ -495,6 +498,20 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if ((outputFolder && (normalizedPath === outputFolder || normalizedPath.startsWith(`${outputFolder}/`))) ||
       normalizedPath === ".trash" || normalizedPath.startsWith(".trash/") ||
       !this.isIncludedSourcePath(normalizedPath)) return null;
+
+    // Match Morning Pages' strict auto-detection. A numeric date that can
+    // represent two different days is deliberately left unassigned.
+    const name = normalizedPath.split("/").pop().replace(/\.md$/i, "");
+    const dailyFormat = this.app.internalPlugins?.getPluginById?.("daily-notes")?.instance?.options?.format;
+    const dates = new Set();
+    if (typeof moment === "function") {
+      for (const format of new Set([dailyFormat, ...AUTO_DATE_FORMATS].filter(Boolean))) {
+        const parsed = moment(name, format, true);
+        if (parsed.isValid() && parsed.format(format) === name) dates.add(parsed.format("YYYY-MM-DD"));
+      }
+    }
+    if (dates.size === 1) return [...dates][0];
+    if (dates.size > 1) return null;
 
     const timestamp = file.stat?.ctime;
     if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
@@ -889,8 +906,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   groqPrompt(date, text) {
     return [
-      `Local creation date: ${date}`,
-      "Analyze the emotional state expressed across the Markdown notes created on this date.",
+      `Entry date: ${date}`,
+      "Analyze the emotional state expressed across the Markdown notes assigned to this date.",
       "Distinguish the author's emotions from emotions attributed to other people, quoted material, abstract analysis, hypotheticals, and negated feelings.",
       `Use the GoEmotions taxonomy as the preferred vocabulary for the author's evidenced emotions: ${GOEMOTIONS_LABELS.join(", ")}.`,
       "This taxonomy is a vocabulary guide, not a separate classifier. Analyze the entire context; do not assign feelings based on keywords or a topic's emotional connotations.",
@@ -1325,7 +1342,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (!this.settings.enableGroq) return { kind: "local", text: "LOCAL MODE · Groq is disabled. Analysis stays on this device." };
     if (!this.apiKey()) return { kind: "warning", text: "GROQ KEY MISSING · Add a Groq API key in Automatic Mood History settings (Obsidian 1.11.4+), or set GROQ_API_KEY on desktop." };
     if (this.checkingGroq) return { kind: "ready", text: "CHECKING GROQ · Sending fictional sample text." };
-    if (this.activeScan) return { kind: "ready", text: "ANALYZING · Notes are grouped by their creation timestamps." };
+    if (this.activeScan) return { kind: "ready", text: "ANALYZING · Notes are grouped by detected filename date or creation date." };
     const issue = this.runtime.lastGroqIssue;
     if (issue) {
       const remaining = Math.max(0, Math.ceil((this.groqBlockedUntil - Date.now()) / 1000));
@@ -1491,9 +1508,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     assertCurrent();
     await this.ensureFolder(this.entriesFolder);
     assertCurrent();
-    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by the local calendar day of their Obsidian creation timestamp. Include/exclude folder settings control which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every creation-date group.\n`;
+    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by their detected filename date, or by their local creation date when the name has no recognized date. Include/exclude folder settings control which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
-const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes are grouped by the local calendar day of their Obsidian creation timestamp, TFile.stat.ctime. Include/exclude folder settings determine eligibility; filename, frontmatter date, aliases, and later edits do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes created on the same local date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key comes from the desktop GROQ_API_KEY environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
+const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes use an unambiguous date detected in their filename, using the Daily Notes format and common date formats. Undated names use the local calendar day of their Obsidian creation timestamp. Ambiguous dates are skipped. Include/exclude folder settings determine eligibility; frontmatter dates and aliases do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Undated notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes assigned to the same date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key comes from the desktop GROQ_API_KEY environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, dashboard, false);
     assertCurrent();
     await this.upgradeDashboardLayout();
@@ -1890,7 +1907,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       link.setAttribute("data-href", entryPath);
       link.setAttribute("href", entryPath);
       const badges = header.createDiv({ cls: "auto-mood-day-badges" });
-      badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CREATED_DATE_BASIS ? "Created timestamp" : "Legacy date" });
+      badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CREATED_DATE_BASIS ? "Detected date / created" : "Legacy date" });
       const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource || "none" });
       if (record.providerIssue?.message) analyzer.setAttribute("title", record.providerIssue.message);
       if (record.status === "insufficient" || hasNoEmotionalEvidence(record)) {
@@ -1934,7 +1951,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.classList.add("auto-mood-settings");
     containerEl.createEl("h2", { text: "Automatic Mood History" });
     containerEl.createEl("p", {
-      text: "Markdown notes are grouped by Obsidian creation date. Folder rules below control which notes are analyzed. All folders are included by default. Local analysis works offline on desktop, Android and iPhone. Groq analysis is optional."
+      text: "Markdown notes use detected filename dates, or their creation date when undated. Folder rules below control which notes are analyzed. All folders are included by default. Local analysis works offline on desktop, Android and iPhone. Groq analysis is optional."
     });
     let keyInput;
     const keySetting = new Setting(containerEl)

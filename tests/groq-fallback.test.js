@@ -35,7 +35,7 @@ Module._load = function patched(request, parent, isMain) {
       requestUrl: async (request) => {
         calls += 1;
         const payload = JSON.parse(request.body);
-        assert(payload.messages[1].content.includes("Markdown notes created on this date"));
+        assert(payload.messages[1].content.includes("Markdown notes assigned to this date"));
         if (calls < 3) {
           return {
             status: 400,

@@ -107,7 +107,7 @@ Use the command palette:
 
 **Check Groq** sends a fictional sample instead of vault notes and shows whether the configured model returns valid analysis. The dashboard shows connection status, the last valid response, or a specific failure category. **Analyze changed** retries eligible local or fallback results with Groq and includes legacy-date records. **Retry all with Groq** bypasses an old pause once; a new rate limit pauses the remaining requests in that run and leaves them pending. Rate-limit pauses follow Groq's `Retry-After` header when supplied.
 
-Every eligible Markdown note is assigned to the local calendar day of `TFile.stat.ctime`, Obsidian's file creation timestamp. Folder, filename, frontmatter dates, and aliases do not change the assigned day. Notes without a valid creation timestamp are skipped. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
+Eligible Markdown notes in any included folder use an unambiguous date detected in the filename, matching Morning Pages automatic detection (the configured Daily Notes format and common numeric and English month-name formats). Ambiguous filenames are skipped rather than guessed. Undated notes use the local calendar day of `TFile.stat.ctime`; those without a valid timestamp are skipped. Frontmatter dates and aliases are not used. Existing results remain saved until reanalysis; old date groups are not deleted automatically. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
 
 ### Folder scope
 
