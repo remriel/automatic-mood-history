@@ -180,3 +180,6 @@ RESUME HERE ? custom range complete: stable 1.7.5 is published/latest from PR #1
 
 ## 1.7.6 range emotions/composition
 Summary callback now disposes/clears/rebuilds an emotion host for selected records. Common Emotions counts match the range. renderEmotionComposition shows top eight labels + an independent Other symbol, uses unique labels per record and normalized percentages within adaptive calendar bins (at most 16). Empty bins remain blank; accessible Period details provide counts/percentages. Shares describe recorded labels, not intensity. Its resize observer lives in chartObservers and is disposed on range switch/refresh/unload. RESUME HERE: finish checks and publish 1.7.6.
+
+
+RESUME HERE ? 1.7.6 complete: range-filtered Common Emotions and Composition over time published at https://github.com/remriel/automatic-mood-history/releases/tag/1.7.6. Source merge 4d8df335d62959b33626a2c029ff86bbc6e00c40 (PR #20). CI 43525218693 and Release 43525218747 passed. Four asset digests/source parity and main.js attestation verified. Native testing remains with user. No reanalysis is needed for this display-only update.

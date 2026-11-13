@@ -24,3 +24,5 @@ Custom-range release completion: 1.7.5 stable/latest is published and verified. 
 
 
 1.7.6: Least confidence is native visual behavior; user will test. Biggest consideration is denominator: composition is the share of recorded emotion labels within each period, not intensity or probability of a feeling. Key assumption is that Morning Pages-like stacked percentages with adaptive calendar periods meet the requested composition chart; I would add manual grain selection if needed later.
+
+1.7.6 completion: Published stable/latest and verified. Least confidence: native chart behavior, to be checked by user. Biggest consideration: label share and emotion intensity are different; chart explains its denominator and offers exact counts. Key assumption: adaptive calendar periods with stacked percentages satisfy the Morning Pages composition request; manual period selection can be added if desired.
