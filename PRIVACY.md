@@ -10,12 +10,12 @@ Local mode uses deterministic word-pattern scoring inside Obsidian. No note text
 
 Groq mode is disabled by default. When a user explicitly enables it, the plugin sends the following to `https://api.groq.com/openai/v1/chat/completions`:
 
-- local creation date;
+- detected entry date;
 - cleaned, consolidated text from all Markdown notes created on that day, across folders, up to the configured character limit;
 - scoring instructions;
 - a JSON response schema.
 
-Notes are grouped by Obsidian's `TFile.stat.ctime` creation timestamp. The plugin excludes its generated `Mood History/` files and `.trash/` notes. It does not include vault paths or filenames in the prompt.
+Notes are grouped by an unambiguous filename date; undated names use the local creation timestamp. The plugin excludes its generated `Mood History/` files and `.trash/` notes. It does not include vault paths or filenames in the prompt.
 
 On desktop, `GROQ_API_KEY` in the Obsidian process environment takes precedence. On Android, iPhone and desktop with Obsidian 1.11.4+, you can save a key using Obsidian's native secret storage. The fixed secret ID is `automatic-mood-history-groq`. Keys entered in the masked settings field are passed only to Obsidian secret storage and are never written to plugin `data.json`, generated notes or logs. The plugin does not implement its own encryption or control Obsidian's secret-storage and sync behavior. Configure the key on each device where needed. Clearing the saved key does not remove a desktop environment variable.
 

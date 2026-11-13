@@ -18,7 +18,7 @@ const originalLoad = Module._load;
 Module._load = function patched(request, parent, isMain) {
   if (request === "obsidian") {
     return {
-      Component, Notice, Plugin, PluginSettingTab, Setting, TFile,
+      Component, Notice, Plugin, PluginSettingTab, Setting, TFile, moment: require("moment"),
       requestUrl: async () => ({ status: 403, json: { error: { message: "mock" } }, text: "mock" })
     };
   }
@@ -58,7 +58,16 @@ plugin.app = {
 
 const firstDay = "2031-01-02";
 const secondDay = "2031-01-03";
-assert.strictEqual(plugin.getCreationDateForFile(files[0]), firstDay, "filename date does not override ctime");
+assert.strictEqual(plugin.getCreationDateForFile(files[0]), "2099-12-31", "filename date overrides ctime");
+assert.strictEqual(plugin.getCreationDateForFile(new TFile("Anywhere/10-11-2031.md", firstDayTimestamp)), null, "ambiguous numeric date is skipped");
+assert.strictEqual(plugin.getCreationDateForFile(new TFile("Anywhere/November 10, 2031.md", undefined)), "2031-11-10", "dated names need no timestamp");
+for (const name of ["2031-11-13", "2031.11.13", "2031_11_13", "20311113", "13-11-2031", "11-13-2031", "13 Nov 2031", "November 13, 2031", "November 13 2031", "13 November 2031", "Nov 13 2031", "Nov 13, 2031"]) {
+  assert.strictEqual(plugin.getCreationDateForFile(new TFile(`Nested/Any/${name}.md`, firstDayTimestamp)), "2031-11-13", name);
+}
+assert.strictEqual(plugin.getCreationDateForFile(new TFile("Nested/2031-02-30.md", firstDayTimestamp)), firstDay, "invalid date falls back to creation");
+plugin.app.internalPlugins = { getPluginById: () => ({ instance: { options: { format: "[Journal] YYYY~MM~DD" } } }) };
+assert.strictEqual(plugin.getCreationDateForFile(new TFile("Nested/Journal 2031~11~13.md", firstDayTimestamp)), "2031-11-13", "configured Daily Notes format");
+
 assert.strictEqual(plugin.getCreationDateForFile(files[1]), firstDay, "a note in any folder is included");
 assert.strictEqual(plugin.getCreationDateForFile(files[4]), null, "generated history is excluded");
 assert.strictEqual(plugin.getCreationDateForFile(files[5]), null, "trash is excluded");
@@ -66,16 +75,14 @@ assert.strictEqual(plugin.getCreationDateForFile(files[6]), null, "non-Markdown 
 assert.strictEqual(plugin.getCreationDateForFile(files[7]), null, "files without a creation timestamp are skipped");
 assert.strictEqual(plugin.getCreationDateForFile(files[0], "Mood History/Entries/renamed.md"), null);
 assert.strictEqual(plugin.getCreationDateForFile(files[0], "Projects/renamed.md"), firstDay, "rename preserves the creation-date group");
-assert.deepStrictEqual(plugin.getAllDates(), [firstDay, secondDay]);
+assert.deepStrictEqual(plugin.getAllDates(), [firstDay, secondDay, "2099-12-31"]);
 assert.deepStrictEqual(plugin.filesForDate(firstDay).map((file) => file.path), [
-  "Daily/2099-12-31.md",
   "Meetings/Plan.md",
   "Projects/Untitled.md"
 ]);
 
 plugin.gatherDate(firstDay).then(async (gathered) => {
-  assert.strictEqual(gathered.sourcePaths.length, 3, "all notes created that day are consolidated");
-  assert(gathered.analysisText.includes("daily note created today"));
+  assert.strictEqual(gathered.sourcePaths.length, 2, "all notes created that day are consolidated");
   assert(gathered.analysisText.includes("project note created today"));
   assert(gathered.analysisText.includes("meeting note created today"));
 
@@ -99,11 +106,11 @@ plugin.gatherDate(firstDay).then(async (gathered) => {
   const changed = await plugin.analyzeDate(firstDay);
   assert.strictEqual(changed, true, "matching legacy data coexists with the timestamp scope");
   assert.strictEqual(legacyRecord.dateBasis, "legacy-note-date", "the previous committed object is not mutated");
-  assert.strictEqual(plugin.records[`created:${firstDay}`].dateBasis, "created-at-local-date");
+  assert.strictEqual(plugin.records[`detected:${firstDay}`].dateBasis, "detected-note-date");
   assert.strictEqual(plugin.records[firstDay], legacyRecord, "legacy history keeps its original key and result");
   assert.strictEqual(legacyRecord.summary, "Preserved synthetic record.");
   assert.strictEqual(saveCalls, 2);
-  console.log("all Markdown notes are grouped by creation timestamp; legacy records are preserved");
+  console.log("date detection, timestamp fallback, and legacy record preservation passed");
 }).catch((error) => {
   console.error(error);
   process.exitCode = 1;

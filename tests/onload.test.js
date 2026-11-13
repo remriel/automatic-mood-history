@@ -120,7 +120,7 @@ instance.onload().then(() => {
   // are off, even when remote analysis itself is opted in.
   const manual = new LoadedPlugin();
   manual.manifest = instance.manifest;
-  const complete = { date: "2099-02-03", dateBasis: "created-at-local-date", status: "complete", moodScore: 4, energyScore: 3, connectionScore: 4, intensityScore: 2, summary: "Fictional existing analysis", emotions: ["hopeful"], analysisSource: "groq", sourceHash: "fictional" };
+  const complete = { date: "2099-02-03", dateBasis: "detected-note-date", status: "complete", moodScore: 4, energyScore: 3, connectionScore: 4, intensityScore: 2, summary: "Fictional existing analysis", emotions: ["hopeful"], analysisSource: "groq", sourceHash: "fictional" };
   const snapshot = JSON.stringify(complete);
   manual.loadData = async () => ({ settings: { autoAnalyze: false, analyzeOnStartup: false, enableGroq: true }, records: { [complete.date]: complete } });
   manual.saveData = async () => {};

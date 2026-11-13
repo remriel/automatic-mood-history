@@ -99,7 +99,7 @@ async function run() {
   assert(!JSON.stringify(plugin.records).includes("PRIVATE_ACCOUNT"));
 
   plugin = fixture();
-  plugin.records = Object.fromEntries(dates.map((date) => [date, { ...valid, date, status: "complete", dateBasis: "created-at-local-date", analysisSource: "groq", contentHash: date }]));
+  plugin.records = Object.fromEntries(dates.map((date) => [date, { ...valid, date, status: "complete", dateBasis: "detected-note-date", analysisSource: "groq", contentHash: date }]));
   plugin.runtime.lastGroqIssue = { kind: "output", message: "Previous synthetic failure." };
   plugin.lastGroqError = "Previous synthetic failure.";
   const unchanged = await plugin.analyzeAll();
@@ -108,7 +108,7 @@ async function run() {
   assert(!notices.at(-1).includes("failure") && !notices.at(-1).includes("unavailable"), "a no-op scan does not repeat a saved provider error");
 
   plugin = fixture();
-  plugin.records[dates[0]] = { ...valid, date: dates[0], status: "complete", dateBasis: "created-at-local-date", analysisSource: "local-fallback", contentHash: dates[0] };
+  plugin.records[dates[0]] = { ...valid, date: dates[0], status: "complete", dateBasis: "detected-note-date", analysisSource: "local-fallback", contentHash: dates[0] };
   await plugin.analyzeDate(dates[0]);
   assert.strictEqual(requests.length, 1, "unchanged fallback records are retried after a pause expires");
   assert.strictEqual(plugin.records[dates[0]].analysisSource, "groq");
@@ -127,9 +127,9 @@ async function run() {
   await plugin.analyzeDate(dates[0]);
   assert.strictEqual(requests.length, 1, "unchanged exempt day does not waste another Groq request");
   const historical = plugin.validateRecords({
-    [dates[0]]: { ...valid, date: dates[0], status: "complete", dateBasis: "created-at-local-date", analysisSource: "groq",
+    [dates[0]]: { ...valid, date: dates[0], status: "complete", dateBasis: "detected-note-date", analysisSource: "groq",
       summary: "No explicit emotional content was provided, making assessment uncertain.", contentHash: dates[0] },
-    [dates[1]]: { ...valid, date: dates[1], status: "complete", dateBasis: "created-at-local-date", analysisSource: "groq", contentHash: dates[1] }
+    [dates[1]]: { ...valid, date: dates[1], status: "complete", dateBasis: "detected-note-date", analysisSource: "groq", contentHash: dates[1] }
   });
   assert.strictEqual(historical[dates[0]].status, "insufficient");
   assert.strictEqual(historical[dates[0]].moodScore, null);
@@ -150,7 +150,7 @@ async function run() {
   assert(!JSON.stringify(plugin.runtime).includes("PRIVATE_RESPONSE_BODY"));
 
   plugin = fixture();
-  const original = { ...valid, date: dates[0], status: "complete", dateBasis: "created-at-local-date", analysisSource: "groq", contentHash: dates[0] };
+  const original = { ...valid, date: dates[0], status: "complete", dateBasis: "detected-note-date", analysisSource: "groq", contentHash: dates[0] };
   plugin.records[dates[0]] = original;
   respond = () => ({ status: 503, json: {} });
   assert.strictEqual(await plugin.analyzeDate(dates[0], { force: true }), false);

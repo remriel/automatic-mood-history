@@ -33,7 +33,7 @@ This plugin can transmit cleaned text from eligible Markdown notes created on a 
 
 - Save a Groq key through Obsidian secret storage (Obsidian 1.11.4+), or use `GROQ_API_KEY` on desktop.
 - Keys are never written to plugin data, generated notes or intentional logs. Obsidian manages secret storage separately.
-- Groq receives the local creation date, cleaned text consolidated across that day's notes, scoring instructions, and response schema.
+- Groq receives the detected entry date, cleaned text consolidated across that day's notes, scoring instructions, and response schema.
 - Filenames and vault paths remain local and are not included in the Groq prompt.
 - Generated records include the analyzer used: `groq`, `local` (intentional local analysis), `local-fallback`, `reviewed-backfill` (legacy records), or `none`.
 - When Groq is enabled, eligible analysis uses Groq only. If Groq is unavailable, paused, or returns unusable output, existing records are preserved and new or changed work stays pending; it is not silently scored locally.
@@ -107,7 +107,7 @@ Use the command palette:
 
 **Check Groq** sends a fictional sample instead of vault notes and shows whether the configured model returns valid analysis. The dashboard shows connection status, the last valid response, or a specific failure category. **Analyze changed** retries eligible local or fallback results with Groq and includes legacy-date records. **Retry all with Groq** bypasses an old pause once; a new rate limit pauses the remaining requests in that run and leaves them pending. Rate-limit pauses follow Groq's `Retry-After` header when supplied.
 
-Every eligible Markdown note is assigned to the local calendar day of `TFile.stat.ctime`, Obsidian's file creation timestamp. Folder, filename, frontmatter dates, and aliases do not change the assigned day. Notes without a valid creation timestamp are skipped. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
+Eligible Markdown notes in any included folder use an unambiguous date detected in the filename, matching Morning Pages automatic detection (the configured Daily Notes format and common numeric and English month-name formats). Ambiguous filenames are skipped rather than guessed. Undated notes use the local calendar day of `TFile.stat.ctime`; those without a valid timestamp are skipped. Frontmatter dates and aliases are not used. Existing results remain saved until reanalysis; old date groups are not deleted automatically. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
 
 ### Folder scope
 
@@ -129,7 +129,7 @@ The dashboard is designed for vertical scrolling only. Charts redraw for the not
 
 Existing plugin-owned dashboard notes have only their exact Base embed replaced by a link; custom writing and metadata are preserved. The optional native Base table remains available as a separate Obsidian view with its own table behavior, but it is no longer embedded in the dashboard.
 
-Local VADER-based analysis is the default. Automatic note watching and startup analysis are off for new installs. Enabling Groq can send the cleaned text from every eligible note in an analyzed creation-date group or saved legacy-date group to Groq; review the opt-in settings before running a full scan. Text below the minimum evidence threshold remains marked insufficient without scores.
+Local VADER-based analysis is the default. Automatic note watching and startup analysis are off for new installs. Enabling Groq can send the cleaned text from every eligible note in an analyzed date group or saved legacy-date group to Groq; review the opt-in settings before running a full scan. Text below the minimum evidence threshold remains marked insufficient without scores.
 
 Generated files are stored under `Mood History/` by default:
 
@@ -240,3 +240,10 @@ Click a series label in the chart legend to show or hide its line and points. Al
 - [Acid Xerox](https://github.com/remriel/acid-xerox-theme): a colorful, 90s-inspired Obsidian theme.
 
 <a href="https://buymeacoffee.com/remriel"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" width="110"></a>
+
+
+### Date detection and existing history (1.7.4)
+
+Filename dates are recognized in any included folder using the configured Daily Notes format and common numeric and English month-name formats. Ambiguous numeric dates are skipped. Undated names use local creation time.
+
+Run **Analyze changed** after updating to build the detected-date history. Previous creation-date results and their Markdown files are preserved in **Previous grouping history**, excluded from current charts and averages. New results are analyzed from their actual sources; old scores are never moved or split between dates. Renamed, deleted or excluded sources also place outdated results in that section until reanalysis. Existing automatic-analysis and Groq consent settings still apply.

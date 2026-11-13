@@ -33,7 +33,7 @@ async function fixture() {
   plugin.analyzeWithGroq = async (date, text) => { calls.push({ date, text }); return { ...valid }; };
   const legacy = { ...valid, date: legacyDate, status: "complete", analysisSource: "local-fallback", dateBasis: "legacy-note-date", sourcePaths: [files[0].path], contentHash: "old-hash", entryPath: `Mood History/Entries/${legacyDate} (Automatic Mood History).md` };
   const gathered = await plugin.gatherDate(currentDate);
-  const current = { ...valid, date: currentDate, status: "complete", analysisSource: "groq", dateBasis: "created-at-local-date", sourcePaths: gathered.sourcePaths, contentHash: gathered.contentHash };
+  const current = { ...valid, date: currentDate, status: "complete", analysisSource: "groq", dateBasis: "detected-note-date", sourcePaths: gathered.sourcePaths, contentHash: gathered.contentHash };
   plugin.records = { [legacyDate]: legacy, [currentDate]: current };
   return { plugin, files, contents, writes, calls, legacy, current };
 }
