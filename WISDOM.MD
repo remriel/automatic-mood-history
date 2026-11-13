@@ -21,3 +21,6 @@ Custom ranges:
 3. Key assumption: Custom means inclusive start/end dates and temporary selection, consistent with existing preset behavior. Persistent selection would require a separate saved preference.
 
 Custom-range release completion: 1.7.5 stable/latest is published and verified. Native date picker behavior remains the least certain aspect; user testing covers it. Empty ranges require coordinated chart/summary reset, implemented and checked. The key assumption is inclusive, transient custom ranges consistent with presets.
+
+
+1.7.6: Least confidence is native visual behavior; user will test. Biggest consideration is denominator: composition is the share of recorded emotion labels within each period, not intensity or probability of a feeling. Key assumption is that Morning Pages-like stacked percentages with adaptive calendar periods meet the requested composition chart; I would add manual grain selection if needed later.

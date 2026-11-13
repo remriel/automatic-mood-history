@@ -1,3 +1,8 @@
+# 1.7.6
+
+- Filter Common Emotions by the selected preset or custom date range.
+- Add a range-aware stacked Composition over time chart with exact period details.
+
 # 1.7.5
 
 - Add Custom trend range with inclusive date inputs, validation and empty state.
