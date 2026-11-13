@@ -157,3 +157,4 @@ Audit publication: PR #1 is open at https://github.com/remriel/automatic-mood-hi
 
 Review the current diff, then implement a safe, explicit migration and correct record provenance/display. Update all user-facing descriptions, test collisions, missing sources, rename/delete and restart recovery. Integrate into the personal installed plugin without overwriting its private extensions or data, validate in a separate test vault, and synchronize the finished work to GitHub. The requested AI Brain paths were unavailable in this session.
 `n## Prerelease decision`nPublish 1.7.4-beta.1 for separate-vault testing only. Release workflow now marks hyphenated versions as prereleases. Preserve migration blocker; do not promote this build to stable.
+`nRESUME HERE: 1.7.4-beta.1 is published with three plugin assets at tag commit 5e24cec. Stable readiness remains blocked by historical migration; installation was not performed.

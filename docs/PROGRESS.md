@@ -19,3 +19,4 @@
 3. Run all tests and native synthetic-vault checks; adapt the personal installed bundle without losing private extensions or saved data.
 4. Review and synchronize the completed changes; verify installation and GitHub state.
 `n## Prerelease publication`n1.7.4-beta.1 prepared as an explicitly limited testing prerelease. Functional/mobile/privacy checks passed again. Stable release and installed plugin remain unchanged; migration is still required for stable readiness.
+`nPublished and verified: https://github.com/remriel/automatic-mood-history/releases/tag/1.7.4-beta.1 — GitHub reports isPrerelease=true and all three plugin assets uploaded. Tag commit 5e24cec. Remote release workflow verification remains pending.
