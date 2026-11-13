@@ -38,3 +38,5 @@ Top-seven update:
 1. Least confidence: native phone/Obsidian rendering of the dashed averages and date controls; user will test. I would check a sparse week and an active custom range on device.
 2. Biggest consideration: a moving average needs a defined time window and missing-data policy. This uses seven calendar days, at least two available scores, and only the chosen range; a lone score is not plotted as an average.
 3. Most consequential assumption: the user prefers the suggested top seven and a seven-day average. If a different rolling window is desired, I would add a configurable window.
+
+1.7.7 release: Stable is published and verified. Least confidence remains native Obsidian display. The key consideration is that percentages use displayed top-seven labels and averages need at least two scores in seven calendar days. The key assumption is that the requested moving window is seven days; add an adjustable window if the user wants a different one.
