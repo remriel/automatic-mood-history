@@ -247,3 +247,6 @@ Click a series label in the chart legend to show or hide its line and points. Al
 Filename dates are recognized in any included folder using the configured Daily Notes format and common numeric and English month-name formats. Ambiguous numeric dates are skipped. Undated names use local creation time.
 
 Run **Analyze changed** after updating to build the detected-date history. Previous creation-date results and their Markdown files are preserved in **Previous grouping history**, excluded from current charts and averages. New results are analyzed from their actual sources; old scores are never moved or split between dates. Renamed, deleted or excluded sources also place outdated results in that section until reanalysis. Existing automatic-analysis and Groq consent settings still apply.
+
+
+Choose **Custom** in the trend ranges to apply inclusive start and end dates. The trend and summary tiles use that interval; reopening the dashboard restores the default range.

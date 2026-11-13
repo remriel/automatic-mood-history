@@ -13,3 +13,9 @@ Stable update:
 
 
 Release completion: stable 1.7.4 is published and verified. Least confidence remains native behavior on the user vault; user will test. The important hidden constraint is that old aggregate scores cannot be redistributed accurately; preserve and reanalyze. Filename dates remain the key assumption; content-date parsing would require separate precedence rules.
+
+
+Custom ranges:
+1. Least confident: native mobile date pickers; user will test. I would inspect actual Android/iPhone input behavior.
+2. Biggest consideration: an empty custom interval must update summaries and clear chart selection coherently. This is handled explicitly.
+3. Key assumption: Custom means inclusive start/end dates and temporary selection, consistent with existing preset behavior. Persistent selection would require a separate saved preference.
