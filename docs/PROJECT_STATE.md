@@ -173,3 +173,6 @@ Stable 1.7.4 is published and latest, from PR #18 merge 5e6603aa7dc7ae4f9080654d
 ## Custom trend range ? 1.7.5
 renderTrendChart includes Custom, a date form, inclusive string-date filtering and explicit empty state. Custom ranges update the same summary callback as presets. Invalid/reversed dates retain the applied selection. Presets hide the form and restore their own window. Selection remains transient, like existing presets; no new saved settings or records. styles.css wraps touch-sized date controls. tests/layout.test.js covers inclusive bounds, invalid input, empty results and preset restoration.
 RESUME HERE: finish release checks, merge and verify 1.7.5 publication.
+
+
+RESUME HERE ? custom range complete: stable 1.7.5 is published/latest from PR #19 merge 19c090ad00c745e63263642ed1abca2aadf5168f. CI 43521121047 and Release 43521121003 succeeded. Four downloaded assets match published SHA-256 digests, three plugin files match normalized source, and main.js release-workflow attestation verified with exit 0. No publication work remains. Custom selection remains transient and user will test native Obsidian.

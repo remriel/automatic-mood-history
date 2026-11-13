@@ -19,3 +19,5 @@ Custom ranges:
 1. Least confident: native mobile date pickers; user will test. I would inspect actual Android/iPhone input behavior.
 2. Biggest consideration: an empty custom interval must update summaries and clear chart selection coherently. This is handled explicitly.
 3. Key assumption: Custom means inclusive start/end dates and temporary selection, consistent with existing preset behavior. Persistent selection would require a separate saved preference.
+
+Custom-range release completion: 1.7.5 stable/latest is published and verified. Native date picker behavior remains the least certain aspect; user testing covers it. Empty ranges require coordinated chart/summary reset, implemented and checked. The key assumption is inclusive, transient custom ranges consistent with presets.
