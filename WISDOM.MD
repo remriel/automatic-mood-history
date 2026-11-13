@@ -26,3 +26,15 @@ Custom-range release completion: 1.7.5 stable/latest is published and verified. 
 1.7.6: Least confidence is native visual behavior; user will test. Biggest consideration is denominator: composition is the share of recorded emotion labels within each period, not intensity or probability of a feeling. Key assumption is that Morning Pages-like stacked percentages with adaptive calendar periods meet the requested composition chart; I would add manual grain selection if needed later.
 
 1.7.6 completion: Published stable/latest and verified. Least confidence: native chart behavior, to be checked by user. Biggest consideration: label share and emotion intensity are different; chart explains its denominator and offers exact counts. Key assumption: adaptive calendar periods with stacked percentages satisfy the Morning Pages composition request; manual period selection can be added if desired.
+
+
+Top-seven update:
+1. Least confidence: the chart?s appearance in the user?s native Obsidian environment. User testing remains the best next check.
+2. Biggest consideration: percentages now describe only the displayed top seven, so a period containing solely excluded labels is blank; the chart explains that denominator.
+3. Main assumption: ?or top 7? selects seven rather than ten. If ten was intended, change the ranking limit and provide three additional distinct colors.
+
+
+1.7.7 combined update:
+1. Least confidence: native phone/Obsidian rendering of the dashed averages and date controls; user will test. I would check a sparse week and an active custom range on device.
+2. Biggest consideration: a moving average needs a defined time window and missing-data policy. This uses seven calendar days, at least two available scores, and only the chosen range; a lone score is not plotted as an average.
+3. Most consequential assumption: the user prefers the suggested top seven and a seven-day average. If a different rolling window is desired, I would add a configurable window.

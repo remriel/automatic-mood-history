@@ -263,6 +263,93 @@ async function inspectLayout(page, label) {
     assert.equal(await page.getByRole('button',{name:'Mood',exact:true}).getAttribute('aria-pressed'),'true','save failure restores the previous visibility');
     await page.evaluate(() => { fixture.plugin.savePluginData=window.originalSave; });
 
+    // The seven leaders are chosen across the selected range, and each
+    // period's denominator contains only those displayed labels.
+    await page.evaluate(() => {
+      fixture.configure({ paneWidth: 320, count: 10 });
+      const emotions = [
+        ...Array.from({ length: 5 }, () => ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot']),
+        ['golf'], ['golf'], ['golf', 'hotel'], ['hotel'], ['india', 'juliet']
+      ];
+      Object.values(fixture.plugin.records).forEach((record, index) => {
+        record.dateBasis = 'detected-note-date'; record.status = 'complete';
+        record.moodScore = 3; record.emotions = emotions[index];
+      });
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    const compositionRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
+    assert.deepStrictEqual(await page.locator('.auto-mood-composition-legend li').allTextContents(),
+      ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf'], 'only seven leaders appear in the legend');
+    assert(!(await page.locator('.auto-mood-composition').textContent()).includes('Other emotions'), 'no grouped category is displayed');
+    const dayEight = page.locator('.auto-mood-composition-chart rect[data-period="2099-01-08"]');
+    assert.equal(await dayEight.count(), 1, 'a less common label is excluded from the period');
+    assert.equal(await dayEight.first().getAttribute('data-emotion'), 'golf');
+    assert.equal(Number(await dayEight.first().getAttribute('data-share')), 100, 'share is normalized among displayed labels');
+    assert.equal(await page.locator('.auto-mood-composition-chart rect[data-period="2099-01-10"]').count(), 0, 'a day with only excluded emotions is blank');
+    assert((await page.locator('.auto-mood-composition-details').textContent()).includes('2099-01-10: No top-seven emotions recorded.'), 'blank period is described accurately');
+    await page.getByRole('button', { name: 'Custom', exact: true }).click();
+    await page.getByLabel('Start date', { exact: true }).fill('2099-01-08');
+    await page.getByLabel('End date', { exact: true }).fill('2099-01-10');
+    await page.getByRole('button', { name: 'Apply range', exact: true }).click();
+    assert.deepStrictEqual(await page.locator('.auto-mood-composition-legend li').allTextContents(),
+      ['hotel', 'golf', 'india', 'juliet'], 'leaders are recalculated for a custom range with fewer than seven labels');
+    assert.equal(await page.locator('.auto-mood-composition-chart rect[data-period="2099-01-08"]').count(), 2);
+    assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), compositionRecordsBefore, 'composition changes do not alter saved records');
+    await inspectLayout(page, 'top-seven composition at narrow width');
+    await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
+
+    // Moving averages use calendar days, not the last seven observations.
+    // The boundary is inclusive, missing scores are excluded, and each
+    // calculated point needs at least two observed scores in its window.
+    await page.evaluate(() => {
+      fixture.configure({ paneWidth: 640, count: 7 });
+      const values = Object.values(fixture.plugin.records);
+      const dates = ['2099-01-01', '2099-01-02', '2099-01-07', '2099-01-08', '2099-01-09', '2099-01-10', '2099-01-18'];
+      const scores = [1, 2, 3, 4, null, 5, 2];
+      fixture.plugin.records = Object.fromEntries(values.map((record, index) => [dates[index], {
+        ...record, date: dates[index], dateBasis: 'detected-note-date', status: 'complete',
+        moodScore: 3, energyScore: scores[index]
+      }]));
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    const movingRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
+    const averageToggle = page.getByRole('button', { name: '7-day moving average', exact: true });
+    assert.equal(await averageToggle.getAttribute('aria-pressed'), 'true', 'moving average is visible by default');
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    const averagePoints = () => page.locator('.moving-average-point[data-series="energyScore"]').evaluateAll(nodes =>
+      nodes.map(node => [node.getAttribute('data-date'), Number(node.getAttribute('data-average'))]));
+    assert.deepStrictEqual(await averagePoints(), [
+      ['2099-01-02', 1.5], ['2099-01-07', 2], ['2099-01-08', 3], ['2099-01-10', 4]
+    ], 'averages use the inclusive seven-calendar-day window and exclude missing scores');
+    assert.equal(await page.locator('.moving-average-path[data-series="energyScore"]').getAttribute('stroke-dasharray'), '6 4');
+    await page.getByRole('slider', { name: 'Explore a recorded day' }).evaluate(slider => {
+      slider.value = '2'; slider.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    assert((await page.locator('[data-average-for="energyScore"]').innerText()).includes('2.0/5'), 'selected day announces its average');
+    await averageToggle.click();
+    assert.equal(await averageToggle.getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('.moving-average-path').count(), 0, 'toggle hides all moving averages');
+    assert.equal(await page.locator('[data-average-for]').count(), 0);
+    await averageToggle.click();
+    assert.deepStrictEqual(await averagePoints(), [
+      ['2099-01-02', 1.5], ['2099-01-07', 2], ['2099-01-08', 3], ['2099-01-10', 4]
+    ]);
+    await page.getByRole('button', { name: 'Energy', exact: true }).click();
+    await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
+    assert.equal(await page.locator('.moving-average-point[data-series="energyScore"]:visible').count(), 0, 'hiding a series also hides its average');
+    await page.getByRole('button', { name: 'Energy', exact: true }).click();
+    await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
+    await page.getByRole('button', { name: '7 days', exact: true }).click();
+    assert.deepStrictEqual(await averagePoints(), [], 'a window with only one score has no moving average');
+    await page.getByRole('button', { name: 'Custom', exact: true }).click();
+    await page.getByLabel('Start date', { exact: true }).fill('2099-01-07');
+    await page.getByLabel('End date', { exact: true }).fill('2099-01-10');
+    await page.getByRole('button', { name: 'Apply range', exact: true }).click();
+    assert.deepStrictEqual(await averagePoints(), [['2099-01-08', 3.5], ['2099-01-10', 4]], 'custom ranges do not borrow scores from outside the selected dates');
+    assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), movingRecordsBefore, 'moving averages do not modify records');
+    await inspectLayout(page, 'moving average with a custom range');
+    await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
+
     for (const [name, counter] of [["Analyze changed", "analyze"], ["Retry all with Groq", "retry"], ["Check Groq", "check"], ["Retry fallback entries", "recover"]]) {
       await page.getByRole("button", { name, exact: true }).click();
       await inspectLayout(page, `${name} busy state`);

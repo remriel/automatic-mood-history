@@ -251,4 +251,7 @@ Run **Analyze changed** after updating to build the detected-date history. Previ
 
 Choose **Custom** in the trend ranges to apply inclusive start and end dates. The trend and summary tiles use that interval; reopening the dashboard restores the default range.
 
-Common Emotions and **Composition over time** follow the same selected range as the average cards. The composition chart shows the share of recorded emotion labels within each calendar period, with exact counts and percentages under **Period details**.
+Common Emotions and **Composition over time** follow the same selected range as the average cards. The composition chart displays the seven most common emotions in the selected range. Percentages use only those displayed emotions within each calendar period; exact counts and percentages are available under **Period details**. A period without one of the top seven emotions is blank.
+
+
+The trend charts show a toggleable **7-day moving average** as dashed lines and hollow diamonds. Each average uses the available scores from the current date and the preceding six calendar days within the selected range. At least two scores are required; missing scores do not contribute. The selected-day readout includes the average. Range and toggle selections are temporary and do not alter saved scores.
