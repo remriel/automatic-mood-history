@@ -176,3 +176,7 @@ RESUME HERE: finish release checks, merge and verify 1.7.5 publication.
 
 
 RESUME HERE ? custom range complete: stable 1.7.5 is published/latest from PR #19 merge 19c090ad00c745e63263642ed1abca2aadf5168f. CI 43521121047 and Release 43521121003 succeeded. Four downloaded assets match published SHA-256 digests, three plugin files match normalized source, and main.js release-workflow attestation verified with exit 0. No publication work remains. Custom selection remains transient and user will test native Obsidian.
+
+
+## 1.7.6 range emotions/composition
+Summary callback now disposes/clears/rebuilds an emotion host for selected records. Common Emotions counts match the range. renderEmotionComposition shows top eight labels + an independent Other symbol, uses unique labels per record and normalized percentages within adaptive calendar bins (at most 16). Empty bins remain blank; accessible Period details provide counts/percentages. Shares describe recorded labels, not intensity. Its resize observer lives in chartObservers and is disposed on range switch/refresh/unload. RESUME HERE: finish checks and publish 1.7.6.

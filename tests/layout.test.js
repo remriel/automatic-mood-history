@@ -152,6 +152,7 @@ async function inspectLayout(page, label) {
       assert.equal(await page.locator('.auto-mood-range-controls button[aria-pressed="true"]').count(), 1, 'only the selected window is pressed');
       if (windowDates[label]) assert.deepStrictEqual(await chartDates(), windowDates[label], `${label} includes its boundary and excludes the previous day`);
       assert.deepStrictEqual(await cardValues(), windowCards[label], `${label} summary uses the same records as the chart`);
+      assert.equal(await page.locator('.auto-mood-bar-count').first().textContent(), windowCards[label][0], `${label} emotions use the same recorded days`);
       assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).getAttribute('aria-valuetext'), '2099-04-01');
     }
     await page.getByRole('button', { name: 'Custom', exact: true }).click();
@@ -160,6 +161,14 @@ async function inspectLayout(page, label) {
     await page.getByRole('button', { name: 'Apply range', exact: true }).click();
     assert.deepStrictEqual(await chartDates(), ['2099-03-25', '2099-03-26', '2099-03-27'], 'custom boundaries are inclusive');
     assert.equal((await cardValues())[0], '3');
+    assert.equal(await page.locator('.auto-mood-bar-count').first().textContent(), '3', 'custom range filters emotion counts');
+    assert.equal(await page.locator('.auto-mood-composition').count(), 1, 'composition chart follows the range');
+    const periods = await page.locator('.auto-mood-composition-chart rect').evaluateAll(nodes => {
+      const sums = {}; for (const node of nodes) sums[node.dataset.period] = (sums[node.dataset.period] || 0) + Number(node.dataset.share); return sums;
+    });
+    assert.deepStrictEqual(Object.keys(periods), ['2099-03-25', '2099-03-26', '2099-03-27']);
+    assert(Object.values(periods).every(sum => Math.abs(sum - 100) < 0.00001), 'composition normalizes each recorded period to 100%');
+
     await page.getByLabel('Start date', { exact: true }).fill('2099-04-01');
     await page.getByRole('button', { name: 'Apply range', exact: true }).click();
     assert(await page.locator('.auto-mood-range-error').textContent(), 'reversed range reports an error');
@@ -168,6 +177,8 @@ async function inspectLayout(page, label) {
     await page.getByLabel('End date', { exact: true }).fill('2080-01-02');
     await page.getByRole('button', { name: 'Apply range', exact: true }).click();
     assert.equal((await cardValues())[0], '0');
+    assert.equal(await page.locator('.auto-mood-range-emotions .auto-mood-bar-row').count(), 0, 'empty range clears emotions');
+    assert.equal(await page.locator('.auto-mood-composition').count(), 0, 'empty range clears composition');
     assert.equal(await page.locator('.auto-mood-svg .data-point').count(), 0);
     assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).isDisabled(), true);
     await page.getByRole('button', { name: 'All', exact: true }).click();
@@ -261,7 +272,7 @@ async function inspectLayout(page, label) {
     await page.locator(".auto-mood-day-date a").first().click();
     assert((await page.evaluate(() => window.lastOpenedEntry)).endsWith("(Automatic Mood History)"), "conflict-safe entry link is preserved");
     await page.evaluate(() => { for (let i = 0; i < 5; i++) fixture.plugin.refreshRenderers(); });
-    assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 1, "refreshes dispose old observers");
+    assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 2, "refreshes dispose old observers");
     await page.evaluate(() => fixture.configure({ mode: "empty", paneWidth: 320 }));
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 0, "empty state leaves no observer");
     await page.evaluate(() => fixture.configure({ settingsView: true, paneWidth: 280 }));

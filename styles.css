@@ -630,3 +630,10 @@
 .auto-mood-custom-range button { background: var(--amh-yellow); color: var(--amh-on-accent); font-weight: 800; cursor: pointer; }
 .auto-mood-custom-range :focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
 .auto-mood-range-error { flex-basis: 100%; margin: 0; }
+
+.auto-mood-composition-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; list-style: none; padding: 0; }
+.auto-mood-composition-legend li { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.auto-mood-composition-swatch { display: inline-block; width: 12px; height: 12px; flex: 0 0 12px; border: 1px solid var(--amh-frame); }
+.auto-mood-composition-chart { width: 100%; min-width: 0; }
+.auto-mood-composition-chart svg { display: block; width: 100%; }
+.auto-mood-composition-details { padding-inline-start: 20px; overflow-wrap: anywhere; }

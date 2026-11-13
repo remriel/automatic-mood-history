@@ -2478,15 +2478,20 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       card.createDiv({ cls: "auto-mood-card-label", text: label });
       return { property, element: card.createDiv({ cls: "auto-mood-card-value" }) };
     });
+    const emotionHost = wrapper.createDiv({ cls: "auto-mood-range-emotions" });
     const updateSummaryCards = visibleRecords => {
       for (const { property, element } of cardValues) {
         element.setText(property ? this.average(visibleRecords, property)?.toFixed(1) || "—" : String(visibleRecords.length));
       }
+      this.disposeDashboard(emotionHost);
+      emotionHost.empty();
+      this.renderEmotionBars(emotionHost, visibleRecords);
+      this.renderEmotionComposition(emotionHost, visibleRecords);
     };
     updateSummaryCards(complete);
 
     if (complete.length) this.renderTrendChart(wrapper, complete, updateSummaryCards);
-    this.renderEmotionBars(wrapper, complete);
+    wrapper.appendChild(emotionHost);
     this.renderHistoryCards(wrapper, [...partitions.current, ...partitions.legacy].sort((a, b) => a.date.localeCompare(b.date)));
     const historical = partitions.previous;
     if (historical.length) {
@@ -2785,6 +2790,86 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       const bar = track.createDiv({ cls: "auto-mood-bar-fill" });
       bar.style.width = `${Math.max(8, (count / max) * 100)}%`;
       row.createDiv({ cls: "auto-mood-bar-count", text: String(count) });
+    }
+  }
+
+  renderEmotionComposition(parent, records) {
+    if (!records.length) return;
+    const section = parent.createDiv({ cls: "auto-mood-section auto-mood-composition" });
+    section.createEl("h3", { text: "COMPOSITION OVER TIME" });
+    const first = Date.parse(`${records[0].date}T00:00:00Z`);
+    const last = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
+    const day = 86400000;
+    const step = Math.max(1, Math.ceil(((last - first) / day + 1) / 16));
+    const iso = time => new Date(time).toISOString().slice(0, 10);
+    const totals = new Map();
+    for (const record of records) for (const label of new Set(record.emotions || [])) totals.set(label, (totals.get(label) || 0) + 1);
+    const leaders = [...totals].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 8).map(([label]) => label);
+    if (!leaders.length) { section.createEl("p", { text: "No recorded emotions in this range." }); return; }
+    const other = Symbol("Other emotions");
+    const labels = [...leaders, ...([...totals.keys()].some(label => !leaders.includes(label)) ? [other] : [])];
+    const colors = ["#b85000", "#335eea", "#9c31a9", "#12774c", "#b72f55", "#6a56bd", "#087d8a", "#957000", "#777777"];
+    const display = label => label === other ? "Other emotions" : label;
+    const buckets = Array.from({ length: Math.floor((last - first) / day / step) + 1 }, (_, i) => ({ start: first + i * step * day, counts: new Map(), total: 0 }));
+    for (const record of records) {
+      const bucket = buckets[Math.floor((Date.parse(`${record.date}T00:00:00Z`) - first) / day / step)];
+      for (const emotion of new Set(record.emotions || [])) {
+        const label = leaders.includes(emotion) ? emotion : other;
+        bucket.counts.set(label, (bucket.counts.get(label) || 0) + 1); bucket.total++;
+      }
+    }
+    section.createEl("p", { text: `Share of recorded emotion labels per ${step === 1 ? "day" : `${step}-day period`}. Top emotions in the selected range; remaining labels are grouped as Other emotions. Blank periods have no recorded emotions. Shares describe labels, not emotional intensity.` });
+    const legend = section.createEl("ul", { cls: "auto-mood-composition-legend", attr: { "aria-label": "Emotion colors" } });
+    labels.forEach((label, i) => {
+      const item = legend.createEl("li");
+      const swatch = item.createEl("span", { cls: "auto-mood-composition-swatch", attr: { "aria-hidden": "true" } });
+      swatch.style.backgroundColor = colors[i]; item.createEl("span", { text: display(label) });
+    });
+    const chart = section.createDiv({ cls: "auto-mood-composition-chart" });
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "100%"); svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Emotion composition over time, from zero to one hundred percent. Exact counts and percentages are in Period details below.");
+    chart.appendChild(svg);
+    const draw = width => {
+      width = Math.max(1, Math.floor(width)); svg.replaceChildren();
+      svg.setAttribute("viewBox", `0 0 ${width} 240`); svg.setAttribute("height", "240");
+      const make = (tag, attrs, text, parent = svg) => {
+        const node = document.createElementNS(svg.namespaceURI, tag);
+        for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+        if (text !== undefined) node.textContent = text; parent.appendChild(node); return node;
+      };
+      const left = 36, plot = Math.max(1, width - left - 8), column = plot / buckets.length;
+      [0, 50, 100].forEach(percent => {
+        const y = 208 - percent * 1.8;
+        make("line", { x1: left, x2: width - 8, y1: y, y2: y, stroke: "var(--amh-frame)", opacity: ".3" });
+        make("text", { x: 1, y: y + 4, fill: "var(--amh-text)", "font-size": 10 }, `${percent}%`);
+      });
+      buckets.forEach((bucket, i) => {
+        let used = 0;
+        labels.forEach((label, color) => {
+          const count = bucket.counts.get(label) || 0;
+          if (!count) return;
+          const percent = count / bucket.total * 100;
+          const rect = make("rect", { x: left + i * column + 1, y: 208 - (used + percent) * 1.8, width: Math.max(1, column - 2), height: percent * 1.8, fill: colors[color], "data-period": iso(bucket.start), "data-emotion": display(label), "data-share": percent });
+          make("title", {}, `${iso(bucket.start)}: ${display(label)} ${percent.toFixed(1)}% (${count} labels)`, rect);
+          used += percent;
+        });
+      });
+      const end = Math.min(last, buckets[buckets.length - 1].start + (step - 1) * day);
+      make("text", { x: left, y: 232, fill: "var(--amh-text)", "font-size": 10 }, iso(first));
+      if (width > 260 && first !== end) make("text", { x: width - 8, y: 232, "text-anchor": "end", fill: "var(--amh-text)", "font-size": 10 }, iso(end));
+    };
+    draw(chart.clientWidth || 320);
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(entries => { if (entries[0]?.contentRect.width > 0) draw(entries[0].contentRect.width); });
+      observer.observe(chart); this.chartObservers ||= new Map(); this.chartObservers.set(svg, observer);
+    }
+    const details = section.createEl("details"); details.createEl("summary", { text: "Period details" });
+    const list = details.createEl("ul", { cls: "auto-mood-composition-details" });
+    for (const bucket of buckets) {
+      const end = Math.min(last, bucket.start + (step - 1) * day);
+      const values = labels.filter(label => bucket.counts.has(label)).map(label => `${display(label)}: ${bucket.counts.get(label)} (${(bucket.counts.get(label) / bucket.total * 100).toFixed(1)}%)`);
+      list.createEl("li", { text: `${iso(bucket.start)}${end === bucket.start ? "" : ` to ${iso(end)}`}: ${values.join("; ") || "No recorded emotions"}.` });
     }
   }
 
