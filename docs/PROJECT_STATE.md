@@ -164,3 +164,7 @@ Review the current diff, then implement a safe, explicit migration and correct r
 The migration blocker is resolved additively. New groups use detected-note-date and detected: collision keys; old created-at-local-date records and generated Markdown remain intact. partitionHistory excludes previous grouping and changed source membership from current charts and exposes them in a collapsed history section. Pending historical writes recover under their original identity; historical retry requests are retired on load. No old scores are copied to new dates. New test date-migration.test.js covers split/collision, failures, restart, rename/delete/exclusions and chart membership. Existing suites were updated to exercise current scope. Local functional/mobile/privacy and desktop/mobile browser layout checks passed. User will test native Obsidian; no installation performed.
 
 RESUME HERE: publish and verify stable 1.7.4. Earlier prerelease blocker sections are historical.
+
+
+## RESUME HERE ? 1.7.4 complete
+Stable 1.7.4 is published and latest, from PR #18 merge 5e6603aa7dc7ae4f9080654d3d1b1c05d1b184ee. Main CI 43514868611 and Release 43514868482 succeeded. Four release asset digests match downloads; source text for three plugin files matches after line-ending normalization. main.js release-workflow attestation verification exited 0. User elected to test native Obsidian; installed personal plugin/data were not changed. Publication is complete. Earlier incomplete migration and prerelease notes are historical.
