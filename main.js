@@ -2576,6 +2576,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const rangeButtons = windows.map(([label, days]) => {
       const button = rangeControls.createEl("button", { text: label, attr: { type: "button", "aria-pressed": String(days === defaultDays) } });
       button.addEventListener("click", () => {
+        customForm.hidden = true;
+        customButton.setAttribute("aria-pressed", "false");
         shown = recordsInWindow(days);
         updateSummaryCards(shown);
         selected = shown.length - 1;
@@ -2583,6 +2585,32 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         redraw();
       });
       return { button, days };
+    });
+    const customButton = rangeControls.createEl("button", { text: "Custom", attr: { type: "button", "aria-pressed": "false" } });
+    const customForm = section.createEl("form", { cls: "auto-mood-custom-range" });
+    customForm.hidden = true;
+    const inputDate = (text, value) => {
+      const label = customForm.createEl("label", { text });
+      return label.createEl("input", { attr: { type: "date", value, required: "", "aria-label": text } });
+    };
+    const startDate = inputDate("Start date", records[0].date);
+    const endDate = inputDate("End date", records[records.length - 1].date);
+    customForm.createEl("button", { text: "Apply range", attr: { type: "submit" } });
+    const rangeError = customForm.createEl("p", { cls: "auto-mood-range-error", attr: { role: "status", "aria-live": "polite" } });
+    customButton.addEventListener("click", () => { customForm.hidden = false; startDate.focus(); });
+    customForm.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!validDate(startDate.value) || !validDate(endDate.value) || startDate.value > endDate.value) {
+        rangeError.setText("Choose valid dates with the start on or before the end.");
+        return;
+      }
+      rangeError.setText("");
+      shown = records.filter(record => record.date >= startDate.value && record.date <= endDate.value);
+      selected = shown.length - 1;
+      updateSummaryCards(shown);
+      for (const control of rangeButtons) control.button.setAttribute("aria-pressed", "false");
+      customButton.setAttribute("aria-pressed", "true");
+      redraw();
     });
     const series = [
       ["Mood", "moodScore", "var(--amh-series-mood)"],
@@ -2630,6 +2658,17 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const draw = (availableWidth) => {
       const width = Math.max(1, Math.floor(availableWidth));
       previousWidth = width;
+      if (!shown.length) {
+        svg.replaceChildren();
+        svg.setAttribute("height", "0");
+        svg.style.height = "0px";
+        slider.disabled = true;
+        slider.max = "0"; slider.value = "0";
+        slider.removeAttribute("aria-valuetext");
+        readout.setText("No scored days in this range.");
+        rangeText.setText(`${startDate.value} to ${endDate.value} ? 0 recorded days.`);
+        return;
+      }
       rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded scores, not estimates for unrecorded days. A missing score breaks its line. Values at right reflect the selected day.`);
       updateReadout();
       const hidden = new Set(this.settings.hiddenChartSeries || []);
@@ -2707,6 +2746,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     chartView.redraw = redraw;
     chartView.signature = series.filter(([, property]) => !(this.settings.hiddenChartSeries || []).includes(property)).map(([label]) => label).join(",");
     svg.addEventListener("click", event => {
+      if (!shown.length) return;
       const bounds = svg.getBoundingClientRect();
       const px = (event.clientX - bounds.left) * previousWidth / bounds.width;
       const left = 32, plotWidth = Math.max(1, previousWidth - left - 14);

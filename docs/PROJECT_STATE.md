@@ -168,3 +168,8 @@ RESUME HERE: publish and verify stable 1.7.4. Earlier prerelease blocker section
 
 ## RESUME HERE ? 1.7.4 complete
 Stable 1.7.4 is published and latest, from PR #18 merge 5e6603aa7dc7ae4f9080654d3d1b1c05d1b184ee. Main CI 43514868611 and Release 43514868482 succeeded. Four release asset digests match downloads; source text for three plugin files matches after line-ending normalization. main.js release-workflow attestation verification exited 0. User elected to test native Obsidian; installed personal plugin/data were not changed. Publication is complete. Earlier incomplete migration and prerelease notes are historical.
+
+
+## Custom trend range ? 1.7.5
+renderTrendChart includes Custom, a date form, inclusive string-date filtering and explicit empty state. Custom ranges update the same summary callback as presets. Invalid/reversed dates retain the applied selection. Presets hide the form and restore their own window. Selection remains transient, like existing presets; no new saved settings or records. styles.css wraps touch-sized date controls. tests/layout.test.js covers inclusive bounds, invalid input, empty results and preset restoration.
+RESUME HERE: finish release checks, merge and verify 1.7.5 publication.

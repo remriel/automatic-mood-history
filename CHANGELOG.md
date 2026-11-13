@@ -1,3 +1,7 @@
+# 1.7.5
+
+- Add Custom trend range with inclusive date inputs, validation and empty state.
+
 # 1.7.4
 
 - Detect filename dates across included folders.

@@ -154,6 +154,24 @@ async function inspectLayout(page, label) {
       assert.deepStrictEqual(await cardValues(), windowCards[label], `${label} summary uses the same records as the chart`);
       assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).getAttribute('aria-valuetext'), '2099-04-01');
     }
+    await page.getByRole('button', { name: 'Custom', exact: true }).click();
+    await page.getByLabel('Start date', { exact: true }).fill('2099-03-25');
+    await page.getByLabel('End date', { exact: true }).fill('2099-03-27');
+    await page.getByRole('button', { name: 'Apply range', exact: true }).click();
+    assert.deepStrictEqual(await chartDates(), ['2099-03-25', '2099-03-26', '2099-03-27'], 'custom boundaries are inclusive');
+    assert.equal((await cardValues())[0], '3');
+    await page.getByLabel('Start date', { exact: true }).fill('2099-04-01');
+    await page.getByRole('button', { name: 'Apply range', exact: true }).click();
+    assert(await page.locator('.auto-mood-range-error').textContent(), 'reversed range reports an error');
+    assert.deepStrictEqual(await chartDates(), ['2099-03-25', '2099-03-26', '2099-03-27'], 'invalid input keeps the applied range');
+    await page.getByLabel('Start date', { exact: true }).fill('2080-01-01');
+    await page.getByLabel('End date', { exact: true }).fill('2080-01-02');
+    await page.getByRole('button', { name: 'Apply range', exact: true }).click();
+    assert.equal((await cardValues())[0], '0');
+    assert.equal(await page.locator('.auto-mood-svg .data-point').count(), 0);
+    assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).isDisabled(), true);
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    assert.deepStrictEqual(await cardValues(), windowCards.All, 'preset restores chart and summaries after an empty custom range');
     assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), rangeRecordsBefore, 'changing range does not alter records');
     assert.equal(await page.locator('.auto-mood-day').count(), historyBefore, 'changing range does not filter history');
     await page.evaluate(() => fixture.plugin.renderDashboard(document.getElementById('dashboard')));

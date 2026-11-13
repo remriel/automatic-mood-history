@@ -622,3 +622,11 @@
 
 .auto-mood-svg .series-heading { fill: var(--amh-text); font-family: var(--font-interface); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
 .auto-mood-svg .selected-score { fill: var(--amh-text); font-family: var(--font-monospace); font-size: 12px; font-weight: 900; }
+
+.auto-mood-custom-range { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 0 0 16px; }
+.auto-mood-custom-range[hidden] { display: none; }
+.auto-mood-custom-range label { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; font-weight: 800; }
+.auto-mood-custom-range input, .auto-mood-custom-range button { box-sizing: border-box; min-height: 44px; min-width: 0; max-width: 100%; padding: 7px 10px; border: 2px solid var(--amh-frame); border-radius: 0; background: var(--amh-surface); color: var(--amh-text); font: inherit; }
+.auto-mood-custom-range button { background: var(--amh-yellow); color: var(--amh-on-accent); font-weight: 800; cursor: pointer; }
+.auto-mood-custom-range :focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
+.auto-mood-range-error { flex-basis: 100%; margin: 0; }
