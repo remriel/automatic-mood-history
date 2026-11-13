@@ -850,10 +850,11 @@ const GROQ_API_KEY_ENV = "GROQ_API_KEY";
 const GROQ_API_KEY_SECRET = "automatic-mood-history-groq";
 const AUTO_DATE_FORMATS = ["YYYY-MM-DD", "YYYY.MM.DD", "YYYY_MM_DD", "YYYYMMDD", "DD-MM-YYYY", "MM-DD-YYYY", "D MMM YYYY", "MMMM D, YYYY", "MMMM D YYYY", "D MMMM YYYY", "MMM D YYYY", "MMM D, YYYY"];
 
-const CREATED_DATE_BASIS = "created-at-local-date";
+const CURRENT_DATE_BASIS = "detected-note-date";
+const HISTORICAL_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
 const LOCAL_ANALYZER_VERSION = "vader-sentiment-js-1.1.3-plus-heuristics-v1";
-const GROQ_PROMPT_VERSION = "creation-date-goemotions-v2";
+const GROQ_PROMPT_VERSION = "detected-date-goemotions-v3";
 const TEXT_PIPELINE_VERSION = "markdown-text-v2";
 const MOODRING_FILENAME = "moodring-model.bin";
 const GOEMOTIONS_LABELS = Object.freeze(["admiration","amusement","anger","annoyance","approval","caring","confusion","curiosity","desire","disappointment","disapproval","disgust","embarrassment","excitement","fear","gratitude","grief","joy","love","nervousness","optimism","pride","realization","relief","remorse","sadness","surprise","neutral"]);
@@ -878,7 +879,7 @@ function validDate(value) {
   const parsed = new Date(`${value}T12:00:00Z`);
   return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }
-const dateFromKey = key => typeof key === "string" && /^(?:created:|legacy:)?\d{4}-\d{2}-\d{2}$/.test(key) ? key.slice(-10) : "";
+const dateFromKey = key => typeof key === "string" && /^(?:created:|detected:|legacy:)?\d{4}-\d{2}-\d{2}$/.test(key) ? key.slice(-10) : "";
 
 function vaultPath(value) {
   if (typeof value !== "string" || !value.trim()) throw new Error("Use a nonempty vault-relative path.");
@@ -938,7 +939,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (record && !record.dateBasis) record.dateBasis = LEGACY_DATE_BASIS;
     }
     this.runtime = this.validateRuntime(loaded.runtime);
-    this.runtime.historySchemaVersion = 2;
+    this.runtime.historySchemaVersion = 3;
+    // Old queued requests belong to the archived creation-date scope. Prepared
+    // writes remain recoverable, but never reanalyze their old groups as new ones.
+    for (const key of Object.keys(this.runtime.pendingDates || {})) {
+      if (this.records[key]?.dateBasis === HISTORICAL_DATE_BASIS || key.startsWith("created:")) delete this.runtime.pendingDates[key];
+    }
     if (!this.runtime.lastGroqIssue) delete this.runtime.lastGroqError;
     this.runtime.lastLoadedAt = new Date().toISOString();
     this.runtime.version = this.manifest.version;
@@ -1094,7 +1100,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (!isObject(saved)) return records;
     for (const [key, record] of Object.entries(saved)) {
       if (!isObject(record) || !validDate(record.date) || !validDate(dateFromKey(key)) || !["complete", "insufficient"].includes(record.status)) continue;
-      if (record.date !== dateFromKey(key) || key.startsWith("created:") && record.dateBasis !== CREATED_DATE_BASIS || key.startsWith("legacy:") && record.dateBasis !== LEGACY_DATE_BASIS) continue;
+      if (record.date !== dateFromKey(key) || key.startsWith("created:") && ![HISTORICAL_DATE_BASIS, CURRENT_DATE_BASIS].includes(record.dateBasis) || key.startsWith("detected:") && record.dateBasis !== CURRENT_DATE_BASIS || key.startsWith("legacy:") && record.dateBasis !== LEGACY_DATE_BASIS) continue;
       if (record.sourcePaths !== undefined && (!Array.isArray(record.sourcePaths) || record.sourcePaths.some(path => typeof path !== "string"))) record.sourcePathsInvalid = true;
       if (record.sourcePaths !== undefined) record.sourcePaths = Array.isArray(record.sourcePaths) ? record.sourcePaths.filter(path => typeof path === "string") : [];
       if (record.emotions !== undefined) record.emotions = Array.isArray(record.emotions) ? record.emotions.filter(value => typeof value === "string").slice(0, 6) : [];
@@ -1474,7 +1480,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   fallbackRecords() {
-    return Object.values(this.records || {}).filter((record) => record.status === "complete" && record.analysisSource === "local-fallback");
+    return Object.values(this.records || {}).filter((record) => record.status === "complete" && record.analysisSource === "local-fallback" && record.dateBasis !== HISTORICAL_DATE_BASIS);
   }
 
   legacyRecords() {
@@ -1482,12 +1488,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   recordKey(date, legacySources = false) {
-    const basis = legacySources ? LEGACY_DATE_BASIS : CREATED_DATE_BASIS;
-    for (const key of [date, `${legacySources ? "legacy" : "created"}:${date}`]) {
+    const basis = legacySources ? LEGACY_DATE_BASIS : CURRENT_DATE_BASIS;
+    for (const key of [date, `${legacySources ? "legacy" : "detected"}:${date}`]) {
       const record = this.records?.[key];
       if (record && (record.dateBasis || LEGACY_DATE_BASIS) === basis) return key;
     }
-    return this.records?.[date] ? `${legacySources ? "legacy" : "created"}:${date}` : date;
+    return this.records?.[date] ? `${legacySources ? "legacy" : "detected"}:${date}` : date;
   }
 
   getAnalysisTargets(options = {}) {
@@ -1895,7 +1901,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async analyzeDateNow(date, options = {}) {
     const assertCurrent = this.analysisGuard(options);
     assertCurrent();
-    const key = options.recordKey || date;
+    let key = options.recordKey || this.recordKey(date, options.legacySources);
     const prepared = this.runtime.pendingWrites?.[key];
     if (prepared) {
       await this.commitPreparedRecord(key, prepared, assertCurrent);
@@ -1903,9 +1909,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return true;
     }
     if (options.recoveryOnly) return false;
+    // A stale persisted queue or caller must not overwrite historical records.
+    if (this.records[key]?.dateBasis === HISTORICAL_DATE_BASIS || key.startsWith("created:")) key = this.recordKey(date, options.legacySources);
     const previous = this.records[key];
     const recovering = Boolean(options.onlyFallbacks || options.legacySources);
-    const dateBasis = options.legacySources ? LEGACY_DATE_BASIS : CREATED_DATE_BASIS;
+    const dateBasis = options.legacySources ? LEGACY_DATE_BASIS : CURRENT_DATE_BASIS;
     const skipRecovery = (pending = false) => {
       if (options.runStats) {
         options.runStats.skipped += 1;
@@ -1979,7 +1987,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         summary: "Not enough written text to infer a mood reliably.",
         drivers: [],
         confidence: "none",
-        confidenceReason: "Notes created on this date were empty or contained only non-text material."
+        confidenceReason: "Notes assigned to this date were empty or contained only non-text material."
       };
     } else {
       let analysis;
@@ -2403,13 +2411,30 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
   }
 
+  partitionHistory(records = Object.values(this.records || {})) {
+    // Compare source membership, not scores. Renames and deletions must not
+    // leave a result on the current chart under its former day.
+    const index = this.app?.vault?.getMarkdownFiles ? this.buildDateIndex().filesByDate : null;
+    const current = [], previous = [], legacy = [];
+    for (const record of records) {
+      if (record.dateBasis === HISTORICAL_DATE_BASIS) { previous.push(record); continue; }
+      if (record.dateBasis !== CURRENT_DATE_BASIS) { legacy.push(record); continue; }
+      const expected = index?.get(record.date)?.map(file => file.path).sort() || [];
+      const saved = Array.isArray(record.sourcePaths) ? [...new Set(record.sourcePaths)].sort() : null;
+      if (index && (!saved || JSON.stringify(saved) !== JSON.stringify(expected) || !expected.length)) previous.push(record);
+      else current.push(record);
+    }
+    return { current, previous, legacy };
+  }
+
   renderDashboard(element) {
     this.disposeDashboard(element);
     element.empty();
     element.classList.add("auto-mood-render-root");
     const wrapper = element.createDiv({ cls: "auto-mood-dashboard" });
     const records = Object.values(this.records).sort((a, b) => a.date.localeCompare(b.date));
-    const timestampRecords = records.filter((record) => record.dateBasis === CREATED_DATE_BASIS);
+    const partitions = this.partitionHistory(records);
+    const timestampRecords = partitions.current;
     const complete = timestampRecords.filter((record) => record.status === "complete" && !hasNoEmotionalEvidence(record) && Number.isFinite(record.moodScore));
 
     const toolbar = wrapper.createDiv({ cls: "auto-mood-toolbar" });
@@ -2462,7 +2487,14 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
 
     if (complete.length) this.renderTrendChart(wrapper, complete, updateSummaryCards);
     this.renderEmotionBars(wrapper, complete);
-    this.renderHistoryCards(wrapper, records);
+    this.renderHistoryCards(wrapper, [...partitions.current, ...partitions.legacy].sort((a, b) => a.date.localeCompare(b.date)));
+    const historical = partitions.previous;
+    if (historical.length) {
+      const archive = wrapper.createEl("details", { cls: "auto-mood-historical" });
+      archive.createEl("summary", { text: `Previous grouping history (${historical.length})` });
+      archive.createEl("p", { text: "These saved results use the previous creation-date grouping or source membership that has since changed. They are preserved unchanged and excluded from current charts and averages. Analyze changed builds separate entries using detected dates; it does not move or split old scores." });
+      this.renderHistoryCards(archive, historical);
+    }
 
     const provenance = wrapper.createDiv({ cls: "auto-mood-provenance" });
     const groqCount = complete.filter((record) => record.analysisSource === "groq").length;
@@ -2470,7 +2502,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const fallbackCount = complete.filter((record) => record.analysisSource === "local-fallback").length;
     const localCount = complete.filter((record) => record.analysisSource === "local").length;
     const legacyFallbackCount = records.filter((record) => record.dateBasis === LEGACY_DATE_BASIS && record.analysisSource === "local-fallback").length;
-    provenance.setText(`Timestamp groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved and labeled legacy.${legacyFallbackCount ? ` ${legacyFallbackCount} legacy fallback entries can be recovered with Retry fallback entries.` : ""}`);
+    provenance.setText(`Detected date groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved separately and excluded from current charts.${legacyFallbackCount ? ` ${legacyFallbackCount} legacy fallback entries can be recovered with Retry fallback entries.` : ""}`);
   }
 
   installChartSeriesControls(svg, legend, series) {
@@ -2729,7 +2761,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       link.setAttribute("data-href", entryPath);
       link.setAttribute("href", entryPath);
       const badges = header.createDiv({ cls: "auto-mood-day-badges" });
-      badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CREATED_DATE_BASIS ? "Detected date / created" : "Legacy date" });
+      badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CURRENT_DATE_BASIS ? "Detected date" : record.dateBasis === HISTORICAL_DATE_BASIS ? "Previous creation date" : "Legacy date" });
       const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource || "none" });
       if (record.providerIssue?.message) analyzer.setAttribute("title", record.providerIssue.message);
       if (record.status === "insufficient" || hasNoEmotionalEvidence(record)) {
@@ -2860,7 +2892,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     });
     new Setting(containerEl)
       .setName("Analyze note changes automatically")
-      .setDesc("Reanalyze the note's creation-date group after any included note changes. On phones, analysis resumes while Obsidian is open; Android and iOS may suspend it in the background.")
+      .setDesc("Reanalyze the note's detected-date group after any included note changes. On phones, analysis resumes while Obsidian is open; Android and iOS may suspend it in the background.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.autoAnalyze)
         .onChange(async (value) => {
@@ -2868,7 +2900,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         }));
     new Setting(containerEl)
       .setName("Analyze on startup")
-      .setDesc("Check all note creation-date groups after Obsidian starts. Unchanged source hashes are skipped.")
+      .setDesc("Check all detected-date groups after Obsidian starts. Unchanged source hashes are skipped.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.analyzeOnStartup)
         .onChange(async (value) => {
@@ -2880,7 +2912,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         void this.plugin.analyzeAll({ force: false, forceGroq: false });
       }));
     new Setting(containerEl)
-      .setName("Retry every creation-date group with Groq")
+      .setName("Retry every detected-date group with Groq")
       .setDesc("Forces reanalysis and retries Groq even after a recent network error.")
       .addButton((button) => button.setButtonText("Retry Groq").onClick(() => {
         void this.plugin.retryAllWithGroq();

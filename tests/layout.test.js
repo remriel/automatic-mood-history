@@ -51,7 +51,7 @@ async function inspectLayout(page, label) {
         await inspectLayout(page, `${theme} ${width}px pane inside a 1600px window`);
         assert.strictEqual(await page.locator(".auto-mood-day").count(), 32, "all days remain available");
         await page.getByRole("button", { name: "All", exact: true }).click();
-        const pointCounts = await page.evaluate(() => ({ expected: Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').length * 4, actual: document.querySelectorAll('.auto-mood-svg .data-point').length }));
+        const pointCounts = await page.evaluate(() => ({ expected: Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'detected-note-date' && r.status === 'complete').length * 4, actual: document.querySelectorAll('.auto-mood-svg .data-point').length }));
         assert.strictEqual(pointCounts.actual, pointCounts.expected, "every chart series retains every valid day");
         const graph = await page.locator(".auto-mood-svg").evaluate(svg => ({ width: svg.viewBox.baseVal.width, cssWidth: svg.clientWidth, labels: svg.querySelectorAll(".date-label").length }));
         assert(Math.abs(graph.width - graph.cssWidth) <= 5, "chart redraws for its actual width");
@@ -59,7 +59,7 @@ async function inspectLayout(page, label) {
       }
     }
     await page.evaluate(() => {
-      const records = Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'created-at-local-date' && r.status === 'complete').sort((a, b) => a.date.localeCompare(b.date));
+      const records = Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'detected-note-date' && r.status === 'complete').sort((a, b) => a.date.localeCompare(b.date));
       records[0].intensityScore = null;
       records[1].intensityScore = 5;
       records[2].intensityScore = null;
@@ -122,7 +122,7 @@ async function inspectLayout(page, label) {
       fixture.configure({ paneWidth: 640, count: 10 });
       const values = Object.values(fixture.plugin.records);
       const dates = ['2099-01-31', '2099-02-01', '2099-02-02', '2099-03-18', '2099-03-19', '2099-03-20', '2099-03-25', '2099-03-26', '2099-03-27', '2099-04-01'];
-      fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'created-at-local-date', status: 'complete' }]));
+      fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'detected-note-date', status: 'complete' }]));
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
     });
     const rangeRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
@@ -177,7 +177,7 @@ async function inspectLayout(page, label) {
       fixture.configure({ paneWidth: 640, count: 4 });
       const values = Object.values(fixture.plugin.records);
       const dates = ['2099-01-01', '2099-01-02', '2099-01-11', '2099-04-01'];
-      fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'created-at-local-date', status: 'complete' }]));
+      fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'detected-note-date', status: 'complete' }]));
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
       [...document.querySelectorAll('.auto-mood-range-controls button')].find(button => button.textContent === 'All').click();
     });

@@ -10,7 +10,7 @@ class TFolder {}
 const notices = [];
 const original = Module._load;
 Module._load = function (name, ...args) {
-  if (name === "obsidian") return { Plugin: class {}, PluginSettingTab: class {}, Component: class {}, Setting: class {}, TFile, TFolder, Notice: class { constructor(text) { notices.push(text); } } };
+  if (name === "obsidian") return { moment: require("moment"), Plugin: class {}, PluginSettingTab: class {}, Component: class {}, Setting: class {}, TFile, TFolder, Notice: class { constructor(text) { notices.push(text); } } };
   return original.call(this, name, ...args);
 };
 const Mood = require("../main.js");
@@ -46,5 +46,5 @@ function fixture(disk = { json: null, files: new Map() }) {
   p.addRibbonIcon = p.addCommand = p.addSettingTab = p.registerMarkdownCodeBlockProcessor = p.registerEvent = p.register = () => {};
   return { p, disk, files, source };
 }
-function priorRecord() { return { ...valid, date, status: "complete", dateBasis: "created-at-local-date", analysisSource: "groq", model: "fictional", contentHash: "old", summary: "Fictional old result.", sourcePaths: ["Journal/Fictional.md"], entryPath: `Mood History/Entries/${date}.md` }; }
+function priorRecord() { return { ...valid, date, status: "complete", dateBasis: "detected-note-date", analysisSource: "groq", model: "fictional", contentHash: "old", summary: "Fictional old result.", sourcePaths: ["Journal/Fictional.md"], entryPath: `Mood History/Entries/${date}.md` }; }
 module.exports = { Mood, TFile, TFolder, notices, fixture, date, valid, clone, deferred, priorRecord, buildEntryMarkdown };

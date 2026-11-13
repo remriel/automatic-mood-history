@@ -106,7 +106,7 @@ plugin.gatherDate(firstDay).then(async (gathered) => {
   const changed = await plugin.analyzeDate(firstDay);
   assert.strictEqual(changed, true, "matching legacy data coexists with the timestamp scope");
   assert.strictEqual(legacyRecord.dateBasis, "legacy-note-date", "the previous committed object is not mutated");
-  assert.strictEqual(plugin.records[`created:${firstDay}`].dateBasis, "created-at-local-date");
+  assert.strictEqual(plugin.records[`detected:${firstDay}`].dateBasis, "detected-note-date");
   assert.strictEqual(plugin.records[firstDay], legacyRecord, "legacy history keeps its original key and result");
   assert.strictEqual(legacyRecord.summary, "Preserved synthetic record.");
   assert.strictEqual(saveCalls, 2);

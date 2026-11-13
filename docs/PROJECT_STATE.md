@@ -158,3 +158,9 @@ Audit publication: PR #1 is open at https://github.com/remriel/automatic-mood-hi
 Review the current diff, then implement a safe, explicit migration and correct record provenance/display. Update all user-facing descriptions, test collisions, missing sources, rename/delete and restart recovery. Integrate into the personal installed plugin without overwriting its private extensions or data, validate in a separate test vault, and synchronize the finished work to GitHub. The requested AI Brain paths were unavailable in this session.
 `n## Prerelease decision`nPublish 1.7.4-beta.1 for separate-vault testing only. Release workflow now marks hyphenated versions as prereleases. Preserve migration blocker; do not promote this build to stable.
 `nRESUME HERE: 1.7.4-beta.1 is published with three plugin assets at tag commit 5e24cec. Stable readiness remains blocked by historical migration; installation was not performed.
+
+
+## Stable date migration ? 1.7.4
+The migration blocker is resolved additively. New groups use detected-note-date and detected: collision keys; old created-at-local-date records and generated Markdown remain intact. partitionHistory excludes previous grouping and changed source membership from current charts and exposes them in a collapsed history section. Pending historical writes recover under their original identity; historical retry requests are retired on load. No old scores are copied to new dates. New test date-migration.test.js covers split/collision, failures, restart, rename/delete/exclusions and chart membership. Existing suites were updated to exercise current scope. Local functional/mobile/privacy and desktop/mobile browser layout checks passed. User will test native Obsidian; no installation performed.
+
+RESUME HERE: publish and verify stable 1.7.4. Earlier prerelease blocker sections are historical.

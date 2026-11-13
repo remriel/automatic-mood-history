@@ -1,3 +1,9 @@
+# 1.7.4
+
+- Detect filename dates across included folders.
+- Preserve previous creation-date history separately, with distinct new record identities and interrupted-write recovery.
+- Exclude outdated source membership from current charts.
+
 # Changelog
 
 ## 1.7.3
