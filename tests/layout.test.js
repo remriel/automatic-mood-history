@@ -298,6 +298,37 @@ async function inspectLayout(page, label) {
     await inspectLayout(page, 'top-seven composition at narrow width');
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
 
+    // A theme may style all SVG rectangles and swatches. Actual rendered
+    // colors must still match their labels and remain stable after reranking.
+    const themeOverride = await page.addStyleTag({ content: '.auto-mood-composition-chart rect { fill: #000 !important; } .auto-mood-composition-swatch { background-color: #000 !important; }' });
+    await page.evaluate(() => {
+      fixture.configure({ paneWidth: 640, count: 10 });
+      Object.values(fixture.plugin.records).forEach((record, index) => {
+        record.dateBasis = 'detected-note-date'; record.status = 'complete'; record.moodScore = 3;
+        record.emotions = index < 7 ? ['joy', 'constructor'] : ['sadness', 'constructor'];
+      });
+      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
+    });
+    const compositionColors = () => page.evaluate(() => {
+      const legend = Object.fromEntries([...document.querySelectorAll('.auto-mood-composition-legend li')].map(item => [item.textContent, getComputedStyle(item.querySelector('.auto-mood-composition-swatch')).backgroundColor]));
+      const segments = [...document.querySelectorAll('.auto-mood-composition-chart rect[data-emotion]')].map(rect => [rect.dataset.emotion, getComputedStyle(rect).fill]);
+      return { legend, segments };
+    });
+    const beforeColors = await compositionColors();
+    assert.equal(beforeColors.legend.joy, 'rgb(215, 138, 0)', 'known emotions receive their assigned colors');
+    assert.notEqual(beforeColors.legend.constructor, 'rgb(0, 0, 0)', 'custom labels do not collide with object prototype names');
+    assert(beforeColors.segments.length > 0);
+    for (const [emotion, fill] of beforeColors.segments) assert.equal(fill, beforeColors.legend[emotion], `${emotion} segment matches its legend`);
+    await page.getByRole('button', { name: 'Custom', exact: true }).click();
+    await page.getByLabel('Start date', { exact: true }).fill('2099-01-08');
+    await page.getByLabel('End date', { exact: true }).fill('2099-01-10');
+    await page.getByRole('button', { name: 'Apply range', exact: true }).click();
+    const afterColors = await compositionColors();
+    assert.equal(afterColors.legend.sadness, beforeColors.legend.sadness, 'an emotion keeps its color when its rank changes');
+    assert.equal(afterColors.legend.constructor, beforeColors.legend.constructor, 'a custom emotion keeps its color across ranges');
+    for (const [emotion, fill] of afterColors.segments) assert.equal(fill, afterColors.legend[emotion], `${emotion} segment matches its legend after reranking`);
+    await themeOverride.evaluate(element => element.remove());
+
     // Moving averages scale with the selected calendar range.
     // The boundary is inclusive, missing scores are excluded, and each
     // calculated point needs at least two observed scores in its window.
@@ -315,6 +346,10 @@ async function inspectLayout(page, label) {
     const movingRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
     const averageToggle = page.locator('.auto-mood-average-toggle');
     assert.equal(await averageToggle.getAttribute('aria-pressed'), 'true', 'moving average is visible by default');
+    for (const [range, days] of [['7 days', 2], ['14 days', 3], ['30 days', 6], ['60 days', 12], ['90 days', 18], ['1 year', 73]]) {
+      await page.getByRole('button', { name: range, exact: true }).click();
+      assert.equal(await averageToggle.innerText(), `${days}-day moving average`, `${range} uses its own smoothing window`);
+    }
     await page.getByRole('button', { name: 'All', exact: true }).click();
     assert.equal(await averageToggle.innerText(), '4-day moving average');
     const averagePoints = () => page.locator('.moving-average-point[data-series="energyScore"]').evaluateAll(nodes =>

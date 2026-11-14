@@ -4,7 +4,7 @@ Trend averages use one fifth of the selected calendar span, rounded to days with
 
 ## RESUME HERE
 
-Review and publish the current changes if a public release is desired. Verify the installed plugin in native Obsidian. The prior 1.7.7 state below is historical.
+Release 1.7.8 is being prepared. The composition chart applies matching inline colors to legend and SVG segments to resist theme overrides; regression tests compare computed colors and verify stability across reranking. Run checks, merge and verify the release workflow and installed assets. Native Obsidian interaction remains unverified. The prior 1.7.7 state below is historical.
 
 ---
 

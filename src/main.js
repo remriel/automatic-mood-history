@@ -2043,7 +2043,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const emotionColors = { joy: "#d78a00", amusement: "#e99c00", excitement: "#ed6a22", optimism: "#a0a800", gratitude: "#258451", love: "#d33970", caring: "#cc6292", admiration: "#8f50b2", approval: "#348a58", pride: "#a16a12", relief: "#168b85", curiosity: "#1684a5", surprise: "#8954c4", realization: "#5283bb", desire: "#c54c7b", neutral: "#78838c", sadness: "#3869b3", grief: "#384e85", disappointment: "#6472a7", remorse: "#706c97", fear: "#7556a0", nervousness: "#9770ac", confusion: "#8d77b4", anger: "#c83d32", annoyance: "#cc673a", disapproval: "#a14f43", disgust: "#6b7b32", embarrassment: "#bc7183" };
     const colors = labels.map(label => {
       const key = label.trim().toLowerCase();
-      if (emotionColors[key]) return emotionColors[key];
+      if (Object.prototype.hasOwnProperty.call(emotionColors, key)) return emotionColors[key];
       let hash = 0; for (const char of key) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
       return `hsl(${hash % 360} 55% 40%)`;
     });
@@ -2060,7 +2060,9 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     labels.forEach((label, i) => {
       const item = legend.createEl("li");
       const swatch = item.createEl("span", { cls: "auto-mood-composition-swatch", attr: { "aria-hidden": "true" } });
-      swatch.style.backgroundColor = colors[i]; item.createEl("span", { text: label });
+      // Themes may otherwise override chart colors with broad SVG/CSS rules.
+      swatch.style.setProperty("background-color", colors[i], "important");
+      item.createEl("span", { text: label });
     });
     const chart = section.createDiv({ cls: "auto-mood-composition-chart" });
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -2088,6 +2090,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
           if (!count) return;
           const percent = count / bucket.total * 100;
           const rect = make("rect", { x: left + i * column + 1, y: 208 - (used + percent) * 1.8, width: Math.max(1, column - 2), height: percent * 1.8, fill: colors[color], "data-period": iso(bucket.start), "data-emotion": label, "data-share": percent });
+          rect.style.setProperty("fill", colors[color], "important");
           make("title", {}, `${iso(bucket.start)}: ${label} ${percent.toFixed(1)}% (${count} labels)`, rect);
           used += percent;
         });

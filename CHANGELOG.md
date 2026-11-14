@@ -1,3 +1,9 @@
+# 1.7.8
+
+- Scale the moving-average window with the selected date range.
+- Keep emotion colors stable across ranges and match chart segments to their legend under Obsidian themes.
+- Refine the composition chart and legend styling.
+
 # 1.7.7
 
 - Add a toggleable 7-calendar-day moving average to each trend plot.
