@@ -584,12 +584,12 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   }
 
   .auto-mood-card {
-    flex-basis: 84px;
-    padding-inline: 5px;
+    flex-basis: 92px;
+    padding-inline: 4px;
   }
 
   .auto-mood-card-label {
-    letter-spacing: .02em;
+    letter-spacing: 0;
   }
 
   .auto-mood-bar-row {
