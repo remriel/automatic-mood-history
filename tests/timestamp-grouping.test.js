@@ -45,7 +45,7 @@ const contents = new Map([
   ["Meetings/Plan.md", "A meeting note created today."],
   ["Projects/Next.md", "A note created the next day."]
 ]);
-plugin.settings = { outputFolder: "Mood History", maxCharactersPerDay: 60000 };
+plugin.settings = { outputFolder: "Mood History", entryOutput: "daily", maxCharactersPerDay: 60000 };
 plugin.app = {
   vault: {
     getMarkdownFiles: () => files,

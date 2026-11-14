@@ -36,7 +36,7 @@ function fixture() {
   requests.length = notices.length = 0;
   respond = () => success();
   const plugin = new MoodPlugin();
-  plugin.settings = { outputFolder: "Mood History", enableGroq: true, model: "openai/gpt-oss-20b", minimumCharacters: 40 };
+  plugin.settings = { outputFolder: "Mood History", entryOutput: "daily", enableGroq: true, model: "openai/gpt-oss-20b", minimumCharacters: 40 };
   plugin.records = {};
   plugin.runtime = {};
   plugin.groqBlockedUntil = 0;

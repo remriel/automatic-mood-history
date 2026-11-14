@@ -7,7 +7,7 @@ const Mood=require('../main.js');Module._load=original;
 const dates=['2030-01-01','2030-01-02'];
 const valid={moodScore:4,energyScore:3,connectionScore:4,intensityScore:2,valence:'positive',emotions:['grateful','calm'],summary:'A fictional writer enjoyed a quiet afternoon.',drivers:['A fictional restful afternoon.'],confidence:'medium',confidenceReason:'Limited fictional evidence.'};
 function fixture(){
- const p=new Mood();p.settings={enableGroq:true,autoAnalyze:true,model:'fictional',minimumCharacters:40,outputFolder:'Mood History',maxCharactersPerDay:60000};
+ const p=new Mood();p.settings={enableGroq:true,autoAnalyze:true,model:'fictional',minimumCharacters:40,outputFolder:'Mood History',entryOutput:'daily',maxCharactersPerDay:60000};
  p.runtime={};p.records={};p.groqBlockedUntil=0;p.getAllDates=()=>dates;p.apiKey=()=> 'fictional';
  p.gatherDate=async date=>({date,contentHash:date,sourcePaths:['Fictional/source.md'],analysisText:'Fictional writing describing a restful afternoon and a supportive friend.'});
  p.resolveEntryPath=async record=>record.entryPath||`Mood History/Entries/${record.date}.md`;p.analyzeWithGroq=async()=>({...valid});p.writeEntryNote=p.savePluginData=p.ensureSupportFiles=async()=>{};p.refreshRenderers=()=>{};

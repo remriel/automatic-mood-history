@@ -1,3 +1,20 @@
+# Progress — pastel composition, alignment and monthly default (2026-11-14)
+
+Objective: give composition emotions distinct pastel colors, align the chart cells, default to monthly notes, and publish.
+
+Progress: 75% — pastel palette, monthly default, and Morning Pages-style chart implemented; final checks and release remain.
+
+- [x] Provide ten distinct pastel colors with priority for anxiety, frustration and sadness; preserve text details.
+- [x] Default to monthly output when no preference is saved; preserve saved choices and legacy pending-write recovery.
+- [x] Pass color separation, storage recovery, functional and mobile runtime tests; inspect synthetic light and dark previews.
+- [x] Match the referenced Morning Pages stacked composition chart and keep the global top ten fixed across date ranges.
+- [ ] Verify desktop/mobile chart, date-range behavior and full tests.
+- [ ] Publish the release and verify workflow and assets.
+
+Next: finish full desktop/mobile and recovery checks; prepare versioned release, then publish and verify. Do not open Obsidian or modify the user's vault.
+
+---
+
 # Progress — settings proportions and safety fixes (2026-11-13)
 
 Objective: fix settings proportions, resolve reproducible related bugs, and publish a new release.

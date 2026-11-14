@@ -117,8 +117,30 @@ async function run() {
   assert.notEqual(resumed.records[date].entryPath, old.entryPath);
   assert.equal(resumed.providerCalls, 0);
   assert.equal(Object.keys(resumed.runtime.pendingWrites).length, 0);
-  assert.equal(none.p.validateSettings({ entryOutput: "invalid" }).entryOutput, "daily");
+  assert.equal(none.p.validateSettings({ entryOutput: "invalid" }).entryOutput, "monthly");
+  assert.equal(none.p.validateSettings({}).entryOutput, "monthly");
   assert.equal(none.p.validateSettings({ entryOutput: "monthly" }).entryOutput, "monthly");
+  for (const mode of ["daily", "monthly", "none"]) {
+    const saved = fixture(); saved.p.loadData = async () => ({ settings: { entryOutput: mode }, records: {}, runtime: {} });
+    await saved.p.onload();
+    assert.equal(saved.p.entryOutput, mode, "a saved output choice is never changed by the new default");
+    assert.equal(saved.p.providerCalls, 0);
+  }
+  const fresh = fixture(); fresh.p.loadData = async () => ({ settings: {}, records: {}, runtime: {} });
+  await fresh.p.onload();
+  assert.equal(fresh.p.entryOutput, "monthly");
+  assert.equal(fresh.disk.json.settings.entryOutput, "monthly", "the monthly default is persisted on a fresh installation");
+  assert.equal(fresh.p.providerCalls, 0);
+  const legacy = fixture();
+  legacy.p.loadData = async () => ({ settings: {}, records: {}, runtime: { pendingWrites: {
+    [date]: { version: 1, outputFolder: "Mood History", record: priorRecord(), expectedHash: null }
+  } } });
+  await legacy.p.onload();
+  assert.equal(legacy.p.entryOutput, "daily", "legacy pending daily writes retain their required output mode");
+  await legacy.p.recoverPendingWrites();
+  assert(legacy.disk.files.has(`Mood History/Entries/${date}.md`), "legacy pending result recovers without a new provider request");
+  assert.equal(legacy.p.providerCalls, 0);
+  assert.equal(Object.keys(legacy.p.runtime.pendingWrites).length, 0);
   assert.throws(() => none.p.monthlyPath("../../escape"), /Invalid/);
   console.log("PASS compact history: lossless exports, identities, no daily files, protected edits, restart recovery and dashboard-only persistence");
 }

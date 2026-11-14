@@ -39,7 +39,7 @@ function fixtureHTML() {
     ${bundle}
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
     const secrets=new Map();plugin.app={secretStorage:{getSecret:id=>secrets.get(id)||null,setSecret:(id,value)=>secrets.set(id,value)}};
-    plugin.settings={outputFolder:'Mood History',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
+    plugin.settings={outputFolder:'Mood History',entryOutput:'daily',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
     const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};plugin.ensureSupportFiles=async()=>{};
     let statusText='SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';
     plugin.groqStatus=()=>({kind:plugin.settings.enableGroq?'ready':'local',text:plugin.activeScan?'Analyzing fictional fixture records':plugin.checkingGroq?'Checking with fictional fixture text':statusText});

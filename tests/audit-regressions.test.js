@@ -21,7 +21,7 @@ const tests = [];
 function test(name, run) { tests.push({ name, run }); }
 function fixture() {
   const p = new Mood();
-  p.settings = { outputFolder: "Mood History", includeFolders: [], excludeFolders: [], enableGroq: true, autoAnalyze: true, minimumCharacters: 40, maxCharactersPerDay: 60000, model: "fictional" };
+  p.settings = { outputFolder: "Mood History", entryOutput: "daily", includeFolders: [], excludeFolders: [], enableGroq: true, autoAnalyze: true, minimumCharacters: 40, maxCharactersPerDay: 60000, model: "fictional" };
   p.records = {}; p.runtime = {}; p.groqBlockedUntil = 0;
   p.apiKey = () => "fictional";
   p.savePluginData = p.ensureFolder = async () => {};

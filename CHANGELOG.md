@@ -1,3 +1,9 @@
+# 1.8.3
+
+- Match Morning Pages Analytics' stacked composition chart, with calendar-aligned bars, percentage guides and a compact legend.
+- Keep the ten most common emotions across all saved scored history fixed across date ranges, and assign each a distinct pastel color.
+- Default to monthly Markdown history when no output preference is saved; preserve explicit choices and recover unfinished older writes in their original mode.
+
 # 1.8.2
 
 - Fix oversized settings rows on narrow panes and balance desktop text and controls.

@@ -1,5 +1,11 @@
 # Wisdom
 
+## 2026-11-14 — composition and monthly history
+
+1. Least confident: the installed plugin's appearance in the user's live theme; inspect only when requested.
+2. Easy to miss: the fixed top ten uses all saved scored history, including older records, while bars show the selected range and exclude other labels from their denominator.
+3. Most consequential assumption: a saved daily output choice should remain in force when the default changes. Preserve existing choices and let the user select monthly explicitly if needed.
+
 ## 2026-11-13 — settings proportions and write safety
 
 1. Least confident: native Obsidian and third-party theme layouts remain unverified. Test the published release in the user's theme when native testing is authorized.
