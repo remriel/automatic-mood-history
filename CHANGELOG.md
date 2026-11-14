@@ -1,3 +1,10 @@
+# 1.8.2
+
+- Fix oversized settings rows on narrow panes and balance desktop text and controls.
+- Preserve earlier edits and unrecognized entry content during daily exports and reanalysis; checkpoint daily exports for restart recovery.
+- Avoid passing an empty path to Obsidian in monthly and dashboard-only modes.
+- Detect multiple underscore-formatted dates in a single title as ambiguous.
+
 # 1.8.1
 
 - Expand settings tab to fill available modal pane width, preventing narrow constrained columns on wide screens.
