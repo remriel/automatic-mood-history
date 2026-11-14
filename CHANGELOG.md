@@ -2,6 +2,7 @@
 
 - Reduce summary card dimensions by about 30% while retaining responsive layout.
 - Match Common Emotions bar colors to the composition chart for shared emotions.
+- Make dashboard toolbar buttons more compact while preserving touch targets.
 
 # 1.8.3
 
