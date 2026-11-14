@@ -1,5 +1,15 @@
 # Recoverable entry writes
 
+## Compact output (1.8.0)
+
+Prepared writes record `entryOutput` (`daily`, `monthly`, or `none`); older journals without the field retain daily semantics. Recovery requires the original output directory and mode. Settings refuse an output-mode change while writes are pending. Monthly mode writes the projected month's records before committing JSON; none skips Markdown but retains the prepare/commit protocol.
+
+`buildMonthlyMarkdown` sorts keys deterministically, preserves historical record identities and includes complete JSON recovery data alongside readable daily sections. `writeMonthlyNote` atomically compares the full current document with the projected export, the prior records' export, or its saved export hash. A matching projection is an idempotent replay. Other content is preserved and causes a recoverable output failure. `runtime.monthlyExportHashes` tolerates metadata refreshes between exports without treating an ownership marker alone as permission to overwrite text. Export refreshes share the analysis queue and persist these hashes. No source analysis or provider call is needed to export.
+
+The plugin never automatically removes old daily entries. Archive only after checking complete recovery data and retaining exact originals. Monthly recovery blocks do not yet have an automatic import UI. Multi-device concurrent writes retain the limitations below.
+
+## Daily output
+
 Plugin JSON is the authority for committed history. A version 1 pending write stores only the validated analysis result, selected entry path, output directory and hash of the entry text observed before replacement. It never stores source note text or credentials.
 
 1. Prepare: persist the previous committed record plus the pending write before changing Markdown.

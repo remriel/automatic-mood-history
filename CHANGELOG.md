@@ -1,3 +1,10 @@
+# 1.8.0
+
+- Add monthly Markdown exports with complete recovery records and dashboard-only storage; retain daily output for compatibility.
+- Browse signals, confidence and source links directly in the dashboard. Compact output avoids missing daily-note and Base links.
+- Preserve edited monthly files and recover interrupted exports without repeating analysis requests.
+- Recognize duplicate import suffixes, dates in titles, unpadded numeric dates and written month names; add an explicit numeric-date convention setting.
+
 # 1.7.8
 
 - Scale the moving-average window with the selected date range.

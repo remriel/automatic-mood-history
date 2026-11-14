@@ -1,3 +1,19 @@
+# Project state — compact history and import dates (2026-11-13)
+
+Version 1.8.0 candidate builds on 1.7.8. `entryOutput` selects daily (compatibility default), monthly, or none. JSON remains authoritative; pending writes retain their original mode. Monthly exports contain readable entries and lossless recovery blocks, preserve distinct date-basis identities, and reject manual edits using atomic full-document/hash checks. Daily detail cards expose evidence and original source links without requiring daily files. Bases remains daily-only. Existing entries are never removed by the plugin.
+
+`detectFilenameDate` recognizes numeric dates independently of Moment, duplicate suffixes, dates in titles, common written-month formats and configured Daily Notes formats. `numericDateOrder` resolves only competing interpretations of one numeric token; multiple distinct dates remain ambiguous. Scope exclusions still win. Changing date convention invalidates in-flight source groups. Existing history is retained and regrouping requires analysis, not copying mixed scores.
+
+Relevant code: `src/main.js` (mode-aware persistence, exporter, parser, settings and dashboard), `src/sentiment-core.js` (`buildMonthlyMarkdown`), `tests/compact-history.test.js`, `tests/import-dates.test.js`, layout fixture/tests, and `docs/PERSISTENCE_PROTOCOL.md`.
+
+Constraints: no automatic restore UI for monthly recovery blocks; no cross-device transactional merge; hidden plugin data sync must be verified separately. Unrecognized filenames still use creation timestamps; body/frontmatter dates and arbitrary languages are not inferred. Private migration reports, vault data and backups must remain outside this public repository. Preserve orphaned/edited daily notes separately when archiving a real vault.
+
+## RESUME HERE
+
+The user explicitly requested publishing only and stopped the planned native-app verification/migration. Synchronize the feature branch/PR, pass CI, merge and verify release 1.8.0 and downloaded assets. Do not open Obsidian, install, or modify vault data. The separate 1.7.8 checkout remains untouched. Public release is not yet published.
+
+---
+
 # Project state — range-relative averages and emotion colors (2026-11-13)
 
 Trend averages use one fifth of the selected calendar span, rounded to days with a two-day minimum. Custom ranges use their inclusive boundaries; All uses the full recorded span. Missing scores are excluded and two observations are required. Emotion composition uses stable label-based colors, with deterministic fallback for other labels. Chart surfaces and legend were refined. Source is src/main.js; build output is main.js; styles are in styles.css.

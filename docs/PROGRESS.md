@@ -1,3 +1,22 @@
+# Progress — compact history and import dates (2026-11-13)
+
+Objective: reduce daily-entry clutter without losing history, and group imported dated notes correctly.
+
+Progress: 85% — implementation and local verification complete; publication and release verification remain. User explicitly narrowed scope to publishing only; do not open Obsidian, install, or migrate vault files.
+
+- [x] Separate daily/monthly/dashboard-only output while retaining checkpointed recovery.
+- [x] Add lossless monthly exports, edit protection and dashboard evidence/source links.
+- [x] Recognize import counters, dates in titles and explicit numeric-date conventions.
+- [x] Pass functional suite, mobile runtime, privacy audit and desktop layouts before integration.
+- [x] Integrate the completed 1.7.8 chart release in an isolated worktree.
+- [x] Verify rebased desktop layout and original mobile layout runs.
+- [ ] Synchronize the feature branch/PR and pass CI on the final commit.
+- [ ] Merge, verify release workflow, download and verify published assets.
+
+Next: commit/push the generic implementation only; pass CI; merge and verify the published release and assets. Local installation, native app verification and migration are excluded by the latest user instruction. No private vault artifacts belong in this repository.
+
+---
+
 # Progress — release 1.7.8 (2026-11-13)
 
 Objective: publish the range-relative moving average, stable emotion colors, theme-resistant legend matching, and visual refinements.
