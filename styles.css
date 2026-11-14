@@ -448,20 +448,72 @@
   color: var(--amh-text);
 }
 
+/* Expand settings tab to fill available modal pane */
+body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings,
+.vertical-tab-content.auto-mood-settings,
+.auto-mood-settings {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .auto-mood-settings {
   container-name: auto-mood-settings;
   container-type: inline-size;
   min-width: 0;
 }
 
-.auto-mood-settings .setting-item-info,
-.auto-mood-settings .setting-item-control {
+.auto-mood-settings .setting-item {
   min-width: 0;
+  max-width: 100%;
+  gap: 16px;
+}
+
+.auto-mood-settings .setting-item-info {
+  flex: 1 1 260px;
+  min-width: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 
 .auto-mood-settings .setting-item-control {
+  flex: 1 1 320px;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.auto-mood-settings input[type="text"],
+.auto-mood-settings input[type="password"] {
+  flex: 1 1 240px;
+  min-width: min(100%, 220px);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.auto-mood-settings .setting-item:has(textarea),
+.auto-mood-settings .auto-mood-setting-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.auto-mood-settings .setting-item:has(textarea) .setting-item-control,
+.auto-mood-settings .auto-mood-setting-stacked .setting-item-control {
+  width: 100%;
+  max-width: 100%;
+  justify-content: stretch;
+}
+
+.auto-mood-settings textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  box-sizing: border-box;
 }
 
 .auto-mood-settings textarea,
@@ -544,7 +596,7 @@
   }
 }
 
-@container auto-mood-settings (max-width: 520px) {
+@container auto-mood-settings (max-width: 640px) {
   .auto-mood-settings .setting-item {
     flex-direction: column;
     align-items: stretch;
@@ -553,13 +605,16 @@
 
   .auto-mood-settings .setting-item-control {
     justify-content: flex-start;
+    width: 100%;
     max-width: 100%;
   }
 
   .auto-mood-settings input[type="text"],
   .auto-mood-settings input[type="password"],
-  .auto-mood-settings textarea {
+  .auto-mood-settings textarea,
+  .auto-mood-settings select {
     width: 100%;
+    min-width: 0;
   }
 
   .auto-mood-settings button {
@@ -653,4 +708,4 @@
 .auto-mood-average-info { line-height: 1.5; max-width: 70ch; }
 .auto-mood-record-details { margin-top: 12px; overflow-wrap: anywhere; }
 .auto-mood-record-details summary { cursor: pointer; min-height: 44px; display: list-item; padding-block: 10px; box-sizing: border-box; font-weight: 800; }
-.auto-mood-settings select { max-width: 100%; min-width: 0; min-height: 44px; height: auto; white-space: normal; }
+.auto-mood-settings select { min-width: min(100%, 280px); max-width: 100%; min-height: 44px; height: auto; white-space: normal; box-sizing: border-box; }

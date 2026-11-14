@@ -16,6 +16,7 @@ assert.equal(detect("03-04-2024 (2)"), "2024-03-04");
 assert.equal(detect("03.04.2024"), "2024-03-04");
 assert.equal(detect("13-11-2024"), "2024-11-13", "unambiguous DMY remains valid");
 assert.equal(detect("2024-03-04 to 2024-03-05"), null, "two distinct dates are never guessed");
+assert.equal(detect("2024-03-04_2024-03-05"), null, "underscore-separated distinct dates remain ambiguous");
 p.settings.numericDateOrder = "dmy";
 assert.equal(detect("03-04-2024 (2)"), "2024-04-03");
 assert.equal(p.validateSettings({ numericDateOrder: "mdy" }).numericDateOrder, "mdy");

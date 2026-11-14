@@ -1,3 +1,10 @@
+# 1.8.1
+
+- Expand settings tab to fill available modal pane width, preventing narrow constrained columns on wide screens.
+- Make folder scope textareas span full card width and give inputs and dropdowns proportional space.
+- Automatically export saved records into daily entry notes when switching back to Daily notes output.
+- Treat underscore title separators as date token boundaries to detect ambiguous multi-date filenames.
+
 # 1.8.0
 
 - Add monthly Markdown exports with complete recovery records and dashboard-only storage; retain daily output for compatibility.

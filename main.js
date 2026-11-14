@@ -1365,6 +1365,23 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return task;
   }
 
+  async exportDailyHistory() {
+    const assertCurrent = this.analysisGuard();
+    const task = (this.analysisQueue || Promise.resolve()).then(async () => {
+      assertCurrent();
+      if (this.entryOutput !== "daily") throw new Error("Select daily Markdown output first.");
+      if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before exporting history.");
+      for (const record of Object.values(this.records)) {
+        await this.writeEntryNote(record, { assertCurrent });
+      }
+      await this.savePluginData();
+      await this.ensureSupportFiles();
+      this.refreshRenderers();
+    });
+    this.analysisQueue = task.catch(() => {});
+    return task;
+  }
+
   isIncludedSourcePath(path) {
     if (this.settingsValidationError || this.settingsSaveFailed) return false;
     const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
@@ -1477,13 +1494,17 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // Importers commonly add duplicate counters or a title to a dated name.
     // Extract complete tokens, never guess two-digit years or date ranges.
     const candidates = new Set();
+    const tokenName = name.replace(/_/g, " ");
     for (const pattern of [
       /\b\d{4}[-._]\d{1,2}[-._]\d{1,2}(?!\d)/g,
       /\b\d{1,2}([-._])\d{1,2}\1\d{4}(?!\d)/g,
       /\b\d{8}\b/g,
       /\b\d{1,2}(?:st|nd|rd|th)? [A-Za-z]+,? \d{4}\b/g,
       /\b[A-Za-z]+ \d{1,2}(?:st|nd|rd|th)?,? \d{4}\b/g
-    ]) for (const match of name.matchAll(pattern)) candidates.add(match[0]);
+    ]) {
+      for (const match of name.matchAll(pattern)) candidates.add(match[0]);
+      for (const match of tokenName.matchAll(pattern)) candidates.add(match[0]);
+    }
     const dates = new Set();
     for (const candidate of candidates) for (const date of parse(candidate)) dates.add(date);
     return { date: dates.size === 1 ? [...dates][0] : null, ambiguous: dates.size > 1 };
@@ -3173,7 +3194,11 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
             try { await this.plugin.exportMonthlyHistory(); new Notice("Automatic Mood History: monthly history exported. Existing daily notes were preserved."); }
             catch (error) { new Notice(`Automatic Mood History: ${error.message}`, 9000); }
           }
-          if (saved && value !== "monthly") {
+          if (saved && value === "daily") {
+            try { await this.plugin.exportDailyHistory(); new Notice("Automatic Mood History: daily history exported. Existing notes were preserved."); }
+            catch (error) { new Notice(`Automatic Mood History: ${error.message}`, 9000); }
+          }
+          if (saved && value === "none") {
             try { await this.plugin.ensureSupportFiles(); }
             catch (error) { new Notice(`Automatic Mood History: ${error.message}`, 9000); }
           }
@@ -3253,6 +3278,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .addText((text) => text.setValue(typeof this.plugin.settings.outputFolder === "string" ? this.plugin.settings.outputFolder : "")
         .onChange(async value => { await this.plugin.updateSetting("outputFolder", value); }));
     new Setting(containerEl)
+      .setClass("auto-mood-setting-stacked")
       .setName("Include folders")
       .setDesc("Optional allowlist. One vault-relative folder per line. Empty includes all folders; subfolders are included automatically. / means root-level notes.")
       .addTextArea((area) => area
@@ -3262,6 +3288,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
           await this.plugin.updateFolderFilter("includeFolders", value);
         }));
     new Setting(containerEl)
+      .setClass("auto-mood-setting-stacked")
       .setName("Exclude folders")
       .setDesc("One vault-relative folder per line. Excludes subfolders and overrides the include list. / means root-level notes.")
       .addTextArea((area) => area
