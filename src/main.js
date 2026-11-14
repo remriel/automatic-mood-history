@@ -43,7 +43,7 @@ const DEFAULT_SETTINGS = {
   enableMoodring: false,
   model: "openai/gpt-oss-20b",
   outputFolder: "Mood History",
-  entryOutput: "daily",
+  entryOutput: "monthly",
   numericDateOrder: "skip",
   includeFolders: [],
   excludeFolders: [],
@@ -136,6 +136,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (record && !record.dateBasis) record.dateBasis = LEGACY_DATE_BASIS;
     }
     this.runtime = this.validateRuntime(loaded.runtime);
+    // Older pending writes were prepared for daily notes. Preserve their mode
+    // when upgrading an installation that has no explicit output setting.
+    const savedOutput = loaded.settings?.entryOutput;
+    const pending = Object.values(this.runtime.pendingWrites || {});
+    if (!["daily", "monthly", "none"].includes(savedOutput) && pending.length) {
+      const mode = pending[0].entryOutput || "daily";
+      if (["daily", "monthly", "none"].includes(mode)) this.settings.entryOutput = mode;
+    }
     this.runtime.historySchemaVersion = 3;
     // Old queued requests belong to the archived creation-date scope. Prepared
     // writes remain recoverable, but never reanalyze their old groups as new ones.
@@ -481,7 +489,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   get entryOutput() {
-    return ["monthly", "none"].includes(this.settings.entryOutput) ? this.settings.entryOutput : "daily";
+    return ["daily", "monthly", "none"].includes(this.settings.entryOutput) ? this.settings.entryOutput : DEFAULT_SETTINGS.entryOutput;
   }
 
   monthlyPath(month) {
@@ -1787,6 +1795,10 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const partitions = this.partitionHistory(records);
     const timestampRecords = partitions.current;
     const complete = timestampRecords.filter((record) => record.status === "complete" && !hasNoEmotionalEvidence(record) && Number.isFinite(record.moodScore));
+    // Keep the same composition rows across chart ranges, using all saved
+    // scored history including legacy/archived records for the ranking.
+    const allScored = records.filter(record => record.status === "complete" && !hasNoEmotionalEvidence(record) && Number.isFinite(record.moodScore));
+    const compositionLeaders = this.compositionLeaders(allScored);
 
     const toolbar = wrapper.createDiv({ cls: "auto-mood-toolbar" });
     toolbar.createEl("strong", { text: "AUTOMATIC MOOD HISTORY" });
@@ -1830,14 +1842,14 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       return { property, element: card.createDiv({ cls: "auto-mood-card-value" }) };
     });
     const emotionHost = wrapper.createDiv({ cls: "auto-mood-range-emotions" });
-    const updateSummaryCards = visibleRecords => {
+    const updateSummaryCards = (visibleRecords, range) => {
       for (const { property, element } of cardValues) {
         element.setText(property ? this.average(visibleRecords, property)?.toFixed(1) || "—" : String(visibleRecords.length));
       }
       this.disposeDashboard(emotionHost);
       emotionHost.empty();
       this.renderEmotionBars(emotionHost, visibleRecords);
-      this.renderEmotionComposition(emotionHost, visibleRecords);
+      this.renderEmotionComposition(emotionHost, visibleRecords, compositionLeaders, range);
     };
     updateSummaryCards(complete);
 
@@ -1925,9 +1937,10 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const defaultDays = 14;
     const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
     const recordsInWindow = days => days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
+    const windowBounds = days => ({ start: days ? new Date(Math.max(Date.parse("0000-01-01T00:00:00Z"), latest - (days - 1) * 86400000)).toISOString().slice(0, 10) : records[0].date, end: records[records.length - 1].date });
     let shown = recordsInWindow(defaultDays);
     let rangeDays = defaultDays;
-    updateSummaryCards(shown);
+    updateSummaryCards(shown, windowBounds(defaultDays));
     let selected = shown.length - 1;
     let redraw = () => {};
     const rangeButtons = windows.map(([label, days]) => {
@@ -1937,7 +1950,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         customButton.setAttribute("aria-pressed", "false");
         shown = recordsInWindow(days);
         rangeDays = days || Math.floor((latest - Date.parse(`${records[0].date}T00:00:00Z`)) / 86400000) + 1;
-        updateSummaryCards(shown);
+        updateSummaryCards(shown, windowBounds(days));
         selected = shown.length - 1;
         for (const control of rangeButtons) control.button.setAttribute("aria-pressed", String(control.days === days));
         redraw();
@@ -1966,7 +1979,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       shown = records.filter(record => record.date >= startDate.value && record.date <= endDate.value);
       rangeDays = Math.floor((Date.parse(`${endDate.value}T00:00:00Z`) - Date.parse(`${startDate.value}T00:00:00Z`)) / 86400000) + 1;
       selected = shown.length - 1;
-      updateSummaryCards(shown);
+      updateSummaryCards(shown, { start: startDate.value, end: endDate.value });
       for (const control of rangeButtons) control.button.setAttribute("aria-pressed", "false");
       customButton.setAttribute("aria-pressed", "true");
       redraw();
@@ -2182,42 +2195,65 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     }
   }
 
-  renderEmotionComposition(parent, records) {
-    if (!records.length) return;
-    const section = parent.createDiv({ cls: "auto-mood-section auto-mood-composition" });
-    section.createEl("h3", { text: "COMPOSITION OVER TIME" });
-    const first = Date.parse(`${records[0].date}T00:00:00Z`);
-    const last = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
-    const day = 86400000;
-    const step = Math.max(1, Math.ceil(((last - first) / day + 1) / 16));
-    const iso = time => new Date(time).toISOString().slice(0, 10);
+  compositionLeaders(records) {
     const totals = new Map();
     for (const record of records) for (const label of new Set(record.emotions || [])) totals.set(label, (totals.get(label) || 0) + 1);
-    const leaders = [...totals].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 7).map(([label]) => label);
-    if (!leaders.length) { section.createEl("p", { text: "No recorded emotions in this range." }); return; }
-    const labels = leaders;
-    // Keep an emotion's color stable as the ranking and date range change.
-    const emotionColors = { joy: "#d78a00", amusement: "#e99c00", excitement: "#ed6a22", optimism: "#a0a800", gratitude: "#258451", love: "#d33970", caring: "#cc6292", admiration: "#8f50b2", approval: "#348a58", pride: "#a16a12", relief: "#168b85", curiosity: "#1684a5", surprise: "#8954c4", realization: "#5283bb", desire: "#c54c7b", neutral: "#78838c", sadness: "#3869b3", grief: "#384e85", disappointment: "#6472a7", remorse: "#706c97", fear: "#7556a0", nervousness: "#9770ac", confusion: "#8d77b4", anger: "#c83d32", annoyance: "#cc673a", disapproval: "#a14f43", disgust: "#6b7b32", embarrassment: "#bc7183" };
-    const colors = labels.map(label => {
-      const key = label.trim().toLowerCase();
-      if (Object.prototype.hasOwnProperty.call(emotionColors, key)) return emotionColors[key];
+    return [...totals].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).slice(0, 10).map(([label]) => label);
+  }
+
+  compositionColors(labels) {
+    // Ten categorical pastel hues; every visible label gets its own slot.
+    // Anchor common emotions first, then assign remaining labels in a stable
+    // order, resolving collisions without depending on frequency or rank.
+    const palette = ["#96bce8", "#c5a0eb", "#f1a793", "#e9c977", "#a3cfa4", "#87cece", "#e5a6c7", "#e6d8d1", "#d5b990", "#8cd98c"];
+    if (labels.length > palette.length) throw new Error("Composition supports at most ten emotions.");
+    const preferred = new Map([
+      ["sadness", 0], ["anxiety", 1], ["frustration", 2], ["joy", 3],
+      ["grief", 0], ["fear", 1], ["nervousness", 1], ["anger", 2], ["annoyance", 2],
+      ["excitement", 3], ["optimism", 3], ["gratitude", 4], ["relief", 5], ["love", 6]
+    ]);
+    const priority = new Map([["sadness", 0], ["anxiety", 1], ["frustration", 2], ["joy", 3]]);
+    const keyOf = label => label.trim().toLowerCase();
+    const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+    const sorted = [...labels].sort((a, b) => (priority.get(keyOf(a)) ?? 4) - (priority.get(keyOf(b)) ?? 4) || compare(keyOf(a), keyOf(b)) || compare(a, b));
+    const used = new Set(), assigned = new Map();
+    for (const label of sorted) {
+      const key = keyOf(label);
       let hash = 0; for (const char of key) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
-      return `hsl(${hash % 360} 55% 40%)`;
-    });
-    const buckets = Array.from({ length: Math.floor((last - first) / day / step) + 1 }, (_, i) => ({ start: first + i * step * day, counts: new Map(), total: 0 }));
+      let index = preferred.get(key) ?? hash % palette.length;
+      while (used.has(index)) index = (index + 1) % palette.length;
+      used.add(index); assigned.set(label, palette[index]);
+    }
+    return labels.map(label => assigned.get(label));
+  }
+
+  renderEmotionComposition(parent, records, leaders = this.compositionLeaders(records), range) {
+    if (!records.length) return;
+    const section = parent.createDiv({ cls: "auto-mood-section auto-mood-composition" });
+    section.createEl("h3", { text: "Composition over time" });
+    const first = Date.parse(`${range?.start || records[0].date}T00:00:00Z`);
+    const last = Date.parse(`${range?.end || records[records.length - 1].date}T00:00:00Z`);
+    const day = 86400000, span = Math.floor((last - first) / day) + 1;
+    const step = span <= 90 ? 1 : span <= 365 ? 7 : Math.max(7, Math.ceil(span / 90 / 7) * 7);
+    const iso = time => new Date(time).toISOString().slice(0, 10);
+    if (!leaders.length) { section.createEl("p", { text: "No recorded emotions in this range." }); return; }
+    const labels = leaders, colors = this.compositionColors(labels), grouped = new Map();
     for (const record of records) {
-      const bucket = buckets[Math.floor((Date.parse(`${record.date}T00:00:00Z`) - first) / day / step)];
+      const start = first + Math.floor((Date.parse(`${record.date}T00:00:00Z`) - first) / day / step) * step * day;
+      if (!grouped.has(start)) grouped.set(start, { start, end: Math.min(last, start + (step - 1) * day), counts: new Map(), total: 0 });
+      const bucket = grouped.get(start);
       for (const emotion of new Set(record.emotions || [])) {
         if (!leaders.includes(emotion)) continue;
         bucket.counts.set(emotion, (bucket.counts.get(emotion) || 0) + 1); bucket.total++;
       }
     }
-    section.createEl("p", { text: `Share of the top seven emotion labels in the selected range, per ${step === 1 ? "day" : `${step}-day period`}. Percentages include only the displayed emotions; remaining labels are excluded. Blank periods have no top-seven emotions. Shares describe labels, not emotional intensity.` });
+    const buckets = [...grouped.values()].sort((a, b) => a.start - b.start);
+    section.createEl("p", { cls: "auto-mood-composition-caption", text: `Share of the ten most common emotions in all saved, scored history (including older records) per ${step === 1 ? "day" : `${step}-day period`}. Remaining labels are excluded; shares are not intensity.` });
     const legend = section.createEl("ul", { cls: "auto-mood-composition-legend", attr: { "aria-label": "Emotion colors" } });
     labels.forEach((label, i) => {
       const item = legend.createEl("li");
       const swatch = item.createEl("span", { cls: "auto-mood-composition-swatch", attr: { "aria-hidden": "true" } });
-      // Themes may otherwise override chart colors with broad SVG/CSS rules.
+      // Inline priority prevents broad theme SVG/legend styles hiding colors.
       swatch.style.setProperty("background-color", colors[i], "important");
       item.createEl("span", { text: label });
     });
@@ -2226,37 +2262,41 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     svg.setAttribute("width", "100%"); svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "Emotion composition over time, from zero to one hundred percent. Exact counts and percentages are in Period details below.");
     chart.appendChild(svg);
-    const draw = width => {
-      width = Math.max(1, Math.floor(width)); svg.replaceChildren();
-      svg.setAttribute("viewBox", `0 0 ${width} 240`); svg.setAttribute("height", "240");
+    const draw = availableWidth => {
+      const width = Math.max(240, Math.round(availableWidth)), height = 180, left = 39, right = width - 12, top = 15, bottom = height - 27;
+      svg.replaceChildren(); svg.setAttribute("viewBox", `0 0 ${width} ${height}`); svg.setAttribute("height", String(height));
       const make = (tag, attrs, text, parent = svg) => {
         const node = document.createElementNS(svg.namespaceURI, tag);
         for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
         if (text !== undefined) node.textContent = text; parent.appendChild(node); return node;
       };
-      const left = 36, plot = Math.max(1, width - left - 8), column = plot / buckets.length;
-      [0, 50, 100].forEach(percent => {
-        const y = 208 - percent * 1.8;
-        make("line", { x1: left, x2: width - 8, y1: y, y2: y, stroke: "var(--amh-frame)", opacity: ".3" });
-        make("text", { x: 1, y: y + 4, fill: "var(--amh-text)", "font-size": 10 }, `${percent}%`);
-      });
-      buckets.forEach((bucket, i) => {
+      const slot = (right - left) / span;
+      const x = offset => left + (offset + .5) * slot;
+      const y = value => bottom - value * (bottom - top) / 100;
+      for (const value of [0, 50, 100]) {
+        make("line", { x1: left, x2: right, y1: y(value), y2: y(value), stroke: "var(--amh-frame)", "stroke-width": 1, opacity: ".3" });
+        make("text", { x: left - 6, y: y(value) + 4, "text-anchor": "end", fill: "var(--amh-text)", opacity: ".8", "font-size": 11 }, `${value}%`);
+      }
+      const tickFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+      const ticks = [...new Set([0, Math.floor((span - 1) / 2), span - 1])];
+      ticks.forEach((offset, index) => make("text", { x: x(offset), y: height - 7, "text-anchor": index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle", fill: "var(--amh-text)", opacity: ".8", "font-size": 11 }, tickFormatter.format(new Date(first + offset * day))));
+      const columnWidth = Math.min(30, Math.max(1, slot * step * .7));
+      buckets.forEach((bucket, index) => {
+        if (!bucket.total) return;
+        const center = x(((bucket.start + bucket.end) / 2 - first) / day);
         let used = 0;
         labels.forEach((label, color) => {
           const count = bucket.counts.get(label) || 0;
           if (!count) return;
           const percent = count / bucket.total * 100;
-          const rect = make("rect", { x: left + i * column + 1, y: 208 - (used + percent) * 1.8, width: Math.max(1, column - 2), height: percent * 1.8, fill: colors[color], "data-period": iso(bucket.start), "data-emotion": label, "data-share": percent });
+          const rect = make("rect", { x: center - columnWidth / 2, y: y(used + percent), width: columnWidth, height: y(used) - y(used + percent), fill: colors[color], "data-period": iso(bucket.start), "data-emotion": label, "data-share": percent, "data-column": index });
           rect.style.setProperty("fill", colors[color], "important");
-          make("title", {}, `${iso(bucket.start)}: ${label} ${percent.toFixed(1)}% (${count} labels)`, rect);
+          make("title", {}, `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`} · ${label}: ${count} labels (${percent.toFixed(1)}%)`, rect);
           used += percent;
         });
       });
-      const end = Math.min(last, buckets[buckets.length - 1].start + (step - 1) * day);
-      make("text", { x: left, y: 232, fill: "var(--amh-text)", "font-size": 10 }, iso(first));
-      if (width > 260 && first !== end) make("text", { x: width - 8, y: 232, "text-anchor": "end", fill: "var(--amh-text)", "font-size": 10 }, iso(end));
     };
-    draw(chart.clientWidth || 320);
+    draw(chart.clientWidth || 420);
     if (typeof ResizeObserver !== "undefined") {
       const observer = new ResizeObserver(entries => { if (entries[0]?.contentRect.width > 0) draw(entries[0].contentRect.width); });
       observer.observe(chart); this.chartObservers ||= new Map(); this.chartObservers.set(svg, observer);
@@ -2264,9 +2304,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const details = section.createEl("details"); details.createEl("summary", { text: "Period details" });
     const list = details.createEl("ul", { cls: "auto-mood-composition-details" });
     for (const bucket of buckets) {
-      const end = Math.min(last, bucket.start + (step - 1) * day);
       const values = labels.filter(label => bucket.counts.has(label)).map(label => `${label}: ${bucket.counts.get(label)} (${(bucket.counts.get(label) / bucket.total * 100).toFixed(1)}%)`);
-      list.createEl("li", { text: `${iso(bucket.start)}${end === bucket.start ? "" : ` to ${iso(end)}`}: ${values.join("; ") || "No top-seven emotions recorded"}.` });
+      list.createEl("li", { text: `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`}: ${values.join("; ") || "No top-ten emotions recorded"}.` });
     }
   }
 
@@ -2352,7 +2391,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     });
     new Setting(containerEl)
       .setName("Markdown history output")
-      .setDesc("Monthly keeps one readable note per month, including full recovery records. Dashboard only creates no entry notes. Existing daily notes are preserved; archive them only after verifying your backup. Bases needs daily notes.")
+      .setDesc("Monthly is the default and keeps one readable note per month with recovery records. Use Export months for existing history. Dashboard only creates no entry notes. Existing daily notes are preserved; Bases needs daily notes.")
       .addDropdown(dropdown => dropdown.addOptions({ daily: "Daily notes", monthly: "Monthly notes (recommended)", none: "Dashboard only" })
         .setValue(this.plugin.entryOutput).onChange(async value => {
           const saved = await this.plugin.updateSetting("entryOutput", value);

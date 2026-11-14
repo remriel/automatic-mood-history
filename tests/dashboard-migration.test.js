@@ -11,7 +11,7 @@ Module._load = originalLoad;
 
 (async () => {
   const plugin = new Plugin();
-  plugin.settings = { outputFolder: "Mood History" };
+  plugin.settings = { outputFolder: "Mood History", entryOutput: "daily" };
   const file = new TFile();
   const original = '---\ntype: "mood-history-dashboard"\n---\n\nA custom introduction.\n\n![[Mood History/Mood History.base]]\n\nKeep this closing paragraph.\n';
   let content = original;

@@ -94,7 +94,8 @@ async function run() {
   const record = Object.values(p.records)[0];
   assert.equal(record.analysisSource, "local");
   assert.equal(record.contentHash.length, 64);
-  assert(f.text.get(record.entryPath).includes("Fictional"), "generated entry uses the mobile vault adapter");
+  assert.equal(p.settings.entryOutput, "monthly", "new mobile installations default to monthly history");
+  assert(f.text.get(`Mood History/Months/${record.date.slice(0, 7)}.md`).includes("Fictional"), "monthly output uses the mobile vault adapter");
   assert.equal(f.requests.length, 0);
 
   assert.equal(p.setGroqKey(" fictional-mobile-key "), true);

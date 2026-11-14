@@ -24,7 +24,7 @@ async function fixture() {
   // filename parser. ISO filenames now work even without Moment in a mock.
   const files = [new TFile("Daily/Imported original.md"), new TFile("Projects/Imported second.md"), new TFile("Mood History/Entries/generated.md")];
   const contents = new Map([[files[0].path, originalText], [files[1].path, otherText], [files[2].path, "Never analyze generated history"]]);
-  plugin.settings = { outputFolder: "Mood History", enableGroq: true, model: "fictional-model", minimumCharacters: 40, maxCharactersPerDay: 60000 };
+  plugin.settings = { outputFolder: "Mood History", entryOutput: "daily", enableGroq: true, model: "fictional-model", minimumCharacters: 40, maxCharactersPerDay: 60000 };
   plugin.runtime = {}; plugin.records = {}; plugin.groqBlockedUntil = 0;
   plugin.apiKey = () => "synthetic-fixture-placeholder";
   plugin.app = { vault: { getMarkdownFiles: () => files, getAbstractFileByPath: path => files.find(file => file.path === path) || null, cachedRead: async file => contents.get(file.path) || "" }, metadataCache: { getFileCache: () => ({}) } };

@@ -1,3 +1,15 @@
+# Project state — pastel emotion composition and monthly default (2026-11-14)
+
+User requests distinct pastel composition colors, especially anxiety, frustration and sadness; monthly notes as the settings default; aligned composition columns; and publication. They then specified the Morning Pages Analytics composition chart as the visual reference. The chart selects up to ten most common labels across all saved scored history including older/legacy records and keeps them stable across ranges. `compositionColors` uses ten perceptually separated pastel slots with priority for the named emotions, collision resolution for arbitrary labels, and stable assignments while the same set remains. Percentages count displayed labels only and the accessible period details disclose exact values.
+
+Monthly output is the default for settings without a saved choice; existing explicit daily/monthly/none choices remain intact. A saved legacy pending write without an explicit setting temporarily retains its original output mode for recovery. Exporting existing saved history still requires the Export months control. No personal vault or native Obsidian UI is being modified or opened.
+
+## RESUME HERE
+
+Match the installed Morning Pages Analytics chart: fixed-height percentage-sized stacked bars with 0/50/100 guides, calendar-proportional aligned columns, daily/weekly/long-range bins, a compact color key and textual period details. The bar geometry was implemented from the read-only reference plugin source; it uses this plugin's own saved mood records, not Morning Pages data. Finish desktop/mobile checks and publish version 1.8.3. Do not open Obsidian or modify the user's vault. Files: `src/main.js`, `styles.css`, `tests/composition-colors.test.js`, `tests/compact-history.test.js`, `tests/layout.test.js`, `tests/mobile-layout.test.js` and `README.md`.
+
+---
+
 # Project state — settings proportions and safe entry writes (2026-11-13)
 
 Version 1.8.2 fixes a 1.8.1 flex regression: 260px and 320px horizontal flex bases became fixed heights when settings rows stacked. Stacked info/controls now use content-sized flex, and desktop controls use a bounded 320px column while descriptions use the remaining width. `tests/settings-proportions.test.js` measures content heights, desktop ratios, folder editor width and touch targets at 280–1200px and 200% text.

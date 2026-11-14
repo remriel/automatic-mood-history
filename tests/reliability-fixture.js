@@ -22,7 +22,7 @@ const clone = value => JSON.parse(JSON.stringify(value));
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 function fixture(disk = { json: null, files: new Map() }) {
   const p = new Mood();
-  p.settings = { outputFolder: "Mood History", includeFolders: [], excludeFolders: [], enableGroq: true, autoAnalyze: false, analyzeOnStartup: false, model: "fictional", minimumCharacters: 40, maxCharactersPerDay: 60000, debounceMilliseconds: 5000 };
+  p.settings = { outputFolder: "Mood History", entryOutput: "daily", includeFolders: [], excludeFolders: [], enableGroq: true, autoAnalyze: false, analyzeOnStartup: false, model: "fictional", minimumCharacters: 40, maxCharactersPerDay: 60000, debounceMilliseconds: 5000 };
   p.records = {}; p.runtime = {}; p.renderContainers = new Set(); p.debounceTimers = new Map(); p.chartObservers = new Map();
   p.manifest = { version: "1.2.8" }; p.groqBlockedUntil = 0; p.analysisQueue = Promise.resolve();
   const files = new Map();

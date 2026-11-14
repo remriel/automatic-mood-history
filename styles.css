@@ -714,10 +714,15 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-composition-details { padding-inline-start: 20px; overflow-wrap: anywhere; }
 
 /* Refined chart surfaces and compact, readable emotion keys. */
-.auto-mood-composition-legend { gap: 8px; margin: 14px 0; }
-.auto-mood-composition-legend li { padding: 5px 9px; border: 1px solid var(--amh-frame); background: var(--amh-paper); font-size: .82rem; font-weight: 700; }
-.auto-mood-composition-swatch { width: 14px; height: 14px; flex-basis: 14px; }
-.auto-mood-composition-chart { background: var(--amh-paper); border: 2px solid var(--amh-frame); padding: 10px 8px 3px; }
+.auto-mood-section.auto-mood-composition { border: 1px solid var(--background-modifier-border, var(--amh-frame)); border-top: 3px solid #6335ce; box-shadow: none; padding: 10px 12px; }
+.theme-dark .auto-mood-section.auto-mood-composition { border-top-color: #b39aff; }
+.auto-mood-section.auto-mood-composition h3 { margin: 0 0 4px; padding: 0; background: transparent; border: 0; color: var(--amh-text); font-size: var(--font-ui-medium, 1rem); letter-spacing: normal; }
+.auto-mood-composition-caption { color: var(--amh-text); opacity: .8; font-size: var(--font-ui-small, .85rem); margin: 4px 0 10px; }
+.auto-mood-composition-legend { gap: 10px; margin: 6px 0 0; font-size: var(--font-ui-smaller, .75rem); }
+.auto-mood-composition-legend li { padding: 0; border: 0; background: transparent; gap: 5px; font-size: inherit; font-weight: 400; }
+.auto-mood-composition-swatch { width: 4px; height: 1.2em; flex-basis: 4px; border: 0; }
+.auto-mood-composition-chart { background: transparent; border: 0; padding: 0; margin-top: 5px; }
+.auto-mood-composition-chart svg { height: auto; }
 .auto-mood-composition details { margin-top: 14px; }
 .auto-mood-composition summary { cursor: pointer; font-weight: 800; padding: 8px 0; }
 .auto-mood-average-info { line-height: 1.5; max-width: 70ch; }

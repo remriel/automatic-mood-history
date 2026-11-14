@@ -45,6 +45,7 @@ const existingRecord = { date: "2099-01-02", status: "insufficient", sourceHash:
 instance.manifest = { version: require("../manifest.json").version };
 instance.loadData = async () => ({
   settings: {
+    entryOutput: "daily",
     dailyFolder: "Daily",
     includeOutsideDailyFolder: true,
     autoAnalyze: true,
