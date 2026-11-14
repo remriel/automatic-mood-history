@@ -642,3 +642,12 @@
 .auto-mood-composition-chart { width: 100%; min-width: 0; }
 .auto-mood-composition-chart svg { display: block; width: 100%; }
 .auto-mood-composition-details { padding-inline-start: 20px; overflow-wrap: anywhere; }
+
+/* Refined chart surfaces and compact, readable emotion keys. */
+.auto-mood-composition-legend { gap: 8px; margin: 14px 0; }
+.auto-mood-composition-legend li { padding: 5px 9px; border: 1px solid var(--amh-frame); background: var(--amh-paper); font-size: .82rem; font-weight: 700; }
+.auto-mood-composition-swatch { width: 14px; height: 14px; flex-basis: 14px; }
+.auto-mood-composition-chart { background: var(--amh-paper); border: 2px solid var(--amh-frame); padding: 10px 8px 3px; }
+.auto-mood-composition details { margin-top: 14px; }
+.auto-mood-composition summary { cursor: pointer; font-weight: 800; padding: 8px 0; }
+.auto-mood-average-info { line-height: 1.5; max-width: 70ch; }

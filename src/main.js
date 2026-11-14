@@ -58,10 +58,10 @@ function validDate(value) {
   return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-// A trailing seven-calendar-day average of scores in the displayed range.
+// A trailing calendar-day average of scores in the displayed range.
 // Missing values do not contribute, and a point needs two observed scores.
-function trailingMovingAverage(records, times, property) {
-  const windowLength = 6 * 86400000;
+function trailingMovingAverage(records, times, property, days) {
+  const windowLength = (days - 1) * 86400000;
   let first = 0, sum = 0, count = 0;
   return records.map((record, index) => {
     while (first < index && times[first] < times[index] - windowLength) {
@@ -1769,6 +1769,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
     const recordsInWindow = days => days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
     let shown = recordsInWindow(defaultDays);
+    let rangeDays = defaultDays;
     updateSummaryCards(shown);
     let selected = shown.length - 1;
     let redraw = () => {};
@@ -1778,6 +1779,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         customForm.hidden = true;
         customButton.setAttribute("aria-pressed", "false");
         shown = recordsInWindow(days);
+        rangeDays = days || Math.floor((latest - Date.parse(`${records[0].date}T00:00:00Z`)) / 86400000) + 1;
         updateSummaryCards(shown);
         selected = shown.length - 1;
         for (const control of rangeButtons) control.button.setAttribute("aria-pressed", String(control.days === days));
@@ -1805,6 +1807,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       rangeError.setText("");
       shown = records.filter(record => record.date >= startDate.value && record.date <= endDate.value);
+      rangeDays = Math.floor((Date.parse(`${endDate.value}T00:00:00Z`) - Date.parse(`${startDate.value}T00:00:00Z`)) / 86400000) + 1;
       selected = shown.length - 1;
       updateSummaryCards(shown);
       for (const control of rangeButtons) control.button.setAttribute("aria-pressed", "false");
@@ -1813,13 +1816,13 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     });
     let showMovingAverage = true;
     const averageControls = section.createDiv({ cls: "auto-mood-average-controls" });
-    const averageToggle = averageControls.createEl("button", { cls: "auto-mood-average-toggle", text: "7-day moving average", attr: { type: "button", "aria-pressed": "true" } });
+    const averageToggle = averageControls.createEl("button", { cls: "auto-mood-average-toggle", text: "Moving average", attr: { type: "button", "aria-pressed": "true" } });
     averageToggle.addEventListener("click", () => {
       showMovingAverage = !showMovingAverage;
       averageToggle.setAttribute("aria-pressed", String(showMovingAverage));
       redraw();
     });
-    averageControls.createEl("p", { cls: "auto-mood-average-info", text: "Dashed lines show a trailing 7-calendar-day average of available scores in this range. Each point requires at least two scores." });
+    const averageInfo = averageControls.createEl("p", { cls: "auto-mood-average-info" });
     const series = [
       ["Mood", "moodScore", "var(--amh-series-mood)"],
       ["Energy", "energyScore", "var(--amh-series-energy)"],
@@ -1840,7 +1843,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "260");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Mood, energy, connection, and intensity scores by date on a one-to-five scale, with optional seven-day moving averages");
+    svg.setAttribute("aria-label", "Mood, energy, connection, and intensity scores by date on a one-to-five scale, with optional range-dependent moving averages");
     svg.classList.add("auto-mood-svg");
     chart.appendChild(svg);
     this.installChartSeriesControls(svg, legend, series);
@@ -1848,6 +1851,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const explorerLabel = explorer.createEl("label", { text: "Explore a recorded day", attr: { for: `amh-day-${Math.random().toString(36).slice(2)}` } });
     const slider = explorer.createEl("input", { cls: "auto-mood-day-slider", attr: { type: "range", id: explorerLabel.getAttribute("for"), min: "0", step: "1" } });
     const readout = explorer.createDiv({ cls: "auto-mood-day-readout", attr: { "aria-live": "polite", "aria-atomic": "true" } });
+    let averageDays = 3;
     const updateReadout = averages => {
       const record = shown[selected];
       slider.max = String(shown.length - 1);
@@ -1862,13 +1866,16 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         if (showMovingAverage) {
           const average = averages[property][selected];
           const averageText = Number.isFinite(average) ? `${average.toFixed(1)}/5` : "—";
-          readout.createEl("span", { cls: "auto-mood-readout-value auto-mood-readout-average", text: `${label} 7-day average ${averageText}`, attr: { "data-average-for": property } });
+          readout.createEl("span", { cls: "auto-mood-readout-value auto-mood-readout-average", text: `${label} ${averageDays}-day average ${averageText}`, attr: { "data-average-for": property } });
         }
       }
     };
     slider.addEventListener("input", () => { selected = Number(slider.value); redraw(); });
     let previousWidth = 0;
     const draw = (availableWidth) => {
+      averageDays = Math.max(2, Math.round(rangeDays / 5));
+      averageToggle.setText(`${averageDays}-day moving average`);
+      averageInfo.setText(`Dashed lines show a trailing ${averageDays}-calendar-day average of available scores in this range. Each point requires at least two scores.`);
       const width = Math.max(1, Math.floor(availableWidth));
       previousWidth = width;
       if (!shown.length) {
@@ -1884,7 +1891,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded scores, not estimates for unrecorded days. A missing score breaks its line. Values at right reflect the selected day.`);
       const times = shown.map(record => Date.parse(`${record.date}T00:00:00Z`));
-      const averages = Object.fromEntries(series.map(([, property]) => [property, trailingMovingAverage(shown, times, property)]));
+      const averages = Object.fromEntries(series.map(([, property]) => [property, trailingMovingAverage(shown, times, property, averageDays)]));
       updateReadout(averages);
       const hidden = new Set(this.settings.hiddenChartSeries || []);
       const active = series.filter(([, property]) => !hidden.has(property));
@@ -1943,7 +1950,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
             if (!Number.isFinite(value)) return;
             const px = x(index), py = y(value);
             const marker = make("path", { d: `M${px},${py - 3.5} L${px + 3.5},${py} L${px},${py + 3.5} L${px - 3.5},${py} Z`, fill: "var(--amh-surface)", stroke: color, "stroke-width": 2, class: "moving-average-point", "data-series": property, "data-date": shown[index].date, "data-average": value });
-            make("title", {}, `${shown[index].date}: ${label} 7-day average ${value.toFixed(2)}/5`, marker);
+            make("title", {}, `${shown[index].date}: ${label} ${averageDays}-day average ${value.toFixed(2)}/5`, marker);
           });
         }
         const pointRadius = Math.max(1.4, Math.min(3.5, plotWidth / Math.max(valid.length, 1) / 3));
@@ -2032,7 +2039,14 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const leaders = [...totals].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 7).map(([label]) => label);
     if (!leaders.length) { section.createEl("p", { text: "No recorded emotions in this range." }); return; }
     const labels = leaders;
-    const colors = ["#b85000", "#335eea", "#9c31a9", "#12774c", "#b72f55", "#6a56bd", "#087d8a"];
+    // Keep an emotion's color stable as the ranking and date range change.
+    const emotionColors = { joy: "#d78a00", amusement: "#e99c00", excitement: "#ed6a22", optimism: "#a0a800", gratitude: "#258451", love: "#d33970", caring: "#cc6292", admiration: "#8f50b2", approval: "#348a58", pride: "#a16a12", relief: "#168b85", curiosity: "#1684a5", surprise: "#8954c4", realization: "#5283bb", desire: "#c54c7b", neutral: "#78838c", sadness: "#3869b3", grief: "#384e85", disappointment: "#6472a7", remorse: "#706c97", fear: "#7556a0", nervousness: "#9770ac", confusion: "#8d77b4", anger: "#c83d32", annoyance: "#cc673a", disapproval: "#a14f43", disgust: "#6b7b32", embarrassment: "#bc7183" };
+    const colors = labels.map(label => {
+      const key = label.trim().toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(emotionColors, key)) return emotionColors[key];
+      let hash = 0; for (const char of key) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
+      return `hsl(${hash % 360} 55% 40%)`;
+    });
     const buckets = Array.from({ length: Math.floor((last - first) / day / step) + 1 }, (_, i) => ({ start: first + i * step * day, counts: new Map(), total: 0 }));
     for (const record of records) {
       const bucket = buckets[Math.floor((Date.parse(`${record.date}T00:00:00Z`) - first) / day / step)];
@@ -2046,7 +2060,9 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     labels.forEach((label, i) => {
       const item = legend.createEl("li");
       const swatch = item.createEl("span", { cls: "auto-mood-composition-swatch", attr: { "aria-hidden": "true" } });
-      swatch.style.backgroundColor = colors[i]; item.createEl("span", { text: label });
+      // Themes may otherwise override chart colors with broad SVG/CSS rules.
+      swatch.style.setProperty("background-color", colors[i], "important");
+      item.createEl("span", { text: label });
     });
     const chart = section.createDiv({ cls: "auto-mood-composition-chart" });
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -2074,6 +2090,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
           if (!count) return;
           const percent = count / bucket.total * 100;
           const rect = make("rect", { x: left + i * column + 1, y: 208 - (used + percent) * 1.8, width: Math.max(1, column - 2), height: percent * 1.8, fill: colors[color], "data-period": iso(bucket.start), "data-emotion": label, "data-share": percent });
+          rect.style.setProperty("fill", colors[color], "important");
           make("title", {}, `${iso(bucket.start)}: ${label} ${percent.toFixed(1)}% (${count} labels)`, rect);
           used += percent;
         });

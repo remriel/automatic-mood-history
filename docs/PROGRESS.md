@@ -1,3 +1,20 @@
+# Progress — release 1.7.8 (2026-11-13)
+
+Objective: publish the range-relative moving average, stable emotion colors, theme-resistant legend matching, and visual refinements.
+
+Progress: 95% — local functional, privacy, desktop, Android and iPhone checks passed; final preset checks and publication remain.
+
+- [x] Implement range-relative moving averages and stable, theme-resistant emotion colors.
+- [x] Update version metadata, release notes, changelog and README.
+- [x] Pass functional, privacy, desktop, Android and iPhone checks, including a rendered color regression.
+- [ ] Confirm final preset checks and GitHub CI.
+- [ ] Merge the reviewed branch and verify the public release and assets.
+- [ ] Verify the installed plugin against the released files.
+
+Next: run release checks, publish 1.7.8 through the repository workflow, verify release assets and installed files, and record outcomes.
+
+---
+
 # Top seven composition and moving averages ? 1.7.7
 
 **Objective:** Display only the seven most common emotions in Composition over time and add moving averages to trend charts.
