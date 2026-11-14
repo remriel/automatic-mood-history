@@ -20,7 +20,8 @@ Start with offline analysis that runs inside Obsidian. Optionally connect Groq f
 - One consolidated result per calendar date
 - Optional Groq structured-output analysis with GoEmotions-informed vocabulary and a validated three-stage JSON fallback
 - Local VADER sentiment scoring that works without a network connection or API key
-- Native Markdown entry notes and an Obsidian Base
+- Choose daily Markdown entries, compact monthly exports, or dashboard-only history
+- Monthly exports include readable daily details and lossless JSON recovery records; the optional Obsidian Base uses daily entries
 - Mood, energy, connection, and intensity scores from 1–5, all plotted in the trend chart
 - Dominant-emotion history and day-by-day source links
 - Light and dark themes with a colorful neo-brutalist dashboard that adapts to Obsidian theme colors
@@ -107,7 +108,15 @@ Use the command palette:
 
 **Check Groq** sends a fictional sample instead of vault notes and shows whether the configured model returns valid analysis. The dashboard shows connection status, the last valid response, or a specific failure category. **Analyze changed** retries eligible local or fallback results with Groq and includes legacy-date records. **Retry all with Groq** bypasses an old pause once; a new rate limit pauses the remaining requests in that run and leaves them pending. Rate-limit pauses follow Groq's `Retry-After` header when supplied.
 
-Eligible Markdown notes in any included folder use an unambiguous date detected in the filename, matching Morning Pages automatic detection (the configured Daily Notes format and common numeric and English month-name formats). Ambiguous filenames are skipped rather than guessed. Undated notes use the local calendar day of `TFile.stat.ctime`; those without a valid timestamp are skipped. Frontmatter dates and aliases are not used. Existing results remain saved until reanalysis; old date groups are not deleted automatically. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
+Eligible Markdown notes in any included folder use a date detected in the filename: the configured Daily Notes format, common numeric and written-month formats, and date tokens inside titles. Duplicate suffixes such as `2024-03-04 (2).md` and titles such as `Notes — March 4, 2024.md` retain their original date instead of falling back to the import timestamp. Numeric formats accept padded or unpadded month/day values and hyphens, periods, or underscores. **Ambiguous numeric dates** selects month–day–year, day–month–year, or skip (the compatibility default). Unambiguous dates work in either convention; filenames containing two distinct valid dates remain skipped. This does not promise every language or arbitrary date notation. Undated notes use the local calendar day of `TFile.stat.ctime`; those without a valid timestamp are skipped. Frontmatter dates, aliases, and dates in the note body are not used. Existing results remain saved until reanalysis; old date groups are not deleted automatically. Generated `Mood History/` files and notes under `.trash/` are excluded. Older entries based on filename or frontmatter dates are preserved and labeled **Legacy date** in the dashboard.
+
+### Compact history
+
+In settings, choose **Markdown history output → Monthly notes (recommended)** to export existing saved history without another analysis request. Future results update one `Mood History/Months/YYYY-MM.md` per month. Each export includes readable daily entries and a JSON recovery block containing the complete saved records, including separate historical date identities. **Refresh monthly exports** rebuilds exports from saved history. Edited or unrelated monthly files are preserved: move them aside before refreshing. A failed export leaves a prepared result for recovery rather than discarding it.
+
+**Dashboard only** stores results in plugin `data.json` without daily or monthly entry writes. Expand **Signals and source notes** on a day to read evidence and open original notes. Back up plugin data separately if using this mode. Monthly files are portable copies, not a live database or an automatic restore mechanism. Verify that your sync and backup tools include both the plugin data and monthly notes; simultaneous writes from multiple devices are not transactionally merged.
+
+Daily output remains the default for compatibility and supports the optional Base. Changing output never deletes existing entries or source notes. Before archiving daily entries, verify monthly recovery records against plugin data, preserve any edits or orphaned older entries, and retain an exact backup outside the active notes. Do not change output modes while result recovery is pending. Changing the date convention or installing the import-date fix may require **Analyze changed** to score the corrected groups; a mixed old score is never copied to several dates.
 
 ### Folder scope
 

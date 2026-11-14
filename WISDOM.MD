@@ -1,3 +1,13 @@
+# Wisdom
+
+## 2026-11-13 — compact history and import dates
+
+1. Least confident: native runtime and multi-device sync behavior are not established by synthetic tests. Verify the installed app and keep both visible monthly exports and plugin-data backups.
+2. Easy to miss: daily notes may contain orphaned history absent from current JSON. Compare the full inventory and preserve those originals before reducing file counts.
+3. Most consequential assumption: filename dates represent the intended writing dates. Recognize only supported complete tokens, make numeric ambiguity explicit, and skip conflicting dates rather than inventing a date or copying a mixed score.
+
+---
+
 # Publication reflection — 2026-11-13
 
 1. Least confident: how the emotion palette will feel in the user's actual Obsidian theme; I would review it in the running app and adjust based on feedback.

@@ -20,7 +20,9 @@ const valid = { moodScore: 4, energyScore: 3, connectionScore: 4, intensityScore
 
 async function fixture() {
   const plugin = new MoodPlugin();
-  const files = [new TFile(`Daily/${legacyDate}.md`), new TFile(`Projects/${secondDate}.md`), new TFile("Mood History/Entries/generated.md")];
+  // Undated renamed imports exercise timestamp fallback independently of the
+  // filename parser. ISO filenames now work even without Moment in a mock.
+  const files = [new TFile("Daily/Imported original.md"), new TFile("Projects/Imported second.md"), new TFile("Mood History/Entries/generated.md")];
   const contents = new Map([[files[0].path, originalText], [files[1].path, otherText], [files[2].path, "Never analyze generated history"]]);
   plugin.settings = { outputFolder: "Mood History", enableGroq: true, model: "fictional-model", minimumCharacters: 40, maxCharactersPerDay: 60000 };
   plugin.runtime = {}; plugin.records = {}; plugin.groqBlockedUntil = 0;

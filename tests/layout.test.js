@@ -404,6 +404,27 @@ async function inspectLayout(page, label) {
     assert.strictEqual(await page.evaluate(() => fixture.plugin.settings.enableGroq), false);
     await page.getByRole("textbox", { name: "Groq model", exact: true }).fill("long-fictional-model-name");
     await inspectLayout(page, "settings after toggle and typing input");
+    await page.getByRole("combobox", { name: "Ambiguous numeric dates" }).selectOption("mdy");
+    assert.strictEqual(await page.evaluate(() => fixture.plugin.settings.numericDateOrder), "mdy");
+    await page.getByRole("combobox", { name: "Markdown history output" }).selectOption("none");
+    await page.evaluate(() => {
+      fixture.configure({ count: 1, paneWidth: 280 });
+      const record = Object.values(fixture.plugin.records)[0];
+      record.sourcePaths = ["Imported/2099-01-01 (2).md"];
+      record.drivers = ["<script>Fictional text stays text</script>"];
+      fixture.plugin.renderDashboard(document.getElementById("dashboard"));
+    });
+    assert.strictEqual(await page.locator('.auto-mood-day-date a').count(), 0, "dashboard-only dates have no missing daily-note links");
+    await page.getByText("Signals and source notes", { exact: true }).click();
+    assert.strictEqual(await page.locator('.auto-mood-record-details a').getAttribute('data-href'), "Imported/2099-01-01 (2).md");
+    assert.strictEqual(await page.locator('.auto-mood-record-details script').count(), 0, "details remain plain text");
+    await inspectLayout(page, "expanded daily details in compact mode");
+    await page.evaluate(() => {
+      fixture.plugin.settings.entryOutput = "monthly";
+      fixture.plugin.app.vault = { getAbstractFileByPath: () => new fixture.FixtureFile() };
+      fixture.plugin.renderDashboard(document.getElementById("dashboard"));
+    });
+    assert.strictEqual(await page.locator('.auto-mood-day-date a').getAttribute('data-href'), "Mood History/Months/2099-01#2099-01-01 (detected-note-date)");
     await page.evaluate(() => { fixture.plugin.onunload(); });
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 0, "plugin unload disposes observers");
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartSeriesViews.size), 0, "unload disposes series controls");
