@@ -61,21 +61,6 @@ function validDate(value) {
   return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-// A trailing calendar-day average of scores in the displayed range.
-// Missing values do not contribute, and a point needs two observed scores.
-function trailingMovingAverage(records, times, property, days) {
-  const windowLength = (days - 1) * 86400000;
-  let first = 0, sum = 0, count = 0;
-  return records.map((record, index) => {
-    while (first < index && times[first] < times[index] - windowLength) {
-      const old = records[first++][property];
-      if (Number.isFinite(old)) { sum -= old; count--; }
-    }
-    const score = record[property];
-    if (Number.isFinite(score)) { sum += score; count++; }
-    return Number.isFinite(score) && count >= 2 ? sum / count : null;
-  });
-}
 const dateFromKey = key => typeof key === "string" && /^(?:created:|detected:|legacy:)?\d{4}-\d{2}-\d{2}$/.test(key) ? key.slice(-10) : "";
 
 function vaultPath(value) {
@@ -1941,7 +1926,6 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const recordsInWindow = days => days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
     const windowBounds = days => ({ start: days ? new Date(Math.max(Date.parse("0000-01-01T00:00:00Z"), latest - (days - 1) * 86400000)).toISOString().slice(0, 10) : records[0].date, end: records[records.length - 1].date });
     let shown = recordsInWindow(defaultDays);
-    let rangeDays = defaultDays;
     updateSummaryCards(shown, windowBounds(defaultDays));
     let selected = shown.length - 1;
     let redraw = () => {};
@@ -1951,7 +1935,6 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         customForm.hidden = true;
         customButton.setAttribute("aria-pressed", "false");
         shown = recordsInWindow(days);
-        rangeDays = days || Math.floor((latest - Date.parse(`${records[0].date}T00:00:00Z`)) / 86400000) + 1;
         updateSummaryCards(shown, windowBounds(days));
         selected = shown.length - 1;
         for (const control of rangeButtons) control.button.setAttribute("aria-pressed", String(control.days === days));
@@ -1979,22 +1962,12 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       rangeError.setText("");
       shown = records.filter(record => record.date >= startDate.value && record.date <= endDate.value);
-      rangeDays = Math.floor((Date.parse(`${endDate.value}T00:00:00Z`) - Date.parse(`${startDate.value}T00:00:00Z`)) / 86400000) + 1;
       selected = shown.length - 1;
       updateSummaryCards(shown, { start: startDate.value, end: endDate.value });
       for (const control of rangeButtons) control.button.setAttribute("aria-pressed", "false");
       customButton.setAttribute("aria-pressed", "true");
       redraw();
     });
-    let showMovingAverage = true;
-    const averageControls = section.createDiv({ cls: "auto-mood-average-controls" });
-    const averageToggle = averageControls.createEl("button", { cls: "auto-mood-average-toggle", text: "Moving average", attr: { type: "button", "aria-pressed": "true" } });
-    averageToggle.addEventListener("click", () => {
-      showMovingAverage = !showMovingAverage;
-      averageToggle.setAttribute("aria-pressed", String(showMovingAverage));
-      redraw();
-    });
-    const averageInfo = averageControls.createEl("p", { cls: "auto-mood-average-info" });
     const series = [
       ["Mood", "moodScore", "var(--amh-series-mood)"],
       ["Energy", "energyScore", "var(--amh-series-energy)"],
@@ -2015,7 +1988,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "260");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Mood, energy, connection, and intensity scores by date on a one-to-five scale, with optional range-dependent moving averages");
+    svg.setAttribute("aria-label", "Mood, energy, connection, and intensity scores by date on a one-to-five scale");
     svg.classList.add("auto-mood-svg");
     chart.appendChild(svg);
     this.installChartSeriesControls(svg, legend, series);
@@ -2023,8 +1996,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const explorerLabel = explorer.createEl("label", { text: "Explore a recorded day", attr: { for: `amh-day-${Math.random().toString(36).slice(2)}` } });
     const slider = explorer.createEl("input", { cls: "auto-mood-day-slider", attr: { type: "range", id: explorerLabel.getAttribute("for"), min: "0", step: "1" } });
     const readout = explorer.createDiv({ cls: "auto-mood-day-readout", attr: { "aria-live": "polite", "aria-atomic": "true" } });
-    let averageDays = 3;
-    const updateReadout = averages => {
+    const updateReadout = () => {
       const record = shown[selected];
       slider.max = String(shown.length - 1);
       slider.value = String(selected);
@@ -2035,19 +2007,11 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       for (const [label, property] of series) {
         const value = Number.isFinite(record[property]) ? `${record[property]}/5` : "—";
         readout.createEl("span", { cls: "auto-mood-readout-value", text: `${label} ${value}`, attr: { "data-metric": property } });
-        if (showMovingAverage) {
-          const average = averages[property][selected];
-          const averageText = Number.isFinite(average) ? `${average.toFixed(1)}/5` : "—";
-          readout.createEl("span", { cls: "auto-mood-readout-value auto-mood-readout-average", text: `${label} ${averageDays}-day average ${averageText}`, attr: { "data-average-for": property } });
-        }
       }
     };
     slider.addEventListener("input", () => { selected = Number(slider.value); redraw(); });
     let previousWidth = 0;
     const draw = (availableWidth) => {
-      averageDays = Math.max(2, Math.round(rangeDays / 5));
-      averageToggle.setText(`${averageDays}-day moving average`);
-      averageInfo.setText(`Dashed lines show a trailing ${averageDays}-calendar-day average of available scores in this range. Each point requires at least two scores.`);
       const width = Math.max(1, Math.floor(availableWidth));
       previousWidth = width;
       if (!shown.length) {
@@ -2063,8 +2027,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded scores, not estimates for unrecorded days. A missing score breaks its line. Values at right reflect the selected day.`);
       const times = shown.map(record => Date.parse(`${record.date}T00:00:00Z`));
-      const averages = Object.fromEntries(series.map(([, property]) => [property, trailingMovingAverage(shown, times, property, averageDays)]));
-      updateReadout(averages);
+      updateReadout();
       const hidden = new Set(this.settings.hiddenChartSeries || []);
       const active = series.filter(([, property]) => !hidden.has(property));
       const rowHeight = 132;
@@ -2109,22 +2072,6 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
           return `${command}${x(index)},${y(record[property])}`;
         }).join(" ");
         make("path", { d: path, fill: "none", stroke: color, "stroke-width": 3, "stroke-linecap": "round", "stroke-linejoin": "round", class: "series", "data-series": property, "vector-effect": "non-scaling-stroke" });
-        if (showMovingAverage) {
-          let previousAverageIndex = -2;
-          const averagePath = averages[property].map((value, index) => {
-            if (!Number.isFinite(value)) return "";
-            const command = index === previousAverageIndex + 1 ? "L" : "M";
-            previousAverageIndex = index;
-            return `${command}${x(index)},${y(value)}`;
-          }).filter(Boolean).join(" ");
-          make("path", { d: averagePath, fill: "none", stroke: color, "stroke-width": 2, "stroke-dasharray": "6 4", "stroke-linecap": "round", class: "moving-average-path", "data-series": property, "vector-effect": "non-scaling-stroke" });
-          averages[property].forEach((value, index) => {
-            if (!Number.isFinite(value)) return;
-            const px = x(index), py = y(value);
-            const marker = make("path", { d: `M${px},${py - 3.5} L${px + 3.5},${py} L${px},${py + 3.5} L${px - 3.5},${py} Z`, fill: "var(--amh-surface)", stroke: color, "stroke-width": 2, class: "moving-average-point", "data-series": property, "data-date": shown[index].date, "data-average": value });
-            make("title", {}, `${shown[index].date}: ${label} ${averageDays}-day average ${value.toFixed(2)}/5`, marker);
-          });
-        }
         const pointRadius = Math.max(1.4, Math.min(3.5, plotWidth / Math.max(valid.length, 1) / 3));
         for (const { record, index } of valid) {
           const point = make("circle", { cx: x(index), cy: y(record[property]), r: pointRadius, fill: color, class: "data-point", "data-series": property });

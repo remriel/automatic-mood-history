@@ -1,3 +1,15 @@
+# Project state — centered dashboard, no moving averages (2026-11-14)
+
+Version 1.8.5 centers toolbar actions, summary-card rows (including wrapped rows), range controls and series controls. Dashboard buttons match the compact range-button typography, padding and height, with 44px minimum on coarse pointers. Narrow cards retain legible CONNECTION labels. User explicitly requested complete removal of moving averages: toggle, explanation, calculations, dashed paths, markers and readout values were removed. Range-relative summary averages and recorded-score trend lines remain.
+
+Relevant files: `styles.css`, `src/main.js`, `tests/centered-controls.test.js` and `tests/layout.test.js`; the build generates `main.js`. No vault data, analysis settings or saved scores are changed. Native Obsidian is not opened per prior user direction.
+
+## RESUME HERE
+
+Verify the centered desktop/mobile layouts, absence of moving-average marks, unchanged range/series interactions and release checks. Publish 1.8.5 and verify the workflow and assets.
+
+---
+
 # Project state — compact summary cards (2026-11-14)
 
 Version 1.8.4 reduces the five dashboard summary cards about 30%: 102px columns on desktop and 84px in narrow panes, with proportionally smaller padding, spacing and score text. Labels wrap at enlarged text sizes. The change is CSS-only; saved records, calculations and chart behavior are unchanged. Source: `styles.css`; verification: desktop and mobile layout suites. Do not open Obsidian or modify the user's vault.

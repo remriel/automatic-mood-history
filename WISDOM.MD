@@ -1,5 +1,11 @@
 # Wisdom
 
+## 2026-11-14 — streamline the dashboard
+
+1. Least confident: the live Obsidian theme and its custom overrides; inspect only if requested.
+2. Easy to miss: moving averages and summary-card averages are different features. Remove the former and preserve the latter.
+3. Most consequential assumption: matching button size means matching height, typography and padding while allowing widths to fit labels. Keep readable text and 44px touch targets.
+
 ## 2026-11-14 — smaller summary cards
 
 1. Least confident: appearance in the user's native theme; verify only if requested.

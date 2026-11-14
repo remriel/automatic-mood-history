@@ -1,3 +1,8 @@
+# 1.8.5
+
+- Center summary cards and dashboard controls, with consistent compact button sizing.
+- Remove moving-average controls, lines, markers and selected-day readouts; recorded score trends remain.
+
 # 1.8.4
 
 - Reduce summary card dimensions by about 30% while retaining responsive layout.
