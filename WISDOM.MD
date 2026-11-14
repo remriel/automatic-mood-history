@@ -1,3 +1,11 @@
+# Reflection — 2026-11-13
+
+1. Least confident: whether one fifth of the range provides the preferred smoothing; tune the ratio based on use.
+2. Emotion colors are now stable but their emotional associations are subjective; adjust the palette with user feedback.
+3. Assumed selected calendar span should determine smoothing, including custom and all-history ranges; change the rule if a different relationship is preferred.
+
+---
+
 # Wisdom
 
 1. **Least confident:** Safe migration of existing creation-date summaries. I would implement and test an explicit reversible migration before installation.

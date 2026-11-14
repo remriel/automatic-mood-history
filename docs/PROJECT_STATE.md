@@ -1,3 +1,13 @@
+# Project state — range-relative averages and emotion colors (2026-11-13)
+
+Trend averages use one fifth of the selected calendar span, rounded to days with a two-day minimum. Custom ranges use their inclusive boundaries; All uses the full recorded span. Missing scores are excluded and two observations are required. Emotion composition uses stable label-based colors, with deterministic fallback for other labels. Chart surfaces and legend were refined. Source is src/main.js; build output is main.js; styles are in styles.css.
+
+## RESUME HERE
+
+Review and publish the current changes if a public release is desired. Verify the installed plugin in native Obsidian. The prior 1.7.7 state below is historical.
+
+---
+
 # Project state — range-aware summaries (2026-11-11)
 
 Automatic Mood History is a local-first Obsidian plugin for desktop and mobile. `src/main.js` owns dashboard rendering; `scripts/build.js` bundles it with the analysis modules into tracked `main.js`; `styles.css` supplies the dashboard styling. The public repository must never contain private vault records or credentials.

@@ -1,3 +1,20 @@
+# Progress — range-relative averages and emotion colors (2026-11-13)
+
+Objective: adapt moving averages to the selected range, make emotion colors consistent, and polish the dashboard.
+
+Progress: 90% — implementation installed and desktop/mobile tests passed; public release and native verification remain.
+
+- [x] Implement range-based averaging and stable emotion colors.
+- [x] Polish composition chart and legend.
+- [x] Build and pass desktop layout test.
+- [x] Pass Android/iPhone layout, core and mobile runtime tests; copy built files to installed plugin and verify hashes.
+- [ ] Verify in native Obsidian.
+- [ ] Synchronize changes to GitHub.
+
+Next: synchronize a branch, test native Obsidian, and publish if requested.
+
+---
+
 # Top seven composition and moving averages ? 1.7.7
 
 **Objective:** Display only the seven most common emotions in Composition over time and add moving averages to trend charts.

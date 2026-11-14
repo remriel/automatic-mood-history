@@ -298,7 +298,7 @@ async function inspectLayout(page, label) {
     await inspectLayout(page, 'top-seven composition at narrow width');
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
 
-    // Moving averages use calendar days, not the last seven observations.
+    // Moving averages scale with the selected calendar range.
     // The boundary is inclusive, missing scores are excluded, and each
     // calculated point needs at least two observed scores in its window.
     await page.evaluate(() => {
@@ -313,26 +313,27 @@ async function inspectLayout(page, label) {
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
     });
     const movingRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
-    const averageToggle = page.getByRole('button', { name: '7-day moving average', exact: true });
+    const averageToggle = page.locator('.auto-mood-average-toggle');
     assert.equal(await averageToggle.getAttribute('aria-pressed'), 'true', 'moving average is visible by default');
     await page.getByRole('button', { name: 'All', exact: true }).click();
+    assert.equal(await averageToggle.innerText(), '4-day moving average');
     const averagePoints = () => page.locator('.moving-average-point[data-series="energyScore"]').evaluateAll(nodes =>
       nodes.map(node => [node.getAttribute('data-date'), Number(node.getAttribute('data-average'))]));
     assert.deepStrictEqual(await averagePoints(), [
-      ['2099-01-02', 1.5], ['2099-01-07', 2], ['2099-01-08', 3], ['2099-01-10', 4]
-    ], 'averages use the inclusive seven-calendar-day window and exclude missing scores');
+      ['2099-01-02', 1.5], ['2099-01-08', 3.5], ['2099-01-10', 4]
+    ], 'all-history average uses a four-day calendar window and excludes missing scores');
     assert.equal(await page.locator('.moving-average-path[data-series="energyScore"]').getAttribute('stroke-dasharray'), '6 4');
     await page.getByRole('slider', { name: 'Explore a recorded day' }).evaluate(slider => {
-      slider.value = '2'; slider.dispatchEvent(new Event('input', { bubbles: true }));
+      slider.value = '3'; slider.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    assert((await page.locator('[data-average-for="energyScore"]').innerText()).includes('2.0/5'), 'selected day announces its average');
+    assert((await page.locator('[data-average-for="energyScore"]').innerText()).includes('3.5/5'), 'selected day announces its average');
     await averageToggle.click();
     assert.equal(await averageToggle.getAttribute('aria-pressed'), 'false');
     assert.equal(await page.locator('.moving-average-path').count(), 0, 'toggle hides all moving averages');
     assert.equal(await page.locator('[data-average-for]').count(), 0);
     await averageToggle.click();
     assert.deepStrictEqual(await averagePoints(), [
-      ['2099-01-02', 1.5], ['2099-01-07', 2], ['2099-01-08', 3], ['2099-01-10', 4]
+      ['2099-01-02', 1.5], ['2099-01-08', 3.5], ['2099-01-10', 4]
     ]);
     await page.getByRole('button', { name: 'Energy', exact: true }).click();
     await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
@@ -345,7 +346,8 @@ async function inspectLayout(page, label) {
     await page.getByLabel('Start date', { exact: true }).fill('2099-01-07');
     await page.getByLabel('End date', { exact: true }).fill('2099-01-10');
     await page.getByRole('button', { name: 'Apply range', exact: true }).click();
-    assert.deepStrictEqual(await averagePoints(), [['2099-01-08', 3.5], ['2099-01-10', 4]], 'custom ranges do not borrow scores from outside the selected dates');
+    assert.equal(await averageToggle.innerText(), '2-day moving average');
+    assert.deepStrictEqual(await averagePoints(), [['2099-01-08', 3.5]], 'custom ranges do not borrow scores from outside the selected dates');
     assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), movingRecordsBefore, 'moving averages do not modify records');
     await inspectLayout(page, 'moving average with a custom range');
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
