@@ -1,6 +1,7 @@
 # 1.8.4
 
 - Reduce summary card dimensions by about 30% while retaining responsive layout.
+- Match Common Emotions bar colors to the composition chart for shared emotions.
 
 # 1.8.3
 
