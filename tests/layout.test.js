@@ -344,6 +344,7 @@ async function inspectLayout(page, label) {
       const rendered = await page.evaluate(() => ({
         legend: Object.fromEntries([...document.querySelectorAll('.auto-mood-composition-legend li')].map(item => [item.textContent, getComputedStyle(item.querySelector('.auto-mood-composition-swatch')).backgroundColor])),
         marks: [...document.querySelectorAll('.auto-mood-composition-chart rect[data-emotion]')].map(rect => ({label: rect.dataset.emotion, fill: getComputedStyle(rect).fill})),
+        common: [...document.querySelectorAll('.auto-mood-bar-row')].map(row => ({label: row.querySelector('.auto-mood-bar-label').textContent, fill: getComputedStyle(row.querySelector('.auto-mood-bar-fill')).backgroundColor})),
         axes: [...document.querySelectorAll('.auto-mood-composition-chart line')].length,
         details: document.querySelector('.auto-mood-composition-details').textContent
       }));
@@ -352,6 +353,7 @@ async function inspectLayout(page, label) {
       for (const mark of rendered.marks) {
         assert.equal(mark.fill, rendered.legend[mark.label], `${theme}: legend matches each segment`);
       }
+      for (const bar of rendered.common) assert.equal(bar.fill, rendered.legend[bar.label], `${theme}: common emotion matches composition color`);
       assert.equal(rendered.axes, 3, `${theme}: percentage grid has three guides`);
       for (const label of ['anxiety', 'frustration', 'sadness']) assert(rendered.details.includes(label), `${theme}: textual period details include ${label}`);
       await inspectLayout(page, `${theme} distinct pastel composition`);

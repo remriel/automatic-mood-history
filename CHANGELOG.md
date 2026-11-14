@@ -1,3 +1,10 @@
+# 1.8.4
+
+- Reduce summary card dimensions by about 30% while retaining responsive layout.
+- Match Common Emotions bar colors to the composition chart for shared emotions.
+- Make dashboard toolbar buttons more compact while preserving touch targets.
+- Reduce trend range buttons by about 30% on desktop while retaining touch targets.
+
 # 1.8.3
 
 - Match Morning Pages Analytics' stacked composition chart, with calendar-aligned bars, percentage guides and a compact legend.

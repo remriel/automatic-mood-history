@@ -1799,6 +1799,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     // scored history including legacy/archived records for the ranking.
     const allScored = records.filter(record => record.status === "complete" && !hasNoEmotionalEvidence(record) && Number.isFinite(record.moodScore));
     const compositionLeaders = this.compositionLeaders(allScored);
+    const compositionColors = this.compositionColors(compositionLeaders);
+    const compositionPalette = new Map(compositionLeaders.map((label, index) => [label, compositionColors[index]]));
 
     const toolbar = wrapper.createDiv({ cls: "auto-mood-toolbar" });
     toolbar.createEl("strong", { text: "AUTOMATIC MOOD HISTORY" });
@@ -1848,7 +1850,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       this.disposeDashboard(emotionHost);
       emotionHost.empty();
-      this.renderEmotionBars(emotionHost, visibleRecords);
+      this.renderEmotionBars(emotionHost, visibleRecords, compositionPalette);
       this.renderEmotionComposition(emotionHost, visibleRecords, compositionLeaders, range);
     };
     updateSummaryCards(complete);
@@ -2174,7 +2176,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     }
   }
 
-  renderEmotionBars(parent, records) {
+  renderEmotionBars(parent, records, colors = new Map()) {
     const counts = new Map();
     for (const record of records) {
       for (const emotion of record.emotions || []) counts.set(emotion, (counts.get(emotion) || 0) + 1);
@@ -2190,6 +2192,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       row.createDiv({ cls: "auto-mood-bar-label", text: emotion });
       const track = row.createDiv({ cls: "auto-mood-bar-track" });
       const bar = track.createDiv({ cls: "auto-mood-bar-fill" });
+      bar.style.setProperty("background-color", colors.get(emotion) || this.compositionColors([emotion])[0], "important");
       bar.style.width = `${Math.max(8, (count / max) * 100)}%`;
       row.createDiv({ cls: "auto-mood-bar-count", text: String(count) });
     }

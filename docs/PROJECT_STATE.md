@@ -1,3 +1,13 @@
+# Project state — compact summary cards (2026-11-14)
+
+Version 1.8.4 reduces the five dashboard summary cards about 30%: 102px columns on desktop and 84px in narrow panes, with proportionally smaller padding, spacing and score text. Labels wrap at enlarged text sizes. The change is CSS-only; saved records, calculations and chart behavior are unchanged. Source: `styles.css`; verification: desktop and mobile layout suites. Do not open Obsidian or modify the user's vault.
+
+## RESUME HERE
+
+Run layout checks, publish 1.8.4 through CI, and verify the release. Native Obsidian remains unverified.
+
+---
+
 # Project state — pastel emotion composition and monthly default (2026-11-14)
 
 User requests distinct pastel composition colors, especially anxiety, frustration and sadness; monthly notes as the settings default; aligned composition columns; and publication. They then specified the Morning Pages Analytics composition chart as the visual reference. The chart selects up to ten most common labels across all saved scored history including older/legacy records and keeps them stable across ranges. `compositionColors` uses ten perceptually separated pastel slots with priority for the named emotions, collision resolution for arbitrary labels, and stable assignments while the same set remains. Percentages count displayed labels only and the accessible period details disclose exact values.
