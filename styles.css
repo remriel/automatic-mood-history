@@ -673,12 +673,13 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-chart-empty[hidden] { display: none; }
 
 /* Trend controls and the selected-day detail work in narrow panes and on touch. */
-.auto-mood-range-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.auto-mood-range-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .auto-mood-range-controls button {
-  min-height: 44px; height: auto; padding: 7px 12px; border: 2px solid var(--amh-frame);
+  min-height: 31px; height: auto; padding: 5px 8px; border: 2px solid var(--amh-frame);
   border-radius: 0; background: var(--amh-surface); color: var(--amh-text);
-  font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer;
+  font: inherit; font-size: .65rem; font-weight: 800; cursor: pointer;
 }
+@media (pointer: coarse) { .auto-mood-range-controls button { min-height: 44px; } }
 .auto-mood-range-controls button[aria-pressed="true"] { background: var(--amh-yellow); color: var(--amh-on-accent); box-shadow: 3px 3px 0 var(--amh-shadow); }
 .auto-mood-range-controls button:focus-visible, .auto-mood-day-slider:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
 .auto-mood-average-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; }
