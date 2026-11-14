@@ -136,7 +136,7 @@
   color: var(--amh-on-accent);
   border: 2px solid var(--amh-frame);
   box-shadow: 3px 3px 0 var(--amh-shadow);
-  padding: 8px;
+  padding: 8px 4px;
   background: var(--amh-surface);
 }
 
@@ -149,7 +149,7 @@
 .auto-mood-card-label {
   font-size: 0.65rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
 }
 
 .auto-mood-card-value {
@@ -585,11 +585,6 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 
   .auto-mood-card {
     flex-basis: 92px;
-    padding-inline: 4px;
-  }
-
-  .auto-mood-card-label {
-    letter-spacing: 0;
   }
 
   .auto-mood-bar-row {
