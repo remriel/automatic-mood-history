@@ -1,5 +1,11 @@
 # Wisdom
 
+## 2026-11-14 — smaller summary cards
+
+1. Least confident: appearance in the user's native theme; verify only if requested.
+2. Biggest consideration: labels must remain readable when cards shrink; check narrow and enlarged-text layouts.
+3. Main assumption: smaller means reducing card width and height, not the recorded values; preserve all calculations.
+
 ## 2026-11-14 — composition and monthly history
 
 1. Least confident: the installed plugin's appearance in the user's live theme; inspect only when requested.

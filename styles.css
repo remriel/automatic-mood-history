@@ -116,16 +116,16 @@
 
 .auto-mood-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
-  gap: 13px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 102px), 102px));
+  gap: 9px;
+  margin-bottom: 14px;
 }
 
 .auto-mood-card {
   color: var(--amh-on-accent);
-  border: 3px solid var(--amh-frame);
-  box-shadow: 4px 4px 0 var(--amh-shadow);
-  padding: 12px;
+  border: 2px solid var(--amh-frame);
+  box-shadow: 3px 3px 0 var(--amh-shadow);
+  padding: 8px;
   background: var(--amh-surface);
 }
 
@@ -136,16 +136,16 @@
 .auto-mood-card:nth-child(5) { background: #d6baff; }
 
 .auto-mood-card-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 900;
   letter-spacing: 0.08em;
 }
 
 .auto-mood-card-value {
-  font-size: 2rem;
+  font-size: 1.4rem;
   line-height: 1;
   font-weight: 950;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .auto-mood-section {
@@ -573,7 +573,7 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   }
 
   .auto-mood-cards {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 84px), 84px));
   }
 
   .auto-mood-bar-row {

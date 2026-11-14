@@ -1,3 +1,17 @@
+# Progress — smaller summary cards (2026-11-14)
+
+Objective: make the five mood summary cards 30% smaller and publish.
+
+Progress: 60% — CSS and release metadata prepared; layout checks and publication remain.
+
+- [x] Reduce card widths, padding, spacing and score type.
+- [ ] Pass desktop and mobile layout checks.
+- [ ] Publish version 1.8.4 and verify the release.
+
+Next: run responsive checks, push a PR, pass CI, merge, and verify the release workflow. Do not open Obsidian or change the user's vault.
+
+---
+
 # Progress — pastel composition, alignment and monthly default (2026-11-14)
 
 Objective: give composition emotions distinct pastel colors, align the chart cells, default to monthly notes, and publish.

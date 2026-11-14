@@ -1,3 +1,7 @@
+# 1.8.4
+
+- Reduce summary card dimensions by about 30% while retaining responsive layout.
+
 # 1.8.3
 
 - Match Morning Pages Analytics' stacked composition chart, with calendar-aligned bars, percentage guides and a compact legend.
