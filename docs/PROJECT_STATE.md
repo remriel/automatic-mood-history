@@ -6,7 +6,7 @@ Relevant files: `styles.css`, `src/main.js`, `tests/centered-controls.test.js` a
 
 ## RESUME HERE
 
-Verify the centered desktop/mobile layouts, absence of moving-average marks, unchanged range/series interactions and release checks. Publish 1.8.5 and verify the workflow and assets.
+Version 1.8.5 is published from merge `dae32b739f5ee248b233e8fcefec1811ad4aa669`, PR #28. PR CI 43635377759 and release workflow 43635605474 passed. All four release asset digests match the downloads; plugin assets match source, the model validated and main.js attestation verified. Native Obsidian was not opened. No vault or saved scores were modified.
 
 ---
 

@@ -2,15 +2,15 @@
 
 Objective: streamline the dashboard top, center controls and summary cards, and remove moving averages entirely.
 
-Progress: 70% — implementation and focused centering checks complete; full verification and publication remain.
+Progress: 100% — version 1.8.5 is published and verified.
 
 - [x] Center summary-card rows, toolbar buttons, range controls and series controls.
 - [x] Match button size to range buttons and preserve touch targets.
 - [x] Remove moving-average controls, explanations, calculations, paths, markers and readout values.
-- [ ] Verify desktop/mobile layouts and chart interaction tests.
-- [ ] Publish 1.8.5 and verify the workflow and assets.
+- [x] Verify desktop/mobile layouts and chart interaction tests.
+- [x] Publish 1.8.5; verify PR CI, release workflow, asset digests, source parity, model and main.js attestation.
 
-Next: run full checks, review the diff, open and merge a PR after CI, and verify the release. Do not open Obsidian or alter the user's vault.
+Next: no release work remains. Native theme behavior remains unverified; do not open Obsidian or alter the user's vault unless requested.
 
 ---
 
