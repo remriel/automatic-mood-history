@@ -6,7 +6,7 @@ Storage audit found that daily re-export and a normal reanalysis could overwrite
 
 ## RESUME HERE
 
-Finish final desktop and Android/iPhone layout runs, publish 1.8.2 after CI, and verify release assets. User requested publication only; do not open Obsidian or migrate personal vault files. Native settings behavior remains unverified.
+Version 1.8.2 is published from merge `39e4e310cb27e1999d3c79123a7e2c9f13fbdc14` (PR #25). PR CI 43561343929, main CI 43561612059, and release workflow 43561612069 passed. The four published asset digests match downloaded files; `main.js`, `manifest.json`, and `styles.css` also match source blobs, the optional model passed validation, and `main.js` attestation verification succeeded. User requested publication only: no Obsidian launch, installation, or migration was performed. Native settings behavior remains unverified; test in the user's theme only if requested.
 
 ---
 

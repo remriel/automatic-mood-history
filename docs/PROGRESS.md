@@ -2,16 +2,17 @@
 
 Objective: fix settings proportions, resolve reproducible related bugs, and publish a new release.
 
-Progress: 80% — fixes and functional tests complete; visual checks and publication remain.
+Progress: 100% — release 1.8.2 is published and verified.
 
 - [x] Reproduce and fix the very tall narrow settings rows and rebalance desktop columns.
 - [x] Add responsive measurements, 200% text and touch-target checks.
 - [x] Preserve pre-existing edits in daily exports/reanalysis and use recoverable daily export commits.
 - [x] Fix null lookup in compact modes and multiple underscore-date ambiguity.
 - [x] Pass functional, recovery, parsing, mobile runtime and privacy tests.
-- [ ] Finish desktop and mobile visual checks, run PR CI, merge and verify release 1.8.2 and assets.
+- [x] Pass desktop and Android/iPhone layout checks, PR CI 43561343929, main CI 43561612059, and release workflow 43561612069.
+- [x] Verify all four published asset digests, plugin asset/source parity, model validation and main.js attestation.
 
-Next: finish layout tests; review the public diff; commit and open PR; pass CI; merge and verify the release workflow and assets. Do not open Obsidian or change the user's vault.
+Next: no publication work remains. Native Obsidian and the user's theme were not tested; the user requested publication only. Do not open Obsidian or change the user's vault without a new instruction.
 
 ---
 
