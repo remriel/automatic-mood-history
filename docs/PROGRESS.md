@@ -2,7 +2,7 @@
 
 Objective: reduce daily-entry clutter without losing history, and group imported dated notes correctly.
 
-Progress: 85% — implementation and local verification complete; publication and release verification remain. User explicitly narrowed scope to publishing only; do not open Obsidian, install, or migrate vault files.
+Progress: 100% — release 1.8.0 published and verified; native app testing remains unverified.
 
 - [x] Separate daily/monthly/dashboard-only output while retaining checkpointed recovery.
 - [x] Add lossless monthly exports, edit protection and dashboard evidence/source links.
@@ -10,10 +10,11 @@ Progress: 85% — implementation and local verification complete; publication an
 - [x] Pass functional suite, mobile runtime, privacy audit and desktop layouts before integration.
 - [x] Integrate the completed 1.7.8 chart release in an isolated worktree.
 - [x] Verify rebased desktop layout and original mobile layout runs.
-- [ ] Synchronize the feature branch/PR and pass CI on the final commit.
-- [ ] Merge, verify release workflow, download and verify published assets.
+- [x] Synchronize the feature branch/PR and pass CI on the final commit.
+- [x] Merge PR #23 as 9a29437ff8be6c5c00e121404c0627df8d407eb3 and pass main CI and release workflow 43535412561.
+- [x] Verify tag 1.8.0, all four asset digests, and byte-for-byte git blob parity for manifest.json, styles.css, and main.js.
 
-Next: commit/push the generic implementation only; pass CI; merge and verify the published release and assets. Local installation, native app verification and migration are excluded by the latest user instruction. No private vault artifacts belong in this repository.
+Next: reload Obsidian and test native interaction if desired. No reanalysis is required for existing records.
 
 ---
 

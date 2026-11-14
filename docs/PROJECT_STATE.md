@@ -10,7 +10,7 @@ Constraints: no automatic restore UI for monthly recovery blocks; no cross-devic
 
 ## RESUME HERE
 
-The user explicitly requested publishing only and stopped the planned native-app verification/migration. Synchronize the feature branch/PR, pass CI, merge and verify release 1.8.0 and downloaded assets. Do not open Obsidian, install, or modify vault data. The separate 1.7.8 checkout remains untouched. Public release is not yet published.
+Version 1.8.0 is published from merge 9a29437ff8be6c5c00e121404c0627df8d407eb3. PR CI 43534712452, main CI 43535412471 and release workflow 43535412561 passed. All four release assets (`main.js`, `manifest.json`, `styles.css`, `moodring-model.bin`) were verified: git object hashes match byte-for-byte with published assets, and the offline Moodring model passed validation tests. Reload and test in native Obsidian if desired; native app interaction remains unverified. The prior 1.7.8 state below is historical.
 
 ---
 
