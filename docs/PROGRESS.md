@@ -2,16 +2,16 @@
 
 Objective: publish the range-relative moving average, stable emotion colors, theme-resistant legend matching, and visual refinements.
 
-Progress: 95% — local functional, privacy, desktop, Android and iPhone checks passed; final preset checks and publication remain.
+Progress: 100% — 1.7.8 is published and installed; native Obsidian interaction remains unverified.
 
 - [x] Implement range-relative moving averages and stable, theme-resistant emotion colors.
 - [x] Update version metadata, release notes, changelog and README.
-- [x] Pass functional, privacy, desktop, Android and iPhone checks, including a rendered color regression.
-- [ ] Confirm final preset checks and GitHub CI.
-- [ ] Merge the reviewed branch and verify the public release and assets.
-- [ ] Verify the installed plugin against the released files.
+- [x] Pass local functional, privacy, desktop and Android/iPhone layout tests; verify all range presets and computed legend/segment colors under a theme override.
+- [x] Merge PR #22 as 861c30f00e03c02fd1410373e318ed29a5e73b47 and pass PR CI 43533163455 and main CI 43533197803.
+- [x] Publish 1.7.8 via successful release workflow 43533197782 and verify the tag and all four asset digests.
+- [x] Verify installed main.js, styles.css and manifest.json match the official release byte-for-byte.
 
-Next: run release checks, publish 1.7.8 through the repository workflow, verify release assets and installed files, and record outcomes.
+Next: reload Obsidian and visually check the plugin with the user's theme if desired. No reanalysis is required for these display changes.
 
 ---
 

@@ -1,3 +1,11 @@
+# Publication reflection — 2026-11-13
+
+1. Least confident: how the emotion palette will feel in the user's actual Obsidian theme; I would review it in the running app and adjust based on feedback.
+2. Biggest missing consideration: a restart or plugin reload is needed before the installed files take effect; mobile devices may need to receive the update separately. I would verify the dashboard on each device used.
+3. Most consequential assumption: one fifth of the selected calendar span is the desired smoothing rule. If it feels too smooth or too noisy, I would tune the ratio or make it configurable.
+
+---
+
 # Reflection — 2026-11-13
 
 1. Least confident: whether one fifth of the range provides the preferred smoothing; tune the ratio based on use.

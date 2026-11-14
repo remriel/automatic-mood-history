@@ -4,7 +4,7 @@ Trend averages use one fifth of the selected calendar span, rounded to days with
 
 ## RESUME HERE
 
-Release 1.7.8 is being prepared. The composition chart applies matching inline colors to legend and SVG segments to resist theme overrides; regression tests compare computed colors and verify stability across reranking. Run checks, merge and verify the release workflow and installed assets. Native Obsidian interaction remains unverified. The prior 1.7.7 state below is historical.
+Version 1.7.8 is published from merge 861c30f00e03c02fd1410373e318ed29a5e73b47. The composition chart applies matching inline colors to legend and SVG segments to resist theme overrides; regression tests compare computed colors and verify stability across reranking. PR CI 43533163455, main CI 43533197803 and release workflow 43533197782 passed. All four release asset digests match GitHub; installed plugin files match the published assets byte-for-byte. Reload and visually inspect in native Obsidian if desired; native interaction remains unverified. The prior 1.7.7 state below is historical.
 
 ---
 
