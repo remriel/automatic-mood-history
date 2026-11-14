@@ -4,7 +4,7 @@ Version 1.8.1 expands the settings tab to the full available modal pane width, p
 
 ## RESUME HERE
 
-Preparing 1.8.1 release. Manifest, package.json, versions.json, changelog, and release notes updated. All test suites pass.
+Version 1.8.1 is published from merge 92a637314cf12c85b5cbaf646d655f4ca6c6ea9b. PR CI 43537461964, main CI 43537767511 and release workflow 43537767503 passed. All four release assets (`main.js`, `manifest.json`, `styles.css`, `moodring-model.bin`) were verified: git object hashes match byte-for-byte with published assets, and the offline Moodring model passed validation tests. Reload Obsidian to inspect the wider settings tab. The prior 1.8.0 state below is historical.
 
 ---
 

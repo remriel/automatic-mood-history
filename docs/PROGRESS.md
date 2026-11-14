@@ -2,13 +2,16 @@
 
 Objective: make settings UI fill available modal width, restore daily entry notes when switching to daily output, and detect underscore-separated ambiguous dates.
 
-Progress: 100% — implementation, test suites, and layout checks complete; ready for release.
+Progress: 100% — release 1.8.1 published and verified.
 
 - [x] Expand settings tab to full modal width and stack multi-line folder scopes.
 - [x] Restore daily entry notes when switching output back to daily mode.
 - [x] Recognize underscore-separated multi-date filenames as ambiguous.
 - [x] Pass functional, layout, mobile runtime, and release audit suites.
-- [ ] Merge and publish 1.8.1 release via GitHub Actions.
+- [x] Merge PR #24 as 92a637314cf12c85b5cbaf646d655f4ca6c6ea9b and pass main CI and release workflow 43537767503.
+- [x] Verify tag 1.8.1, all four asset digests, and byte-for-byte git blob parity for manifest.json, styles.css, and main.js.
+
+Next: reload Obsidian to check the wider settings tab in native UI. No reanalysis is required for existing records.
 
 ---
 
