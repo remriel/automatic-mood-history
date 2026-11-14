@@ -1,3 +1,13 @@
+# Project state — settings UI width and daily export restoration (2026-11-13)
+
+Version 1.8.1 expands the settings tab to the full available modal pane width, preventing narrow constrained columns on wide displays. Folder allow/exclude textareas span the full card width as responsive stacked editors. Switching output back to Daily notes exports daily entry notes for saved records. Underscore title separators are treated as date token boundaries to detect ambiguous multi-date filenames.
+
+## RESUME HERE
+
+Preparing 1.8.1 release. Manifest, package.json, versions.json, changelog, and release notes updated. All test suites pass.
+
+---
+
 # Project state — compact history and import dates (2026-11-13)
 
 Version 1.8.0 candidate builds on 1.7.8. `entryOutput` selects daily (compatibility default), monthly, or none. JSON remains authoritative; pending writes retain their original mode. Monthly exports contain readable entries and lossless recovery blocks, preserve distinct date-basis identities, and reject manual edits using atomic full-document/hash checks. Daily detail cards expose evidence and original source links without requiring daily files. Bases remains daily-only. Existing entries are never removed by the plugin.

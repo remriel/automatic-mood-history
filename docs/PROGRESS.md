@@ -1,3 +1,17 @@
+# Progress — settings UI width, daily export restoration and date ambiguity (2026-11-13)
+
+Objective: make settings UI fill available modal width, restore daily entry notes when switching to daily output, and detect underscore-separated ambiguous dates.
+
+Progress: 100% — implementation, test suites, and layout checks complete; ready for release.
+
+- [x] Expand settings tab to full modal width and stack multi-line folder scopes.
+- [x] Restore daily entry notes when switching output back to daily mode.
+- [x] Recognize underscore-separated multi-date filenames as ambiguous.
+- [x] Pass functional, layout, mobile runtime, and release audit suites.
+- [ ] Merge and publish 1.8.1 release via GitHub Actions.
+
+---
+
 # Progress — compact history and import dates (2026-11-13)
 
 Objective: reduce daily-entry clutter without losing history, and group imported dated notes correctly.

@@ -68,6 +68,11 @@ async function run() {
   assert.equal(await none.p.analyzeDate(date), true);
   assert.equal(none.disk.files.size, 0, "dashboard-only commits need no Markdown writes");
   assert(none.disk.json.records[date]);
+  const callsBefore = none.p.providerCalls;
+  none.p.settings.entryOutput = "daily";
+  await none.p.exportDailyHistory();
+  assert([...none.disk.files.keys()].some(path => path.includes("/Entries/")), "switching to daily output creates daily entries without provider calls");
+  assert.equal(none.p.providerCalls, callsBefore);
   assert.equal(none.p.validateSettings({ entryOutput: "invalid" }).entryOutput, "daily");
   assert.equal(none.p.validateSettings({ entryOutput: "monthly" }).entryOutput, "monthly");
   assert.throws(() => none.p.monthlyPath("../../escape"), /Invalid/);

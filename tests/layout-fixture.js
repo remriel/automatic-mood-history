@@ -25,6 +25,7 @@ function fixtureHTML() {
     HTMLElement.prototype.createDiv=function(options){return this.createEl('div',options);};
     class FixtureSetting {
       constructor(container){this.item=container.createDiv({cls:'setting-item'});this.info=this.item.createDiv({cls:'setting-item-info'});this.control=this.item.createDiv({cls:'setting-item-control'});}
+      setClass(cls){this.item.classList.add(cls);return this;}
       setName(text){this.name=text;this.info.createDiv({cls:'setting-item-name',text});return this;}
       setDesc(text){this.info.createDiv({cls:'setting-item-description',text});return this;}
       addDropdown(callback){const el=this.control.createEl('select',{attr:{'aria-label':this.name}});const api={addOptions(options){for(const[value,text]of Object.entries(options))el.createEl('option',{text,attr:{value}});return api;},setValue(value){el.value=value;return api;},onChange(fn){el.addEventListener('change',()=>void fn(el.value));return api;}};callback(api);return this;}
