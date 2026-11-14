@@ -27,18 +27,19 @@ function fixtureHTML() {
       constructor(container){this.item=container.createDiv({cls:'setting-item'});this.info=this.item.createDiv({cls:'setting-item-info'});this.control=this.item.createDiv({cls:'setting-item-control'});}
       setName(text){this.name=text;this.info.createDiv({cls:'setting-item-name',text});return this;}
       setDesc(text){this.info.createDiv({cls:'setting-item-description',text});return this;}
+      addDropdown(callback){const el=this.control.createEl('select',{attr:{'aria-label':this.name}});const api={addOptions(options){for(const[value,text]of Object.entries(options))el.createEl('option',{text,attr:{value}});return api;},setValue(value){el.value=value;return api;},onChange(fn){el.addEventListener('change',()=>void fn(el.value));return api;}};callback(api);return this;}
       addToggle(callback){const el=this.control.createEl('button',{text:'Off',attr:{role:'switch','aria-label':this.name}});const api={setValue(v){el.textContent=v?'On':'Off';el.setAttribute('aria-checked',String(v));return api;},onChange(fn){el.addEventListener('click',()=>{const v=el.getAttribute('aria-checked')!=='true';api.setValue(v);void fn(v);});return api;}};callback(api);return this;}
       addText(callback){const el=this.control.createEl('input',{attr:{type:'text','aria-label':this.name}});const api={inputEl:el,getValue(){return el.value;},setValue(v){el.value=v;return api;},onChange(fn){el.addEventListener('input',()=>void fn(el.value));return api;}};callback(api);return this;}
       addTextArea(callback){const el=this.control.createEl('textarea',{attr:{'aria-label':this.name,rows:'4'}});const api={setPlaceholder(v){el.placeholder=v;return api;},setValue(v){el.value=v;return api;},onChange(fn){el.addEventListener('input',()=>void fn(el.value));return api;}};callback(api);return this;}
       addButton(callback){const el=this.control.createEl('button');const api={setButtonText(t){el.textContent=t;return api;},setCta(){return api;},onClick(fn){el.addEventListener('click',fn);return api;}};callback(api);return this;}
     }
-    const module={exports:{}};
-    const require=(name)=>{if(name==='obsidian')return {Component:class{},Notice:class{},Plugin:class{},PluginSettingTab:class{},Setting:FixtureSetting,TFile:class{},TFolder:class{},requestUrl:async()=>{throw new Error('Network disabled in layout fixture');}};throw new Error(name);};
+    const module={exports:{}};class FixtureFile{}
+    const require=(name)=>{if(name==='obsidian')return {Component:class{},Notice:class{},Plugin:class{},PluginSettingTab:class{},Setting:FixtureSetting,TFile:FixtureFile,TFolder:class{},requestUrl:async()=>{throw new Error('Network disabled in layout fixture');}};throw new Error(name);};
     ${bundle}
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
     const secrets=new Map();plugin.app={secretStorage:{getSecret:id=>secrets.get(id)||null,setSecret:(id,value)=>secrets.set(id,value)}};
     plugin.settings={outputFolder:'Mood History',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
-    const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};
+    const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};plugin.ensureSupportFiles=async()=>{};
     let statusText='SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';
     plugin.groqStatus=()=>({kind:plugin.settings.enableGroq?'ready':'local',text:plugin.activeScan?'Analyzing fictional fixture records':plugin.checkingGroq?'Checking with fictional fixture text':statusText});
     const action=async(name)=>{calls[name]+=1;if(name==='check')plugin.checkingGroq=true;else plugin.activeScan=true;plugin.refreshRenderers();await new Promise(r=>setTimeout(r,120));plugin.checkingGroq=false;plugin.activeScan=false;plugin.refreshRenderers();};
@@ -55,7 +56,7 @@ function fixtureHTML() {
       dashboard.hidden=Boolean(options.settingsView);tab.containerEl.hidden=!options.settingsView;plugin.renderDashboard(dashboard);if(options.settingsView)tab.display();
     }
     document.addEventListener('click',event=>{const link=event.target.closest('a.internal-link');if(link){event.preventDefault();window.lastOpenedEntry=link.getAttribute('data-href');}});
-    window.fixture={plugin,calls,configure,tab};configure();
+    window.fixture={plugin,calls,configure,tab,FixtureFile};configure();
   })();</script></body></html>`;
 }
 module.exports = { fixtureHTML };

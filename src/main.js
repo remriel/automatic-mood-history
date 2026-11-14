@@ -14,6 +14,7 @@ const {
 const {
   ANALYSIS_SCHEMA,
   buildEntryMarkdown,
+  buildMonthlyMarkdown,
   deduplicateParagraphs,
   exemptUnscorableAssessment,
   hasNoEmotionalEvidence,
@@ -42,6 +43,8 @@ const DEFAULT_SETTINGS = {
   enableMoodring: false,
   model: "openai/gpt-oss-20b",
   outputFolder: "Mood History",
+  entryOutput: "daily",
+  numericDateOrder: "skip",
   includeFolders: [],
   excludeFolders: [],
   autoAnalyze: false,
@@ -256,7 +259,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   watchSettings() {
-    const analysisKeys = new Set(["enableMoodring", "includeFolders", "excludeFolders", "outputFolder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
+    const analysisKeys = new Set(["enableMoodring", "includeFolders", "excludeFolders", "outputFolder", "entryOutput", "numericDateOrder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
     this.analysisEpoch ||= 0;
     this.settings = new Proxy(this.settings, { set: (target, key, value) => {
       if (analysisKeys.has(key) && JSON.stringify(target[key]) !== JSON.stringify(value)) this.analysisEpoch++;
@@ -268,6 +271,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   validateSettings(saved) {
     const settings = { ...DEFAULT_SETTINGS, includeFolders: [], excludeFolders: [] };
     if (!isObject(saved)) return settings;
+    if (["daily", "monthly", "none"].includes(saved.entryOutput)) settings.entryOutput = saved.entryOutput;
+    if (["skip", "mdy", "dmy"].includes(saved.numericDateOrder)) settings.numericDateOrder = saved.numericDateOrder;
     for (const key of ["enableGroq", "enableMoodring", "autoAnalyze", "analyzeOnStartup"]) settings[key] = saved[key] === true;
     for (const [key, minimum, maximum] of [["debounceMilliseconds", 250, 60000], ["minimumCharacters", 1, 10000], ["maxCharactersPerDay", 100, 200000]]) {
       if (typeof saved[key] === "number" && Number.isFinite(saved[key])) settings[key] = Math.max(minimum, Math.min(maximum, Math.round(saved[key])));
@@ -376,9 +381,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async commitPreparedRecord(key, pending, assertCurrent = this.analysisGuard()) {
     assertCurrent();
     if (pending.outputFolder !== this.outputFolder) throw new Error("Restore the pending entry's output folder before recovering it.");
+    const mode = pending.entryOutput || "daily";
+    if (mode !== this.entryOutput) throw new Error("Restore the pending result's Markdown output mode before recovering it.");
     await this.savePluginData();
     assertCurrent();
-    await this.writeEntryNote(pending.record, { pending, key, assertCurrent });
+    if (mode === "daily") await this.writeEntryNote(pending.record, { pending, key, assertCurrent });
+    if (mode === "monthly") await this.writeMonthlyNote(pending.record.date.slice(0, 7), { ...this.records, [key]: pending.record }, assertCurrent);
     assertCurrent();
     await this.savePluginData({ commit: { key, record: pending.record } });
     // Also supports adapters that wrap savePluginData for instrumentation.
@@ -388,12 +396,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async prepareRecord(key, record, assertCurrent) {
     assertCurrent();
-    const path = await this.resolveEntryPath(record);
+    const mode = this.entryOutput;
+    const path = mode === "daily" ? await this.resolveEntryPath(record) : null;
     const file = this.app?.vault?.getAbstractFileByPath?.(path);
     const content = file instanceof TFile ? await this.app.vault.cachedRead(file) : null;
     assertCurrent();
-    record.entryPath = path;
-    const pending = { version: 1, outputFolder: this.outputFolder, record, expectedHash: content === null ? null : sha256(content) };
+    if (path) record.entryPath = path;
+    const pending = { version: 1, entryOutput: mode, outputFolder: this.outputFolder, record, expectedHash: content === null ? null : sha256(content) };
     this.runtime.pendingWrites ||= {};
     this.runtime.pendingWrites[key] = pending;
     return pending;
@@ -464,6 +473,57 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return `${this.outputFolder}/Entries`;
   }
 
+  get entryOutput() {
+    return ["monthly", "none"].includes(this.settings.entryOutput) ? this.settings.entryOutput : "daily";
+  }
+
+  monthlyPath(month) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Invalid export month.");
+    return this.assertOutputPath(`${this.outputFolder}/Months/${month}.md`);
+  }
+
+  async writeMonthlyNote(month, records = this.records, assertCurrent = this.analysisGuard()) {
+    assertCurrent();
+    const path = this.monthlyPath(month);
+    const next = buildMonthlyMarkdown(month, records);
+    const previous = buildMonthlyMarkdown(month, this.records);
+    const previousHash = this.runtime.monthlyExportHashes?.[path];
+    await this.ensureFolder(`${this.outputFolder}/Months`);
+    assertCurrent();
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (file instanceof TFile) {
+      await this.app.vault.process(file, current => {
+        assertCurrent();
+        // Compare the entire document, not just an ownership marker. Replay
+        // after an interrupted commit is idempotent; manual edits are retained.
+        const normalized = current.replace(/\r\n/g, "\n");
+        if (normalized !== next && normalized !== previous && sha256(normalized) !== previousHash) throw new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
+        return next;
+      });
+    } else {
+      await this.app.vault.create(path, next);
+    }
+    this.runtime.monthlyExportHashes ||= {};
+    this.runtime.monthlyExportHashes[path] = sha256(next);
+  }
+
+  async exportMonthlyHistory() {
+    const assertCurrent = this.analysisGuard();
+    const task = (this.analysisQueue || Promise.resolve()).then(async () => {
+      assertCurrent();
+      if (this.entryOutput !== "monthly") throw new Error("Select monthly Markdown output first.");
+      if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before exporting history.");
+      for (const month of [...new Set(Object.values(this.records).map(record => record.date.slice(0, 7)))].sort()) {
+        await this.writeMonthlyNote(month, this.records, assertCurrent);
+      }
+      await this.savePluginData();
+      await this.ensureSupportFiles();
+      this.refreshRenderers();
+    });
+    this.analysisQueue = task.catch(() => {});
+    return task;
+  }
+
   isIncludedSourcePath(path) {
     if (this.settingsValidationError || this.settingsSaveFailed) return false;
     const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
@@ -487,6 +547,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async updateSetting(key, value) {
     try {
+      if (key === "entryOutput") {
+        if (!["daily", "monthly", "none"].includes(value)) throw new Error("Choose a valid Markdown output mode.");
+        if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before changing Markdown output.");
+      }
+      if (key === "numericDateOrder" && !["skip", "mdy", "dmy"].includes(value)) throw new Error("Choose a valid numeric date order.");
       if (["includeFolders", "excludeFolders"].includes(key)) value = checkedFolderList(value);
       if (key === "outputFolder") value = vaultPath(value);
     } catch (error) {
@@ -521,19 +586,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       normalizedPath === ".trash" || normalizedPath.startsWith(".trash/") ||
       !this.isIncludedSourcePath(normalizedPath)) return null;
 
-    // Match Morning Pages' strict auto-detection. A numeric date that can
-    // represent two different days is deliberately left unassigned.
     const name = normalizedPath.split("/").pop().replace(/\.md$/i, "");
-    const dailyFormat = this.app.internalPlugins?.getPluginById?.("daily-notes")?.instance?.options?.format;
-    const dates = new Set();
-    if (typeof moment === "function") {
-      for (const format of new Set([dailyFormat, ...AUTO_DATE_FORMATS].filter(Boolean))) {
-        const parsed = moment(name, format, true);
-        if (parsed.isValid() && parsed.format(format) === name) dates.add(parsed.format("YYYY-MM-DD"));
-      }
-    }
-    if (dates.size === 1) return [...dates][0];
-    if (dates.size > 1) return null;
+    const detected = this.detectFilenameDate(name);
+    if (detected.date) return detected.date;
+    if (detected.ambiguous) return null;
 
     const timestamp = file.stat?.ctime;
     if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
@@ -543,6 +599,53 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const month = String(createdAt.getMonth() + 1).padStart(2, "0");
     const day = String(createdAt.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
+  }
+
+  detectFilenameDate(name) {
+    const dailyFormat = this.app.internalPlugins?.getPluginById?.("daily-notes")?.instance?.options?.format;
+    const formats = [...new Set([dailyFormat, ...AUTO_DATE_FORMATS,
+      "YYYY-M-D", "YYYY.M.D", "YYYY_M_D", "M-D-YYYY", "D-M-YYYY", "M.D.YYYY", "D.M.YYYY", "M_D_YYYY", "D_M_YYYY",
+      "D MMM, YYYY", "D MMMM, YYYY", "Do MMM YYYY", "Do MMMM YYYY", "MMM Do, YYYY", "MMMM Do, YYYY", "MMM Do YYYY", "MMMM Do YYYY"
+    ].filter(Boolean))];
+    const parse = text => {
+      const matches = new Set();
+      const iso = (year, month, day) => `${year}-${String(Number(month)).padStart(2, "0")}-${String(Number(day)).padStart(2, "0")}`;
+      const yearFirst = text.match(/^(\d{4})([-._])(\d{1,2})\2(\d{1,2})$/);
+      if (yearFirst) {
+        const date = iso(yearFirst[1], yearFirst[3], yearFirst[4]);
+        if (validDate(date)) matches.add(date);
+        return matches;
+      }
+      const numeric = text.match(/^(\d{1,2})([-._])(\d{1,2})\2(\d{4})$/);
+      if (numeric) {
+        const mdy = iso(numeric[4], numeric[1], numeric[3]);
+        const dmy = iso(numeric[4], numeric[3], numeric[1]);
+        for (const date of [mdy, dmy]) if (validDate(date)) matches.add(date);
+        if (matches.size > 1 && ["mdy", "dmy"].includes(this.settings.numericDateOrder)) return new Set([this.settings.numericDateOrder === "mdy" ? mdy : dmy]);
+        return matches;
+      }
+      if (typeof moment !== "function") return matches;
+      for (const format of formats) {
+        const parsed = moment(text, format, true);
+        if (parsed.isValid()) matches.add(parsed.format("YYYY-MM-DD"));
+      }
+      return matches;
+    };
+    const exact = parse(name);
+    if (exact.size) return { date: exact.size === 1 ? [...exact][0] : null, ambiguous: exact.size > 1 };
+    // Importers commonly add duplicate counters or a title to a dated name.
+    // Extract complete tokens, never guess two-digit years or date ranges.
+    const candidates = new Set();
+    for (const pattern of [
+      /\b\d{4}[-._]\d{1,2}[-._]\d{1,2}(?!\d)/g,
+      /\b\d{1,2}([-._])\d{1,2}\1\d{4}(?!\d)/g,
+      /\b\d{8}\b/g,
+      /\b\d{1,2}(?:st|nd|rd|th)? [A-Za-z]+,? \d{4}\b/g,
+      /\b[A-Za-z]+ \d{1,2}(?:st|nd|rd|th)?,? \d{4}\b/g
+    ]) for (const match of name.matchAll(pattern)) candidates.add(match[0]);
+    const dates = new Set();
+    for (const candidate of candidates) for (const date of parse(candidate)) dates.add(date);
+    return { date: dates.size === 1 ? [...dates][0] : null, ambiguous: dates.size > 1 };
   }
 
   topicForFile(file) {
@@ -661,7 +764,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // source reads or provider replies. Never retry with stale consent/scope.
     const signature = () => JSON.stringify([
       this.settings.includeFolders, this.settings.excludeFolders,
-      this.settings.outputFolder, this.settings.enableGroq, this.settings.enableMoodring, this.settings.model,
+      this.settings.outputFolder, this.settings.entryOutput, this.settings.numericDateOrder, this.settings.enableGroq, this.settings.enableMoodring, this.settings.model,
       this.settings.minimumCharacters, this.settings.maxCharactersPerDay,
       ...(options.background ? [this.settings.autoAnalyze, this.settings.analyzeOnStartup] : [])
     ]);
@@ -1434,7 +1537,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async writeEntryNote(record, options = {}) {
     const assertCurrent = options.assertCurrent || this.analysisGuard();
     assertCurrent();
-    await this.ensureFolder(this.entriesFolder);
+    if (this.entryOutput === "daily") await this.ensureFolder(this.entriesFolder);
     assertCurrent();
     let path = options.pending ? record.entryPath : await this.resolveEntryPath(record);
     this.assertOutputPath(path, true);
@@ -1530,16 +1633,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     assertCurrent();
     await this.ensureFolder(this.outputFolder);
     assertCurrent();
-    await this.ensureFolder(this.entriesFolder);
+    if (this.entryOutput === "daily") await this.ensureFolder(this.entriesFolder);
     assertCurrent();
     const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by their detected filename date, or by their local creation date when the name has no recognized date. Include/exclude folder settings control which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
 const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes use an unambiguous date detected in their filename, using the Daily Notes format and common date formats. Undated names use the local calendar day of their Obsidian creation timestamp. Ambiguous dates are skipped. Include/exclude folder settings determine eligibility; frontmatter dates and aliases do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Undated notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes assigned to the same date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key comes from the desktop GROQ_API_KEY environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
-    await this.writeTextFile(this.dashboardPath, dashboard, false);
+    await this.writeTextFile(this.dashboardPath, this.entryOutput === "daily" ? dashboard : this.compactDashboardText(dashboard), false);
     assertCurrent();
     await this.upgradeDashboardLayout();
     assertCurrent();
-    await this.writeTextFile(`${this.outputFolder}/Mood History.base`, base, false);
+    if (this.entryOutput === "daily") await this.writeTextFile(`${this.outputFolder}/Mood History.base`, base, false);
     assertCurrent();
     await this.writeTextFile(`${this.outputFolder}/Methodology.md`, methodology, false);
   }
@@ -1556,6 +1659,25 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     };
     const content = await this.app.vault.cachedRead(file);
     assertCurrent();
+    if (this.entryOutput !== "daily") {
+      if (isOwnedDashboard(content) && this.compactDashboardText(content) !== content) {
+        await this.app.vault.process(file, current => {
+          assertCurrent();
+          return isOwnedDashboard(current) ? this.compactDashboardText(current) : current;
+        });
+      }
+      return;
+    }
+    const compactNotice = "Daily Markdown exports are disabled. Browse daily details in the dashboard above.";
+    if (isOwnedDashboard(content) && content.includes(compactNotice)) {
+      await this.app.vault.process(file, current => {
+        assertCurrent();
+        if (!isOwnedDashboard(current)) return current;
+        return current.replace(compactNotice, `[[${this.outputFolder}/Mood History.base|Open the optional Base table]]`)
+          .replace("Monthly exports, when enabled, are saved in the Months folder. The native Base table requires daily Markdown exports.", "The complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.");
+      });
+      return;
+    }
     if (!isOwnedDashboard(content) || !content.includes(embed)) return;
     // Only migrate this exact plugin-created embed. Atomic processing keeps
     // concurrent edits and every other line of the dashboard intact.
@@ -1564,6 +1686,12 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       if (!isOwnedDashboard(current)) return current;
       return current.replace(embed, `[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.`);
     });
+  }
+
+  compactDashboardText(text) {
+    return text.replace(`![[${this.outputFolder}/Mood History.base]]`, "Daily Markdown exports are disabled. Browse daily details in the dashboard above.")
+      .replace(`[[${this.outputFolder}/Mood History.base|Open the optional Base table]]`, "Daily Markdown exports are disabled. Browse daily details in the dashboard above.")
+      .replace("The complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.", "Monthly exports, when enabled, are saved in the Months folder. The native Base table requires daily Markdown exports.");
   }
 
   async openDashboard() {
@@ -2121,10 +2249,14 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       const card = list.createEl("article", { cls: "auto-mood-day", attr: { "aria-label": `Mood history for ${record.date}` } });
       const header = card.createDiv({ cls: "auto-mood-day-header" });
       const heading = header.createEl("h4", { cls: "auto-mood-day-date" });
-      const entryPath = String(record.entryPath || (this.entriesFolder + "/" + record.date + ".md")).replace(/[.]md$/i, "");
-      const link = heading.createEl("a", { text: record.date, cls: "internal-link", attr: { "aria-label": `Open mood entry for ${record.date}` } });
-      link.setAttribute("data-href", entryPath);
-      link.setAttribute("href", entryPath);
+      const monthPath = this.entryOutput === "monthly" ? this.monthlyPath(record.date.slice(0, 7)) : null;
+      const entryPath = this.entryOutput === "daily" ? String(record.entryPath || (this.entriesFolder + "/" + record.date + ".md")).replace(/[.]md$/i, "") :
+        monthPath && this.app?.vault?.getAbstractFileByPath?.(monthPath) instanceof TFile ? monthPath.replace(/[.]md$/i, "") + `#${record.date} (${record.dateBasis || LEGACY_DATE_BASIS})` : null;
+      if (entryPath) {
+        const link = heading.createEl("a", { text: record.date, cls: "internal-link", attr: { "aria-label": `Open mood entry for ${record.date}` } });
+        link.setAttribute("data-href", entryPath);
+        link.setAttribute("href", entryPath);
+      } else heading.setText(record.date);
       const badges = header.createDiv({ cls: "auto-mood-day-badges" });
       badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CURRENT_DATE_BASIS ? "Detected date" : record.dateBasis === HISTORICAL_DATE_BASIS ? "Previous creation date" : "Legacy date" });
       const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource || "none" });
@@ -2132,6 +2264,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       if (record.status === "insufficient" || hasNoEmotionalEvidence(record)) {
         card.createEl("p", { cls: "auto-mood-insufficient", text: "Insufficient evidence · no scores assigned" });
         card.createEl("p", { cls: "auto-mood-day-reading", text: record.summary || "No readable text was available for this date." });
+        this.renderRecordDetails(card, record);
         continue;
       }
       const scores = card.createEl("dl", { cls: "auto-mood-day-scores" });
@@ -2154,7 +2287,23 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
           `Moodring local text signals: ${labels}.${m.truncated ? " First 12,000 characters only." : ""}` });
       }
       card.createEl("p", { cls: "auto-mood-day-reading", text: record.summary || "No summary available." });
+      this.renderRecordDetails(card, record);
     }
+  }
+
+  renderRecordDetails(card, record) {
+    const details = card.createEl("details", { cls: "auto-mood-record-details" });
+    details.createEl("summary", { text: "Signals and source notes" });
+    if (record.confidence || record.confidenceReason) details.createEl("p", { text: `Confidence: ${record.confidence || "unspecified"}. ${record.confidenceReason || ""}` });
+    const list = details.createEl("ul");
+    for (const driver of record.drivers || []) list.createEl("li", { text: driver });
+    for (const source of record.sourcePaths || []) {
+      let path;
+      try { path = vaultPath(source); } catch { continue; }
+      const item = list.createEl("li");
+      item.createEl("a", { text: path, cls: "internal-link", attr: { href: path, "data-href": path } });
+    }
+    if (record.providerIssue?.message) details.createEl("p", { text: record.providerIssue.message });
   }
 }
 
@@ -2172,6 +2321,34 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.createEl("p", {
       text: "Markdown notes use detected filename dates, or their creation date when undated. Folder rules below control which notes are analyzed. All folders are included by default. Local analysis works offline on desktop, Android and iPhone. Groq analysis is optional."
     });
+    new Setting(containerEl)
+      .setName("Markdown history output")
+      .setDesc("Monthly keeps one readable note per month, including full recovery records. Dashboard only creates no entry notes. Existing daily notes are preserved; archive them only after verifying your backup. Bases needs daily notes.")
+      .addDropdown(dropdown => dropdown.addOptions({ daily: "Daily notes", monthly: "Monthly notes (recommended)", none: "Dashboard only" })
+        .setValue(this.plugin.entryOutput).onChange(async value => {
+          const saved = await this.plugin.updateSetting("entryOutput", value);
+          dropdown.setValue(this.plugin.entryOutput);
+          if (saved && value === "monthly") {
+            try { await this.plugin.exportMonthlyHistory(); new Notice("Automatic Mood History: monthly history exported. Existing daily notes were preserved."); }
+            catch (error) { new Notice(`Automatic Mood History: ${error.message}`, 9000); }
+          }
+          if (saved && value !== "monthly") {
+            try { await this.plugin.ensureSupportFiles(); }
+            catch (error) { new Notice(`Automatic Mood History: ${error.message}`, 9000); }
+          }
+        }));
+    new Setting(containerEl)
+      .setName("Refresh monthly exports")
+      .setDesc("Export saved records without reanalyzing notes or contacting a provider. Include the Months folder and plugin data in your backups; verify your sync service includes both.")
+      .addButton(button => button.setButtonText("Export months").onClick(async () => {
+        try { await this.plugin.exportMonthlyHistory(); new Notice("Automatic Mood History: monthly exports are up to date."); }
+        catch (error) { new Notice(`Automatic Mood History: ${error.message}`, 9000); }
+      }));
+    new Setting(containerEl)
+      .setName("Ambiguous numeric dates")
+      .setDesc("For filenames such as 03-04-2024. Unambiguous dates and written month names work in either order. After changing this, run Analyze changed notes to regroup affected days.")
+      .addDropdown(dropdown => dropdown.addOptions({ skip: "Skip ambiguous dates", mdy: "Month–day–year", dmy: "Day–month–year" })
+        .setValue(this.plugin.settings.numericDateOrder || "skip").onChange(async value => { await this.plugin.updateSetting("numericDateOrder", value); }));
     let keyInput;
     const keySetting = new Setting(containerEl)
       .setName("Groq API key")
