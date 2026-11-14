@@ -1237,13 +1237,20 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async prepareRecord(key, record, assertCurrent) {
     assertCurrent();
+    // Keep the committed object intact until the journaled commit succeeds.
+    record = { ...record };
     const mode = this.entryOutput;
     const path = mode === "daily" ? await this.resolveEntryPath(record) : null;
-    const file = this.app?.vault?.getAbstractFileByPath?.(path);
+    const file = path ? this.app?.vault?.getAbstractFileByPath?.(path) : null;
     const content = file instanceof TFile ? await this.app.vault.cachedRead(file) : null;
     assertCurrent();
     if (path) record.entryPath = path;
-    const pending = { version: 1, entryOutput: mode, outputFolder: this.outputFolder, record, expectedHash: content === null ? null : sha256(content) };
+    // Preserve edits and orphaned files, including those made before this
+    // operation began. Only replace the exact old or projected generated text.
+    const prior = this.records[key];
+    const normalized = content?.replace(/\r\n/g, "\n");
+    const known = content !== null && (normalized === buildEntryMarkdown(record) || prior && normalized === buildEntryMarkdown(prior));
+    const pending = { version: 1, entryOutput: mode, outputFolder: this.outputFolder, record, expectedHash: known ? sha256(content) : null };
     this.runtime.pendingWrites ||= {};
     this.runtime.pendingWrites[key] = pending;
     return pending;
@@ -1371,8 +1378,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       assertCurrent();
       if (this.entryOutput !== "daily") throw new Error("Select daily Markdown output first.");
       if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before exporting history.");
-      for (const record of Object.values(this.records)) {
-        await this.writeEntryNote(record, { assertCurrent });
+      for (const [key, record] of Object.entries(this.records)) {
+        const pending = await this.prepareRecord(key, record, assertCurrent);
+        await this.commitPreparedRecord(key, pending, assertCurrent);
       }
       await this.savePluginData();
       await this.ensureSupportFiles();
@@ -1496,14 +1504,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const candidates = new Set();
     const tokenName = name.replace(/_/g, " ");
     for (const pattern of [
-      /\b\d{4}[-._]\d{1,2}[-._]\d{1,2}(?!\d)/g,
-      /\b\d{1,2}([-._])\d{1,2}\1\d{4}(?!\d)/g,
-      /\b\d{8}\b/g,
-      /\b\d{1,2}(?:st|nd|rd|th)? [A-Za-z]+,? \d{4}\b/g,
-      /\b[A-Za-z]+ \d{1,2}(?:st|nd|rd|th)?,? \d{4}\b/g
+      /(?:^|[^A-Za-z0-9])(\d{4}([-._])\d{1,2}\2\d{1,2})(?!\d)/g,
+      /(?:^|[^A-Za-z0-9])(\d{1,2}([-._])\d{1,2}\2\d{4})(?!\d)/g,
+      /(?:^|[^A-Za-z0-9])(\d{8})(?!\d)/g,
+      /(?:^|[^A-Za-z0-9])(\d{1,2}(?:st|nd|rd|th)? [A-Za-z]+,? \d{4})(?!\d)/g,
+      /(?:^|[^A-Za-z0-9])([A-Za-z]+ \d{1,2}(?:st|nd|rd|th)?,? \d{4})(?!\d)/g
     ]) {
-      for (const match of name.matchAll(pattern)) candidates.add(match[0]);
-      for (const match of tokenName.matchAll(pattern)) candidates.add(match[0]);
+      for (const match of name.matchAll(pattern)) candidates.add(match[1]);
+      for (const match of tokenName.matchAll(pattern)) candidates.add(match[1]);
     }
     const dates = new Set();
     for (const candidate of candidates) for (const date of parse(candidate)) dates.add(date);

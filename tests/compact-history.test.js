@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { fixture, date, priorRecord, TFile, clone } = require("./reliability-fixture");
+const { fixture, date, priorRecord, TFile, clone, buildEntryMarkdown } = require("./reliability-fixture");
 const { buildMonthlyMarkdown } = require("../src/sentiment-core");
 
 async function run() {
@@ -73,6 +73,50 @@ async function run() {
   await none.p.exportDailyHistory();
   assert([...none.disk.files.keys()].some(path => path.includes("/Entries/")), "switching to daily output creates daily entries without provider calls");
   assert.equal(none.p.providerCalls, callsBefore);
+  for (const mode of ["monthly", "none"]) {
+    const checked = fixture(); checked.p.settings.entryOutput = mode;
+    const lookup = checked.p.app.vault.getAbstractFileByPath;
+    checked.p.app.vault.getAbstractFileByPath = path => {
+      assert.equal(typeof path, "string", "Obsidian must never receive a null file path");
+      return lookup(path);
+    };
+    assert.equal(await checked.p.analyzeDate(date), true, mode);
+  }
+
+  // An edit made before a reanalysis or daily export is still user content.
+  for (const operation of ["analysis", "export"]) {
+    const f = fixture(); const old = priorRecord(); f.p.records[date] = old;
+    const edited = buildEntryMarkdown(old) + "\nA personal edit made before this operation.\n";
+    f.disk.files.set(old.entryPath, edited); f.files.set(old.entryPath, new TFile(old.entryPath));
+    if (operation === "analysis") assert.equal(await f.p.analyzeDate(date), true);
+    else await f.p.exportDailyHistory();
+    assert.equal(f.disk.files.get(old.entryPath), edited, `${operation}: never overwrite earlier user edits`);
+    assert.notEqual(f.p.records[date].entryPath, old.entryPath, `${operation}: use a recovered note`);
+    assert.equal(f.disk.files.get(f.p.records[date].entryPath), buildEntryMarkdown(f.p.records[date]));
+    const path = f.p.records[date].entryPath;
+    await f.p.exportDailyHistory();
+    assert.equal(f.p.records[date].entryPath, path, "repeated daily export is idempotent");
+    assert.equal(f.p.providerCalls, operation === "analysis" ? 1 : 0);
+  }
+
+  // Interruption after writing the replacement preserves both the original
+  // edit and the prepared journal; restart commits without another request.
+  const interrupted = fixture(); const old = priorRecord(); interrupted.p.records[date] = old;
+  const editedOriginal = buildEntryMarkdown(old) + "\nKeep this edit.\n";
+  interrupted.disk.files.set(old.entryPath, editedOriginal); interrupted.files.set(old.entryPath, new TFile(old.entryPath));
+  const write = interrupted.p.writeEntryNote.bind(interrupted.p);
+  interrupted.p.writeEntryNote = async (...args) => { await write(...args); throw new Error("Interrupted after entry write"); };
+  await assert.rejects(interrupted.p.exportDailyHistory(), /Interrupted/);
+  assert.equal(interrupted.p.records[date], old, "uncommitted export does not mutate live records");
+  const resumed = fixture(interrupted.disk).p;
+  resumed.settings = clone(interrupted.disk.json.settings);
+  resumed.records = clone(interrupted.disk.json.records);
+  resumed.runtime = clone(interrupted.disk.json.runtime);
+  await resumed.recoverPendingWrites();
+  assert.equal(interrupted.disk.files.get(old.entryPath), editedOriginal);
+  assert.notEqual(resumed.records[date].entryPath, old.entryPath);
+  assert.equal(resumed.providerCalls, 0);
+  assert.equal(Object.keys(resumed.runtime.pendingWrites).length, 0);
   assert.equal(none.p.validateSettings({ entryOutput: "invalid" }).entryOutput, "daily");
   assert.equal(none.p.validateSettings({ entryOutput: "monthly" }).entryOutput, "monthly");
   assert.throws(() => none.p.monthlyPath("../../escape"), /Invalid/);

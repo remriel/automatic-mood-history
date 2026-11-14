@@ -21,6 +21,21 @@ async function inspect(page, label) {
   assert.deepEqual(smallTargets, [], `${label}: controls and entry links have 44px touch targets`);
 }
 
+async function inspectSettingsProportions(page, label) {
+  const oversized = await page.evaluate(() => [...document.querySelectorAll("#settings .setting-item")].flatMap(row => {
+    if (getComputedStyle(row).flexDirection !== "column") return [];
+    const emptySpace = element => {
+      const box = element.getBoundingClientRect();
+      const children = [...element.children].map(child => child.getBoundingClientRect()).filter(child => child.height > 0);
+      const height = children.length ? Math.max(...children.map(child => child.bottom)) - Math.min(...children.map(child => child.top)) : 0;
+      return box.height - height;
+    };
+    const info = row.querySelector(".setting-item-info"), controls = row.querySelector(".setting-item-control");
+    return emptySpace(info) > 4 || emptySpace(controls) > 4 ? [row.querySelector(".setting-item-name").textContent] : [];
+  }));
+  assert.deepEqual(oversized, [], `${label}: stacked settings rows fit their content`);
+}
+
 async function run() {
   for (const [name, engine, device] of [["android", chromium, "Pixel 7"], ["iphone", webkit, "iPhone 13"]]) {
     const browser = await engine.launch({ headless: true });
@@ -78,6 +93,7 @@ async function run() {
       }
       await page.evaluate(() => fixture.configure({ settingsView: true }));
       await inspect(page, `${name}: settings`);
+      await inspectSettingsProportions(page, `${name}: settings`);
       const keyInput = page.getByLabel("Groq API key", { exact: true });
       assert.equal(await keyInput.getAttribute("type"), "password");
       await keyInput.fill("fictional-mobile-ui-key");
@@ -93,6 +109,7 @@ async function run() {
       await page.getByRole("textbox", { name: "Include folders", exact: true }).fill("Journal\nDaily Notes");
       await page.evaluate(() => fixture.configure({ settingsView: true, largeText: true, longText: true }));
       await inspect(page, `${name}: settings at 200% text`);
+      await inspectSettingsProportions(page, `${name}: settings at 200% text`);
       if (process.env.MOBILE_QA_DIR) await page.screenshot({ path: path.join(process.env.MOBILE_QA_DIR, `${name}-settings.png`) });
       assert.deepEqual(errors, [], `${name}: no runtime errors`);
       console.log(`${name}: portrait/landscape 320–844px, light/dark, 365 days, touch actions, secret field and 200% text passed`);

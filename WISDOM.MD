@@ -1,5 +1,11 @@
 # Wisdom
 
+## 2026-11-13 — settings proportions and write safety
+
+1. Least confident: native Obsidian and third-party theme layouts remain unverified. Test the published release in the user's theme when native testing is authorized.
+2. Easy to miss: a note can be edited before an export starts, not only during an interrupted write. Compare the whole note with known generated content and preserve conflicts.
+3. Most consequential assumption: filename dates and current saved records faithfully describe their original notes. Skip ambiguous dates, keep original entries and backups, and reanalyze instead of copying a mixed score to new dates.
+
 ## 2026-11-13 — compact history and import dates
 
 1. Least confident: native runtime and multi-device sync behavior are not established by synthetic tests. Verify the installed app and keep both visible monthly exports and plugin-data backups.

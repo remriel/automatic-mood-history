@@ -470,18 +470,19 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 }
 
 .auto-mood-settings .setting-item-info {
-  flex: 1 1 260px;
+  flex: 1 1 0;
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
 }
 
 .auto-mood-settings .setting-item-control {
-  flex: 1 1 320px;
+  flex: 0 1 min(320px, 40%);
   min-width: 0;
   max-width: 100%;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -499,6 +500,15 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
+}
+
+/* Row-sized flex bases become heights in a column. Reset both children for
+   stacked editors and narrow settings panes so they only use their content. */
+.auto-mood-settings .setting-item:has(textarea) .setting-item-info,
+.auto-mood-settings .setting-item:has(textarea) .setting-item-control,
+.auto-mood-settings .auto-mood-setting-stacked .setting-item-info,
+.auto-mood-settings .auto-mood-setting-stacked .setting-item-control {
+  flex: 0 1 auto;
 }
 
 .auto-mood-settings .setting-item:has(textarea) .setting-item-control,
@@ -607,6 +617,11 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
     justify-content: flex-start;
     width: 100%;
     max-width: 100%;
+  }
+
+  .auto-mood-settings .setting-item-info,
+  .auto-mood-settings .setting-item-control {
+    flex: 0 1 auto;
   }
 
   .auto-mood-settings input[type="text"],

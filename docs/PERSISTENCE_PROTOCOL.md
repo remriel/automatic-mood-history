@@ -10,6 +10,10 @@ The plugin never automatically removes old daily entries. Archive only after che
 
 ## Daily output
 
+As of 1.8.2, prepare compares an existing entry with both the prior committed generated text and the new projected text, normalizing line endings for that comparison. An unrelated, orphaned or previously edited file is treated as a conflict and retained; recovery creates an unused entry instead. The exact observed hash still guards the actual write against later changes. The prepared record is a detached object, so an interrupted export cannot mutate the committed in-memory record before the JSON commit.
+
+Switching to daily output restores each saved record through the same prepare/write/commit queue rather than directly overwriting owned files. The operation does not call a provider. If interrupted, its pending record can be replayed on restart; an export can be run again without duplicating unchanged notes.
+
 Plugin JSON is the authority for committed history. A version 1 pending write stores only the validated analysis result, selected entry path, output directory and hash of the entry text observed before replacement. It never stores source note text or credentials.
 
 1. Prepare: persist the previous committed record plus the pending write before changing Markdown.

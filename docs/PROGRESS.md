@@ -1,3 +1,20 @@
+# Progress — settings proportions and safety fixes (2026-11-13)
+
+Objective: fix settings proportions, resolve reproducible related bugs, and publish a new release.
+
+Progress: 80% — fixes and functional tests complete; visual checks and publication remain.
+
+- [x] Reproduce and fix the very tall narrow settings rows and rebalance desktop columns.
+- [x] Add responsive measurements, 200% text and touch-target checks.
+- [x] Preserve pre-existing edits in daily exports/reanalysis and use recoverable daily export commits.
+- [x] Fix null lookup in compact modes and multiple underscore-date ambiguity.
+- [x] Pass functional, recovery, parsing, mobile runtime and privacy tests.
+- [ ] Finish desktop and mobile visual checks, run PR CI, merge and verify release 1.8.2 and assets.
+
+Next: finish layout tests; review the public diff; commit and open PR; pass CI; merge and verify the release workflow and assets. Do not open Obsidian or change the user's vault.
+
+---
+
 # Progress — settings UI width, daily export restoration and date ambiguity (2026-11-13)
 
 Objective: make settings UI fill available modal width, restore daily entry notes when switching to daily output, and detect underscore-separated ambiguous dates.

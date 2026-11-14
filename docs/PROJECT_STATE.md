@@ -1,3 +1,15 @@
+# Project state — settings proportions and safe entry writes (2026-11-13)
+
+Version 1.8.2 fixes a 1.8.1 flex regression: 260px and 320px horizontal flex bases became fixed heights when settings rows stacked. Stacked info/controls now use content-sized flex, and desktop controls use a bounded 320px column while descriptions use the remaining width. `tests/settings-proportions.test.js` measures content heights, desktop ratios, folder editor width and touch targets at 280–1200px and 200% text.
+
+Storage audit found that daily re-export and a normal reanalysis could overwrite an owned entry edited before processing began. `prepareRecord` now keeps committed objects detached and accepts existing content only if it matches prior or projected generated text; other files are retained and a recovered entry is written. `exportDailyHistory` now uses the pending-write journal for each record. Monthly/dashboard-only operations avoid calling Obsidian's file lookup with null. Filename parsing now detects multiple underscore-formatted date tokens in one title as ambiguous. Synthetic regression tests cover these paths, including interruption and replay; no real vault data was modified.
+
+## RESUME HERE
+
+Finish final desktop and Android/iPhone layout runs, publish 1.8.2 after CI, and verify release assets. User requested publication only; do not open Obsidian or migrate personal vault files. Native settings behavior remains unverified.
+
+---
+
 # Project state — settings UI width and daily export restoration (2026-11-13)
 
 Version 1.8.1 expands the settings tab to the full available modal pane width, preventing narrow constrained columns on wide displays. Folder allow/exclude textareas span the full card width as responsive stacked editors. Switching output back to Daily notes exports daily entry notes for saved records. Underscore title separators are treated as date token boundaries to detect ambiguous multi-date filenames.
