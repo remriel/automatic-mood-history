@@ -389,62 +389,8 @@ async function inspectLayout(page, label) {
     for (const [emotion, fill] of afterColors.segments) assert.equal(fill, afterColors.legend[emotion], `${emotion} segment matches its legend after reranking`);
     await themeOverride.evaluate(element => element.remove());
 
-    // Moving averages scale with the selected calendar range.
-    // The boundary is inclusive, missing scores are excluded, and each
-    // calculated point needs at least two observed scores in its window.
-    await page.evaluate(() => {
-      fixture.configure({ paneWidth: 640, count: 7 });
-      const values = Object.values(fixture.plugin.records);
-      const dates = ['2099-01-01', '2099-01-02', '2099-01-07', '2099-01-08', '2099-01-09', '2099-01-10', '2099-01-18'];
-      const scores = [1, 2, 3, 4, null, 5, 2];
-      fixture.plugin.records = Object.fromEntries(values.map((record, index) => [dates[index], {
-        ...record, date: dates[index], dateBasis: 'detected-note-date', status: 'complete',
-        moodScore: 3, energyScore: scores[index]
-      }]));
-      fixture.plugin.renderDashboard(document.getElementById('dashboard'));
-    });
-    const movingRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
-    const averageToggle = page.locator('.auto-mood-average-toggle');
-    assert.equal(await averageToggle.getAttribute('aria-pressed'), 'true', 'moving average is visible by default');
-    for (const [range, days] of [['7 days', 2], ['14 days', 3], ['30 days', 6], ['60 days', 12], ['90 days', 18], ['1 year', 73]]) {
-      await page.getByRole('button', { name: range, exact: true }).click();
-      assert.equal(await averageToggle.innerText(), `${days}-day moving average`, `${range} uses its own smoothing window`);
-    }
-    await page.getByRole('button', { name: 'All', exact: true }).click();
-    assert.equal(await averageToggle.innerText(), '4-day moving average');
-    const averagePoints = () => page.locator('.moving-average-point[data-series="energyScore"]').evaluateAll(nodes =>
-      nodes.map(node => [node.getAttribute('data-date'), Number(node.getAttribute('data-average'))]));
-    assert.deepStrictEqual(await averagePoints(), [
-      ['2099-01-02', 1.5], ['2099-01-08', 3.5], ['2099-01-10', 4]
-    ], 'all-history average uses a four-day calendar window and excludes missing scores');
-    assert.equal(await page.locator('.moving-average-path[data-series="energyScore"]').getAttribute('stroke-dasharray'), '6 4');
-    await page.getByRole('slider', { name: 'Explore a recorded day' }).evaluate(slider => {
-      slider.value = '3'; slider.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    assert((await page.locator('[data-average-for="energyScore"]').innerText()).includes('3.5/5'), 'selected day announces its average');
-    await averageToggle.click();
-    assert.equal(await averageToggle.getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.locator('.moving-average-path').count(), 0, 'toggle hides all moving averages');
-    assert.equal(await page.locator('[data-average-for]').count(), 0);
-    await averageToggle.click();
-    assert.deepStrictEqual(await averagePoints(), [
-      ['2099-01-02', 1.5], ['2099-01-08', 3.5], ['2099-01-10', 4]
-    ]);
-    await page.getByRole('button', { name: 'Energy', exact: true }).click();
-    await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
-    assert.equal(await page.locator('.moving-average-point[data-series="energyScore"]:visible').count(), 0, 'hiding a series also hides its average');
-    await page.getByRole('button', { name: 'Energy', exact: true }).click();
-    await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
-    await page.getByRole('button', { name: '7 days', exact: true }).click();
-    assert.deepStrictEqual(await averagePoints(), [], 'a window with only one score has no moving average');
-    await page.getByRole('button', { name: 'Custom', exact: true }).click();
-    await page.getByLabel('Start date', { exact: true }).fill('2099-01-07');
-    await page.getByLabel('End date', { exact: true }).fill('2099-01-10');
-    await page.getByRole('button', { name: 'Apply range', exact: true }).click();
-    assert.equal(await averageToggle.innerText(), '2-day moving average');
-    assert.deepStrictEqual(await averagePoints(), [['2099-01-08', 3.5]], 'custom ranges do not borrow scores from outside the selected dates');
-    assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), movingRecordsBefore, 'moving averages do not modify records');
-    await inspectLayout(page, 'moving average with a custom range');
+    // The dashboard shows only recorded-score trends, with no moving-average UI or traces.
+    assert.equal(await page.locator('.auto-mood-average-toggle, .auto-mood-average-info, .moving-average-path, .moving-average-point, [data-average-for]').count(), 0);
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
 
     for (const [name, counter] of [["Analyze changed", "analyze"], ["Retry all with Groq", "retry"], ["Check Groq", "check"], ["Retry fallback entries", "recover"]]) {

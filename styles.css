@@ -49,14 +49,16 @@
 
 .auto-mood-toolbar > strong {
   color: var(--amh-on-accent);
+  flex-basis: 100%;
+  text-align: center;
 }
 
 .auto-mood-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   background: var(--amh-yellow);
   color: var(--amh-on-accent);
   border: 3px solid var(--amh-frame);
@@ -70,6 +72,7 @@
 .auto-mood-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 5px;
 }
 
@@ -120,17 +123,20 @@
 }
 
 .auto-mood-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 102px), 102px));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 9px;
   margin-bottom: 14px;
 }
 
 .auto-mood-card {
+  flex: 0 1 102px;
+  max-width: 100%;
   color: var(--amh-on-accent);
   border: 2px solid var(--amh-frame);
   box-shadow: 3px 3px 0 var(--amh-shadow);
-  padding: 8px;
+  padding: 8px 4px;
   background: var(--amh-surface);
 }
 
@@ -143,7 +149,7 @@
 .auto-mood-card-label {
   font-size: 0.65rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
 }
 
 .auto-mood-card-value {
@@ -186,7 +192,8 @@
 .auto-mood-chart-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 18px;
+  justify-content: center;
+  gap: 6px;
   list-style: none;
   padding: 0;
   margin: 0 0 14px;
@@ -202,7 +209,7 @@
 }
 
 .auto-mood-legend-swatch {
-  flex: 0 0 24px;
+  flex: 0 0 18px;
   border-top: 3px solid;
 }
 
@@ -559,7 +566,7 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   }
 
   .auto-mood-toolbar {
-    align-items: flex-start;
+    align-items: center;
   }
 
   .auto-mood-toolbar > strong,
@@ -568,17 +575,16 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   }
 
   .auto-mood-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+    display: flex;
+    justify-content: center;
   }
 
   .auto-mood-actions button {
-    min-height: 44px;
-    width: 100%;
+    width: auto;
   }
 
-  .auto-mood-cards {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 84px), 84px));
+  .auto-mood-card {
+    flex-basis: 92px;
   }
 
   .auto-mood-bar-row {
@@ -654,11 +660,11 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 
 /* Series legend buttons retain keyboard focus while the plot updates. */
 .auto-mood-chart-legend .auto-mood-series-toggle {
-  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  height: auto; min-height: 44px; max-width: 100%; padding: 6px 10px;
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  height: auto; min-height: 31px; max-width: 100%; padding: 5px 8px;
   color: var(--amh-text); background: var(--amh-surface);
   border: 2px solid var(--amh-frame); box-shadow: 2px 2px 0 var(--amh-shadow);
-  font: inherit; font-weight: 800; white-space: normal; cursor: pointer;
+  font: inherit; font-size: .65rem; font-weight: 800; white-space: normal; cursor: pointer;
 }
 .auto-mood-chart-legend .auto-mood-series-toggle:hover {
   background: var(--amh-surface-alt);
@@ -673,7 +679,7 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-chart-empty[hidden] { display: none; }
 
 /* Trend controls and the selected-day detail work in narrow panes and on touch. */
-.auto-mood-range-controls { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.auto-mood-range-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 12px; }
 .auto-mood-range-controls button {
   min-height: 31px; height: auto; padding: 5px 8px; border: 2px solid var(--amh-frame);
   border-radius: 0; background: var(--amh-surface); color: var(--amh-text);
@@ -682,11 +688,6 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 @media (pointer: coarse) { .auto-mood-range-controls button { min-height: 44px; } }
 .auto-mood-range-controls button[aria-pressed="true"] { background: var(--amh-yellow); color: var(--amh-on-accent); box-shadow: 3px 3px 0 var(--amh-shadow); }
 .auto-mood-range-controls button:focus-visible, .auto-mood-day-slider:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
-.auto-mood-average-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; }
-.auto-mood-average-toggle { min-height: 44px; max-width: 100%; padding: 7px 12px; border: 2px solid var(--amh-frame); border-radius: 0; background: var(--amh-surface); color: var(--amh-text); font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; }
-.auto-mood-average-toggle[aria-pressed="true"] { background: var(--amh-yellow); color: var(--amh-on-accent); box-shadow: 3px 3px 0 var(--amh-shadow); }
-.auto-mood-average-toggle:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
-.auto-mood-average-info { flex: 1 1 240px; min-width: 0; margin: 0; font-size: .8rem; color: var(--amh-text); }
 .auto-mood-svg .series-lane { fill: var(--amh-surface-alt); opacity: .55; }
 .auto-mood-svg .selection-guide { stroke: var(--amh-text); stroke-width: 1.5; stroke-dasharray: 2 4; opacity: .55; pointer-events: none; }
 .auto-mood-svg .selected-point { pointer-events: none; }
@@ -704,13 +705,23 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-svg .series-heading { fill: var(--amh-text); font-family: var(--font-interface); font-size: 11px; font-weight: 900; letter-spacing: .08em; }
 .auto-mood-svg .selected-score { fill: var(--amh-text); font-family: var(--font-monospace); font-size: 12px; font-weight: 900; }
 
-.auto-mood-custom-range { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 0 0 16px; }
+.auto-mood-custom-range { display: flex; flex-wrap: wrap; align-items: end; justify-content: center; gap: 10px; margin: 0 0 16px; }
 .auto-mood-custom-range[hidden] { display: none; }
 .auto-mood-custom-range label { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 100%; font-weight: 800; }
 .auto-mood-custom-range input, .auto-mood-custom-range button { box-sizing: border-box; min-height: 44px; min-width: 0; max-width: 100%; padding: 7px 10px; border: 2px solid var(--amh-frame); border-radius: 0; background: var(--amh-surface); color: var(--amh-text); font: inherit; }
 .auto-mood-custom-range button { background: var(--amh-yellow); color: var(--amh-on-accent); font-weight: 800; cursor: pointer; }
+.auto-mood-custom-range button { min-height: 31px; padding: 5px 8px; font-size: .65rem; }
 .auto-mood-custom-range :focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
 .auto-mood-range-error { flex-basis: 100%; margin: 0; }
+
+/* All dashboard buttons share the range controls' size; touch stays accessible. */
+.auto-mood-actions button { min-height: 31px; padding: 5px 8px; font-size: .65rem; }
+@media (pointer: coarse) {
+  .auto-mood-actions button,
+  .auto-mood-chart-legend .auto-mood-series-toggle,
+  .auto-mood-range-controls button,
+  .auto-mood-custom-range button { min-height: 44px; }
+}
 
 .auto-mood-composition-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; list-style: none; padding: 0; }
 .auto-mood-composition-legend li { display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
@@ -731,7 +742,6 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-composition-chart svg { height: auto; }
 .auto-mood-composition details { margin-top: 14px; }
 .auto-mood-composition summary { cursor: pointer; font-weight: 800; padding: 8px 0; }
-.auto-mood-average-info { line-height: 1.5; max-width: 70ch; }
 .auto-mood-record-details { margin-top: 12px; overflow-wrap: anywhere; }
 .auto-mood-record-details summary { cursor: pointer; min-height: 44px; display: list-item; padding-block: 10px; box-sizing: border-box; font-weight: 800; }
 .auto-mood-settings select { min-width: min(100%, 280px); max-width: 100%; min-height: 44px; height: auto; white-space: normal; box-sizing: border-box; }
