@@ -1,4 +1,16 @@
+## 2026-11-15 — reliability release
+
+1. Least confident: native Obsidian/device and live-provider behavior. I would verify these in an isolated test vault before claiming native coverage.
+2. Biggest gap: a passing audit cannot prove the absence of every bug. I would keep regression tests and investigate new reproducible reports.
+3. Largest assumption: publish means GitHub plugin releases, with unchanged saved scores preserved on provider failure. If a different distribution or overwrite policy is intended, I would adjust that explicitly.
+
 # Wisdom
+
+## 2026-11-14 — release reliability fixes in progress
+
+1. **Least confident:** Runtime checks are still underway, so the exact behavior across all analyzer sources and settings transitions is not verified yet. I would wait for the full regression results before describing these recovery paths as complete.
+2. **Biggest thing the user may be missing:** Synthetic tests can show score preservation and threshold reevaluation in the harness, but they do not establish live Groq/provider behavior or native Obsidian behavior. I would keep those limits explicit until separately checked.
+3. **Most consequential assumption:** A failed Groq retry should preserve any unchanged complete score, regardless of analyzer source. If that preservation policy differs by analyzer, the retry fix would need a narrower rule; I would verify that policy against the intended product behavior before changing it.
 
 ## 2026-11-14 — Morning Pages fallback and dashboard updates
 

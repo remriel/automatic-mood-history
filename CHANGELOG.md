@@ -1,3 +1,8 @@
+# 1.9.1
+
+- Preserve unchanged complete scores from any analyzer when a Groq retry fails.
+- Reevaluate previously insufficient notes when `minimumCharacters` is lowered, including while Groq is enabled.
+
 # 1.9.0
 
 - Use bundled Morning Pages feelings and topics word lists for low-confidence offline scores when Groq is disabled or unavailable; retain Groq retries and preserve unchanged earlier results.

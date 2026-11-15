@@ -47,6 +47,30 @@ async function run() {
   assert.equal(await f.p.analyzeDate(date), true, "an actual source edit uses the new fallback");
   assert.equal(f.p.records[date].analysisSource, "morning-pages-fallback");
 
+  f = fixture(); f.p.settings.minimumCharacters = 1000;
+  f.disk.files.set(f.source.path, text);
+  await f.p.analyzeDate(date);
+  assert.equal(f.p.records[date].status, "insufficient");
+  f.p.settings.minimumCharacters = 40;
+  assert.equal(await f.p.analyzeDate(date), true, "lowering the threshold also rechecks writing with Groq enabled");
+  assert.equal(f.p.records[date].analysisSource, "groq");
+  assert.equal(f.p.providerCalls, 1);
+
+  // A normal background retry must preserve old local scores just as an
+  // explicit fallback-recovery retry does when the provider is unavailable.
+  for (const source of ["local", "local-fallback", "morning-pages-fallback"]) {
+    f = fixture(); f.p.settings.autoAnalyze = true; f.disk.files.set(f.source.path, text);
+    await f.p.analyzeDate(date);
+    const saved = { ...f.p.records[date], analysisSource: source, moodScore: 2 };
+    f.p.records[date] = saved;
+    const entry = f.disk.files.get(saved.entryPath);
+    f.p.analyzeWithGroq = async () => { throw Object.assign(new Error("unavailable"), { status: 503 }); };
+    assert.equal(await f.p.analyzeDate(date, { background: true }), false, source);
+    assert.strictEqual(f.p.records[date], saved, `${source} keeps the unchanged saved score`);
+    assert.equal(f.disk.files.get(saved.entryPath), entry);
+    assert(f.disk.json.runtime.pendingDates[date], "the failed retry remains pending");
+  }
+
   f = fixture(); f.disk.files.set(f.source.path, text);
   f.p.analyzeWithGroq = async () => { throw Object.assign(new Error("unavailable"), { status: 503 }); };
   await f.p.analyzeDate(date);

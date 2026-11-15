@@ -1,4 +1,36 @@
-# Progress — 1.9.0 release candidate (2026-11-14)
+# Progress — release verification (2026-11-15)
+
+Release candidate 1.9.1 verified locally; publication and remote asset verification remain.
+
+Progress: 90% toward this verified fix release.
+
+Full npm test, mobile runtime, release privacy audit, desktop layout and mobile Chromium/WebKit layout suites passed. The privacy audit found no sensitive files or private artifacts.
+
+Implementation: Failed Groq retries preserve unchanged complete saved scores from all analyzers. Changed insufficient-evidence settings trigger reevaluation even with Groq enabled. The remote duplicate wisdom filename cleanup was preserved.
+
+## RESUME HERE
+
+Push the reviewed commit, run the existing release workflow, monitor CI, then download and verify every release asset. Do not mark publication complete until verified.
+
+---
+
+# Progress — 1.9.1 release candidate (2026-11-14)
+
+Objective: preserve unchanged complete scores after failed Groq retries and recheck previously insufficient notes when `minimumCharacters` is lowered.
+
+Progress: 65% — source/tests are being verified; version metadata and release documentation are prepared; release verification/publication remain.
+
+- [x] Set manifest, package, both root lockfile fields, and `versions.json` to 1.9.1; retain minimum Obsidian 1.5.0.
+- [x] Add changelog entry and `docs/RELEASE_NOTES_1.9.1.md` for both fixes.
+- [ ] Complete runtime verification; primary/verification agents are running the regression checks.
+- [ ] Review the final diff and confirm release metadata consistency.
+- [ ] Run authorized release workflow and verify the release assets.
+
+GitHub confirms 1.9.0 is already published. The candidate/prepublication instructions in the historical 1.9.0 section below are superseded; they are retained as a record of the earlier handoff state. Native Obsidian and live Groq remain unverified. Next in order: finish runtime checks, review results and diff, then continue with authorized release verification/publication. This metadata task did not run tests/build or publish.
+
+---
+
+# Progress — 1.9.0 release candidate (historical handoff; 2026-11-14)
 
 Objective: add an offline Morning Pages word-list fallback for Groq-offline/failure cases, improve dashboard range refresh and composition periods, and prepare a verified 1.9.0 release.
 

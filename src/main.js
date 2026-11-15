@@ -1267,10 +1267,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // Changing the default analyzer or disabling Groq must not silently
     // replace an unchanged, previously saved score. Re-evaluate the current
     // local analyzer (and too-short inputs) when its settings change.
-    const localSemanticsChanged = !this.settings.enableGroq &&
-      ["morning-pages-fallback", "none"].includes(previous?.analysisSource) &&
-      previous?.analysisFingerprint && previous.analysisFingerprint !== fingerprint &&
-      previous.analysisFingerprint !== this.analysisFingerprint(gathered, dateBasis, true);
+    const localSemanticsChanged = previous?.analysisFingerprint && previous.analysisFingerprint !== fingerprint && (
+      previous.analysisSource === "none" ||
+      !this.settings.enableGroq && previous.analysisSource === "morning-pages-fallback" &&
+      previous.analysisFingerprint !== this.analysisFingerprint(gathered, dateBasis, true));
     const retryNonGroqResult = this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
       (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback", "morning-pages-fallback"].includes(previous?.analysisSource)) &&
       !options.providerDeferred && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
@@ -1338,8 +1338,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
             options.runStats.failures += 1;
             options.runStats.pending += 1;
           }
-          // A failed explicit retry must not replace an unchanged saved score.
-          if (recovering || previous?.analysisSource === "groq" && previous.contentHash === gathered.contentHash) {
+          // Provider failure is not new evidence. Preserve any unchanged saved
+          // score, including older local engines, on automatic and manual retries.
+          if (recovering || previous?.status === "complete" && previous.contentHash === gathered.contentHash) {
             await this.savePluginData();
             this.refreshRenderers();
             return false;

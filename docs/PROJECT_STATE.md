@@ -1,4 +1,30 @@
-# Project state — 1.9.0 candidate (2026-11-14)
+# Project state — release verification (2026-11-15)
+
+Release candidate 1.9.1 verified locally; publication and remote asset verification remain.
+
+Full npm test, mobile runtime, release privacy audit, desktop layout and mobile Chromium/WebKit layout suites passed. The privacy audit found no sensitive files or private artifacts.
+
+Implementation: Failed Groq retries preserve unchanged complete saved scores from all analyzers. Changed insufficient-evidence settings trigger reevaluation even with Groq enabled. The remote duplicate wisdom filename cleanup was preserved.
+
+## RESUME HERE
+
+Push the reviewed commit, run the existing release workflow, monitor CI, then download and verify every release asset. Do not mark publication complete until verified.
+
+---
+
+# Project state — 1.9.1 candidate (2026-11-14)
+
+The current release candidate is 1.9.1. GitHub confirms that 1.9.0 was published; the later 1.9.0 candidate/prepublication notes below record the earlier handoff state and their publication steps are superseded. The 1.9.1 metadata targets manifest, package, both root lockfile fields, and `versions.json`, with minimum Obsidian version 1.5.0.
+
+This follow-up fixes two recovery cases: failed Groq retries preserve unchanged complete scores from any analyzer, and lowering `minimumCharacters` reevaluates notes previously marked insufficient even when Groq is enabled. The primary/verification agents are still running runtime checks. Native Obsidian behavior and live Groq requests remain unverified.
+
+## RESUME HERE (1.9.1)
+
+Finish runtime verification, reconcile its results with the final diff, then continue with authorized release verification/publication. Release notes and changelog are prepared; do not treat 1.9.1 as verified or published yet.
+
+---
+
+# Project state — 1.9.0 candidate (historical handoff; 2026-11-14)
 
 The repository was at version 1.8.5 before this release commit; metadata now targets 1.9.0 in `manifest.json`, `package.json`, both root version fields in `package-lock.json`, and `versions.json` (minimum Obsidian version remains 1.5.0). The local release commit and both local tags, `v1.9.0` and `1.9.0`, point to HEAD. Nothing has been pushed or published.
 
