@@ -1,3 +1,9 @@
+## 2026-11-15 — 1.9.3 published
+
+1. **Least confident:** CI and downloaded asset hashes passed, but native Obsidian installation and live recovery remain unchecked. I would verify them after the user updates the plugin, preserving the edited November export.
+2. **Biggest missing point:** Morning Pages is the offline fallback; Moodring was an independent optional comparison. Removing it does not rerun or replace saved primary scores.
+3. **Most consequential assumption:** Plugin JSON remains authoritative while edited monthly notes are protected exports. If edits in monthly notes should override JSON scores, that needs an explicit import flow.
+
 ## 2026-11-15 — fallback simplification and chart ranges
 
 1. **Least confident:** The new range preference and full-width bars are verified in fixtures, but their appearance in the user's native theme is not yet checked. I would inspect them in a copied vault after installation.
