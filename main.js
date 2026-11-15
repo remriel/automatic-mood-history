@@ -2425,7 +2425,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       const pending = this.runtime?.pendingDates?.[options.recordKey];
       const waiting = options.background && pending && Date.parse(pending.retryAt) > Date.now();
       const providerPending = pending && !["source", "storage"].includes(pending.kind);
-      const providerDeferred = waiting && providerPending && this.settings.enableGroq;
+      const providerDeferred = options.deferProvider || waiting && providerPending && this.settings.enableGroq;
       if (waiting && !providerPending) {
         if (options.runStats) options.runStats.pending += 1;
         return false;
@@ -2472,9 +2472,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         this.lastAutomaticReconcileAt = Date.now();
         await this.analyzeAll({ background: true, silent: true });
       } else {
+        let retries = 0;
         for (const [key, pending] of Object.entries(this.runtime.pendingDates || {})) {
           if (this.unloaded || !this.settings.autoAnalyze) break;
-          if (Date.parse(pending.retryAt) <= Date.now() && !this.runtime.pendingWrites?.[key]) await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
+          if (Date.parse(pending.retryAt) <= Date.now() && !this.runtime.pendingWrites?.[key]) {
+            await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
+            if (++retries >= 5) break;
+          }
         }
       }
     } catch { /* Retain pending work; next scheduled pass can recover storage/network errors. */ }
@@ -2696,10 +2700,15 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const targets = this.getAnalysisTargets({ ...options, dateIndex });
     if (!options.silent) new Notice(`Automatic Mood History: checking ${targets.length} history groups (${targets.filter((target) => target.legacySources).length} saved legacy sources)…`);
     let changed = 0;
+    let providerRetries = 0;
     for (const [index, target] of targets.entries()) {
       try { assertCurrent(); } catch { runStats.cancelled += targets.length - index; break; }
       if (this.runtime.pendingWrites?.[target.recordKey]) { runStats.pending++; continue; }
-      if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources, recordKey: target.recordKey })) changed += 1;
+      const pending = this.runtime.pendingDates?.[target.recordKey];
+      const isProviderRetry = pending && !["source", "storage"].includes(pending.kind) && Date.parse(pending.retryAt) <= Date.now();
+      const deferProvider = options.background && isProviderRetry && providerRetries >= 5;
+      if (isProviderRetry && !deferProvider) providerRetries++;
+      if (await this.analyzeDate(target.date, { ...dateOptions, deferProvider, legacySources: target.legacySources, recordKey: target.recordKey })) changed += 1;
       if (index % 20 === 19) await new Promise(resolve => setTimeout(resolve, 0));
     }
     try {

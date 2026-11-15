@@ -4,6 +4,7 @@
 - Preserve edited monthly notes and show an export conflict while keeping their saved scores available in the dashboard.
 - Skip unchanged note reads between periodic content checks and redraw the dashboard once after a scan.
 - Leave saved fallback scores alone during ordinary scans unless a provider retry is already pending or the user explicitly requests one.
+- Limit automatic provider retries to five per pass so an old backlog cannot monopolize Obsidian.
 
 # 1.9.2
 

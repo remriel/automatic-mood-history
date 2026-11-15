@@ -8,6 +8,7 @@ Progress: 95% toward a verified, publishable 1.9.3 candidate. Code, release meta
 - [x] Batch pending monthly recovery, preserve edits, and show export conflicts.
 - [x] Cache unchanged source metadata with event invalidation and daily content verification; avoid repeated dashboard redraws during scans.
 - [x] Stop ordinary scans from upgrading saved fallback scores when no provider retry is pending.
+- [x] Bound automatic provider retry work to five pending dates per pass.
 - [x] Verify two live snapshots in memory: the first restored 927 records; the later snapshot cleared the remaining 15 pending writes and yielded 928 total records. Both ended with 0 pending writes, 63 provider retries, 1 edited export warning, 2 JSON saves and 0 provider calls.
 - [x] Pass functional, mobile runtime, privacy, desktop layout, Android and iPhone layout suites.
 - [x] Sync candidate branch to GitHub and open draft PR #29.

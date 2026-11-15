@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { fixture, date, priorRecord, clone } = require("./reliability-fixture");
+const { fixture, date, priorRecord } = require("./reliability-fixture");
 const { buildMonthlyMarkdown } = require("../src/sentiment-core");
 
 async function run() {
@@ -67,6 +67,26 @@ async function run() {
   await cached.p.analyzeDate(date);
   assert.equal(sourceReads, 3, "a source event invalidates the metadata shortcut");
   assert.equal(cached.p.providerCalls, 1, "unchanged content never calls the provider twice");
+
+  const bounded = fixture();
+  bounded.p.settings.autoAnalyze = true;
+  bounded.p.settings.entryOutput = "none";
+  const retryDates = Array.from({ length: 7 }, (_, i) => `2031-02-${String(i + 3).padStart(2, "0")}`);
+  bounded.p.getAllDates = () => retryDates;
+  bounded.p.gatherDate = async day => ({ date: day, contentHash: day, sourcePaths: ["Journal/Fictional.md"],
+    analysisText: "A fictional writer feels calm and hopeful after a conversation with friends.", topic: "" });
+  bounded.p.records = Object.fromEntries(retryDates.map(day => [day, {
+    ...priorRecord(), date: day, contentHash: day, analysisSource: "morning-pages-fallback"
+  }]));
+  bounded.p.runtime.pendingDates = Object.fromEntries(retryDates.map(day => [day, {
+    kind: "service", attempts: 1, retryAt: new Date(0).toISOString(), legacySources: false
+  }]));
+  await bounded.p.analyzeAll({ background: true, silent: true });
+  assert.equal(bounded.p.providerCalls, 5, "a background scan limits provider retries");
+  assert.equal(Object.keys(bounded.p.runtime.pendingDates).length, 2);
+  bounded.p.lastAutomaticReconcileAt = Date.now();
+  await bounded.p.runAutomaticRecovery();
+  assert.equal(bounded.p.providerCalls, 7, "later recovery completes deferred retries");
   console.log("PASS batched recovery, edited monthly note protection, source cache, and periodic verification");
 }
 
