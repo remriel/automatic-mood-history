@@ -1,3 +1,9 @@
+## 2026-11-15 — fallback simplification and chart ranges
+
+1. **Least confident:** The new range preference and full-width bars are verified in fixtures, but their appearance in the user's native theme is not yet checked. I would inspect them in a copied vault after installation.
+2. **Biggest missing point:** Morning Pages fallback was already active; Moodring was a separate optional sidecar. I removed the sidecar feature without changing the saved primary scores or reanalyzing notes.
+3. **Most consequential assumption:** "Both plugins" means Automatic Mood History and Morning Pages Analytics, and Last used should include custom dates. If another plugin or a different range policy was intended, I would adjust the setting and persistence behavior.
+
 ## 2026-11-15 — recovery backlog and Obsidian lag
 
 1. **Least confident:** Native Obsidian behavior after installing 1.9.3 is unverified. I would test the update in a copied vault, then check the live backlog only after backing up its data file.

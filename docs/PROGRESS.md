@@ -1,3 +1,22 @@
+# Progress — remove Moodring, fill bars, remember range (2026-11-15)
+
+Objective: complete the 1.9.3 recovery candidate with Morning Pages as the sole offline fallback, no Moodring feature, gapless short-range composition, and a configurable dashboard opening range.
+
+Progress: 90% toward a verified, publishable candidate. Implementation and all local checks pass; PR sync and CI remain.
+
+- [x] Remove Moodring code, UI, model build, release asset and dedicated tests without erasing historical record sidecars.
+- [x] Fill 7–90 day composition slots and verify adjacency in range tests.
+- [x] Add a default opening range or Last used, including remembered custom dates.
+- [x] Pass focused fallback, storage, settings, chart range and desktop layout checks.
+- [x] Pass the complete functional, mobile runtime, privacy, desktop, Android and iPhone layout checks.
+- [ ] Update PR #29 and pass its final CI.
+
+Current state: changes are local on `fix/batched-monthly-recovery-1.9.3`. The installed 1.9.2 plugin and live vault remain unchanged.
+
+Next steps: (1) inspect the final diff; (2) push the branch, update draft PR #29, and pass CI; (3) review publication and live installation before acting.
+
+---
+
 # Progress — stop repeated recovery scans (2026-11-15)
 
 Objective: recover already-computed Automatic Mood History results without repeating 927 per-date writes or provider analysis, reduce Obsidian scan/render load, and preserve edited monthly notes.

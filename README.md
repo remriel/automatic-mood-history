@@ -6,7 +6,7 @@
 
 Turn your [Obsidian](https://obsidian.md/) journal into a mood history you can explore on **desktop, Android and iPhone**. See mood, energy, connection and intensity trends, emotion patterns, and the original notes behind each day.
 
-Start with offline analysis that runs inside Obsidian. Optionally connect Groq for contextual AI analysis, or add the offline Moodring emotion classifier. You choose which folders to include and whether analysis runs automatically.
+Start with offline Morning Pages analysis that runs inside Obsidian. Optionally connect Groq for contextual AI analysis. You choose which folders to include and whether analysis runs automatically.
 
 **[Download the latest release](https://github.com/remriel/automatic-mood-history/releases/latest)** · [Mobile setup](#android-and-iphone) · [Installation](#installation) · [Privacy](#privacy)
 
@@ -79,7 +79,7 @@ The same release files run on desktop and mobile. You can install directly on yo
 
 You can also install the release files on desktop and sync community plugins to your phone using your vault's supported plugin-sync settings. Check that the phone has all three matching release files, then restart Obsidian. On Android, manual installation into the vault's `.obsidian/plugins/automatic-mood-history/` folder is another option; enable hidden files in your file manager.
 
-Local analysis is ready without a key. For Groq, configure a key on each device where needed using the steps below. The optional Moodring model must also be present beside the plugin files on that device.
+Local analysis is ready without a key. For Groq, configure a key on each device where needed using the steps below.
 
 Android and iOS may suspend Obsidian in the background. Automatic catch-up runs while the app is open and after returning to the foreground, respecting your automatic-analysis setting and retry pauses. **Analyze on startup** alone does not enable repeated resume scans. File creation dates come from the local vault's timestamps; sync tools can handle those timestamps differently across devices.
 
@@ -173,14 +173,6 @@ This is a reflective journaling tool. It is not a clinical, diagnostic, crisis-d
 - Morning Pages Analytics is Copyright 2026 Remriel and licensed MIT; its license is included in `src/vendor/MORNING-PAGES-LICENSE.txt` and the bundle. The retained VADER library is Copyright 2018 Comcast Cable Communications Management, LLC, licensed Apache-2.0; its full license is included in `src/vendor/APACHE-2.0.txt` and the bundle.
 - Existing Groq and older local-engine results remain cached for unchanged source text until explicitly reanalyzed. Current Morning Pages fallback and insufficient-evidence results can refresh on the next authorized scan when relevant local scoring settings change.
 
-## Offline Moodring classifier (optional, 1.5.5+)
-
-The plugin supports the actual trained [Moodring](https://github.com/UsmarHaider/moodring) GoEmotions-compatible linear model as an independent local **text emotion** cross-check. Download the optional `moodring-model.bin` from the matching [GitHub release](https://github.com/remriel/automatic-mood-history/releases/latest). Copy it beside `main.js` in `.obsidian/plugins/automatic-mood-history/`, enable **Enable offline Moodring comparison**, choose **Check model**, and run **Analyze changed**. The plugin reads the file locally with Obsidian's adapter; it never downloads a model or uploads source text for Moodring.
-
-Moodring never modifies the primary Groq mood, energy, connection, intensity, emotion tags or confidence, and never triggers extra Groq calls merely to enrich previously cached daily history. It provides optional independent candidate labels, original model scores and an abstention state. Only the first 12,000 characters are scored in small windows; classifications refer to textual features and should not be mistaken for the author's confirmed emotional experience. Its model is trained on short Reddit comments, so diary accuracy is unverified. Disable it to hide saved sidecar signals.
-
-The model source/runtime comes from pinned [Moodring commit 05202588](https://github.com/UsmarHaider/moodring/tree/0520258846018979e7d24bd5597adaabccde4f87) (MIT); the public Google GoEmotions training data and research code are Apache-2.0.
-
 ## Data lifecycle
 
 - Disable **Analyze note changes automatically** to stop automatic refreshes.
@@ -237,7 +229,7 @@ If a cloud-only source note is unreadable, make it available locally and check t
 
 ### Exploring the trend
 
-Each score has its own labeled plot with a solid line, making trends easier to follow without overlapping series. The trend uses calendar spacing, so a longer gap between recorded days occupies more space. Lines connect recorded scores; they do not estimate scores on unrecorded days. If a recorded day has no score for a metric, its line breaks at that day. Choose **7 days**, **14 days**, **30 days**, **60 days**, **90 days**, **180 days**, **1 year** (365 days), or **All** to change the chart window. The chart opens at **14 days**. Windows end on the latest scored day, even if it is not today, and include that day. The average-score tiles and Days scored tile above the chart follow the selected range; history continues to show all records.
+Each score has its own labeled plot with a solid line, making trends easier to follow without overlapping series. The trend uses calendar spacing, so a longer gap between recorded days occupies more space. Lines connect recorded scores; they do not estimate scores on unrecorded days. If a recorded day has no score for a metric, its line breaks at that day. Choose **7 days**, **14 days**, **30 days**, **60 days**, **90 days**, **180 days**, **1 year** (365 days), or **All** to change the chart window. In settings, choose an opening range or **Last used** to reopen your previous preset or custom dates. A new install starts at **14 days** until you choose another range. Windows end on the latest scored day, even if it is not today, and include that day. The average-score tiles and Days scored tile above the chart follow the selected range; history continues to show all records.
 
 Use the **Explore a recorded day** slider with a keyboard or touch, or select the chart, to inspect the date and all four values. The guide and highlighted points mark that day, and each plot shows its selected value at the upper right. The selected range is kept across dashboard redraws; the selected day resets to the latest visible record. Series visibility is saved separately.
 
@@ -260,9 +252,9 @@ Filename dates are recognized in any included folder using the configured Daily 
 Run **Analyze changed** after updating to build the detected-date history. Previous creation-date results and their Markdown files are preserved in **Previous grouping history**, excluded from current charts and averages. New results are analyzed from their actual sources; old scores are never moved or split between dates. Renamed, deleted or excluded sources also place outdated results in that section until reanalysis. Existing automatic-analysis and Groq consent settings still apply.
 
 
-Choose **Custom** in the trend ranges to apply inclusive start and end dates. The trend, summary tiles, and composition use that interval. A redraw keeps the selection; a newly opened dashboard starts at 14 days.
+Choose **Custom** in the trend ranges to apply inclusive start and end dates. The trend, summary tiles, and composition use that interval. A redraw keeps the selection; a newly opened dashboard follows the configured default or last used range.
 
-Common Emotions follows the selected range. **Composition over time** uses the ten most common emotions across all saved, scored history, including older records, so its legend stays fixed when the range changes. The chart follows Morning Pages Analytics' 100% stacked-column style and groups longer ranges into calendar periods. Percentages use only the ten displayed emotions in each period; remaining labels are excluded. Exact counts and percentages are available under **Period details**, and a period without any displayed emotion has a neutral gray placeholder.
+Common Emotions follows the selected range. **Composition over time** uses the ten most common emotions across all saved, scored history, including older records, so its legend stays fixed when the range changes. Daily columns in the 7–90 day ranges meet without gaps; longer ranges group dates into calendar periods. Percentages use only the ten displayed emotions in each period; remaining labels are excluded. Exact counts and percentages are available under **Period details**, and a period without any displayed emotion has a neutral gray placeholder.
 
 
 Composition uses ten distinct pastel colors for the displayed emotions. A label keeps its color when the same labels change rank; if the global top ten changes as history grows, colors may be reassigned to keep all visible categories distinct. The chart and legend use matching colors even with themes that style SVG graphics. Textual period details make the values available without relying on color alone.

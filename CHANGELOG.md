@@ -5,6 +5,8 @@
 - Skip unchanged note reads between periodic content checks and redraw the dashboard once after a scan.
 - Leave saved fallback scores alone during ordinary scans unless a provider retry is already pending or the user explicitly requests one.
 - Limit automatic provider retries to five per pass so an old backlog cannot monopolize Obsidian.
+- Remove the separate Moodring classifier, model, settings and release asset; keep existing saved comparison sidecars inert.
+- Fill the gaps between composition bars in daily ranges and allow a configured opening range or the last used range.
 
 # 1.9.2
 
