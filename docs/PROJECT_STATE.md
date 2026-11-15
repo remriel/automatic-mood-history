@@ -1,5 +1,19 @@
 # Project state — release verification (2026-11-15)
 
+Published 1.9.1: https://github.com/remriel/automatic-mood-history/releases/tag/1.9.1. Release workflow succeeded; all downloaded asset SHA-256 digests and plugin source parity verified.
+
+Full npm test, mobile runtime, release privacy audit, desktop layout and mobile Chromium/WebKit layout suites passed. The privacy audit found no sensitive files or private artifacts.
+
+Implementation: Failed Groq retries preserve unchanged complete saved scores from all analyzers. Changed insufficient-evidence settings trigger reevaluation even with Groq enabled. The remote duplicate wisdom filename cleanup was preserved.
+
+## RESUME HERE
+
+No required release steps remain. Native Obsidian and live Groq calls were not tested; no personal vault was modified. This is a verified fix set, not a guarantee that no undiscovered bugs remain.
+
+---
+
+# Project state — release verification (2026-11-15)
+
 Release candidate 1.9.1 verified locally; publication and remote asset verification remain.
 
 Full npm test, mobile runtime, release privacy audit, desktop layout and mobile Chromium/WebKit layout suites passed. The privacy audit found no sensitive files or private artifacts.
