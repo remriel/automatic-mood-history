@@ -56,8 +56,8 @@ async function run() {
   assert.equal(f.p.records[date].analysisSource, "groq");
   assert.equal(f.p.providerCalls, 1);
 
-  // A normal background retry must preserve old local scores just as an
-  // explicit fallback-recovery retry does when the provider is unavailable.
+  // Saved local scores are not upgraded during background reconciliation.
+  // An explicit retry still preserves them when the provider is unavailable.
   for (const source of ["local", "local-fallback", "morning-pages-fallback"]) {
     f = fixture(); f.p.settings.autoAnalyze = true; f.disk.files.set(f.source.path, text);
     await f.p.analyzeDate(date);
@@ -66,6 +66,8 @@ async function run() {
     const entry = f.disk.files.get(saved.entryPath);
     f.p.analyzeWithGroq = async () => { throw Object.assign(new Error("unavailable"), { status: 503 }); };
     assert.equal(await f.p.analyzeDate(date, { background: true }), false, source);
+    assert.equal(f.p.runtime.pendingDates?.[date], undefined, "unchanged saved scores do not enter the retry queue");
+    assert.equal(await f.p.analyzeDate(date, { force: true }), false, source);
     assert.strictEqual(f.p.records[date], saved, `${source} keeps the unchanged saved score`);
     assert.equal(f.disk.files.get(saved.entryPath), entry);
     assert(f.disk.json.runtime.pendingDates[date], "the failed retry remains pending");

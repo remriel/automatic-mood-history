@@ -1,3 +1,24 @@
+# Progress — stop repeated recovery scans (2026-11-15)
+
+Objective: recover already-computed Automatic Mood History results without repeating 927 per-date writes or provider analysis, reduce Obsidian scan/render load, and preserve edited monthly notes.
+
+Progress: 90% toward a verified, publishable 1.9.3 candidate. Code, release metadata, regression tests, and local checks are complete; GitHub PR/CI and publication remain.
+
+- [x] Read installed data and monthly exports without modifying the live vault; identify 927 pending writes, 920 monthly records, and one edited November note.
+- [x] Batch pending monthly recovery, preserve edits, and show export conflicts.
+- [x] Cache unchanged source metadata with event invalidation and daily content verification; avoid repeated dashboard redraws during scans.
+- [x] Stop ordinary scans from upgrading saved fallback scores when no provider retry is pending.
+- [x] Verify two live snapshots in memory: the first restored 927 records; the later snapshot cleared the remaining 15 pending writes and yielded 928 total records. Both ended with 0 pending writes, 63 provider retries, 1 edited export warning, 2 JSON saves and 0 provider calls.
+- [x] Pass functional, mobile runtime, privacy, desktop layout, Android and iPhone layout suites.
+- [ ] Sync reviewed candidate to GitHub and pass PR CI.
+- [ ] Publish release and verify remote assets if approved.
+
+Current blocker: the native installed plugin still runs version 1.9.2. It recovered most pending entries by itself during this session but continues retrying the edited monthly export. No live-vault recovery has been performed by this code.
+
+Next steps: (1) review the final diff and run release audit with version 1.9.3; (2) create/push a candidate branch and draft PR; (3) inspect CI; (4) publish and install only after the release impact is reviewed; (5) restart Obsidian and verify the live backlog clears while keeping the edited monthly note.
+
+---
+
 # Progress — monthly-history recovery, release 1.9.2 (2026-11-15)
 
 Objective: recover saved history from compact monthly exports without replacing newer JSON records or dropping records on refresh.

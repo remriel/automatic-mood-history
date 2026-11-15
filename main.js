@@ -1441,6 +1441,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const runtime = isObject(saved) ? { ...saved } : {};
     runtime.pendingDates = isObject(runtime.pendingDates) ? Object.fromEntries(Object.entries(runtime.pendingDates).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && Number.isFinite(Date.parse(value.retryAt))).map(([key, value]) => [key, { kind: ["source", "storage", "output", "paused", "configuration", "authentication", "rate-limit", "request", "service", "connection"].includes(value.kind) ? value.kind : "storage", attempts: Math.max(1, Math.min(10, Math.round(Number(value.attempts) || 1))), retryAt: new Date(Date.parse(value.retryAt)).toISOString(), legacySources: value.legacySources === true }])) : {};
     runtime.pendingWrites = isObject(runtime.pendingWrites) ? Object.fromEntries(Object.entries(runtime.pendingWrites).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && value.version === 1 && this.validateRecords({ [key]: value.record })[key] && typeof value.outputFolder === "string" && (value.expectedHash === null || typeof value.expectedHash === "string" && /^[a-f0-9]{64}$/.test(value.expectedHash)))) : {};
+    runtime.monthlyExportConflicts = isObject(runtime.monthlyExportConflicts) ? Object.fromEntries(Object.entries(runtime.monthlyExportConflicts).filter(([path, value]) => typeof path === "string" && /^\S.*\/Months\/\d{4}-(?:0[1-9]|1[0-2])\.md$/.test(path) && typeof value === "string" && /^[a-f0-9]{64}$/.test(value))) : {};
     if (!isObject(runtime.lastGroqIssue) || typeof runtime.lastGroqIssue.message !== "string") delete runtime.lastGroqIssue;
     return runtime;
   }
@@ -1462,7 +1463,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.exemptEntryKeys = [];
   }
 
-  async savePluginData({ commit, restored } = {}) {
+  async savePluginData({ commit, commits = commit ? [commit] : [], restored } = {}) {
     const task = (this.storageQueue || Promise.resolve()).then(async () => {
       if (this.unloaded) this.cancelAnalysis();
       if (this.storageReadFailed) throw new Error("Plugin storage could not be read; reload after restoring storage access.");
@@ -1470,13 +1471,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       delete settings.apiKeyEnvironmentVariable;
       const snapshot = JSON.parse(JSON.stringify({ settings, records: this.records, runtime: this.runtime }));
       if (restored) Object.assign(snapshot.records, JSON.parse(JSON.stringify(restored)));
-      if (commit) {
+      for (const commit of commits) {
         snapshot.records[commit.key] = commit.record;
         delete snapshot.runtime.pendingWrites?.[commit.key];
-        if (!(this.settings.enableGroq && commit.record.analysisSource === "morning-pages-fallback")) delete snapshot.runtime.pendingDates?.[commit.key];
+        if (!(this.settings.enableGroq && commit.record.analysisSource === "morning-pages-fallback" &&
+          !["source", "storage"].includes(snapshot.runtime.pendingDates?.[commit.key]?.kind))) delete snapshot.runtime.pendingDates?.[commit.key];
       }
       await this.saveData(snapshot);
-      if (commit) this.publishCommittedRecord(commit.key, commit.record);
+      for (const commit of commits) this.publishCommittedRecord(commit.key, commit.record);
       if (restored) Object.assign(this.records, restored);
     });
     this.storageQueue = task.catch(() => {});
@@ -1486,7 +1488,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   publishCommittedRecord(key, record) {
     this.records[key] = record;
     delete this.runtime.pendingWrites?.[key];
-    if (!(this.settings.enableGroq && record.analysisSource === "morning-pages-fallback")) delete this.runtime.pendingDates?.[key];
+    if (!(this.settings.enableGroq && record.analysisSource === "morning-pages-fallback" &&
+      !["source", "storage"].includes(this.runtime.pendingDates?.[key]?.kind))) delete this.runtime.pendingDates?.[key];
   }
 
   async commitPreparedRecord(key, pending, assertCurrent = this.analysisGuard()) {
@@ -1526,7 +1529,51 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return pending;
   }
 
-  async recoverPendingWrites() {
+  async recoverPendingWrites(options = {}) {
+    // Cloud sync can deliver monthly exports after startup. Restore them before
+    // replaying the journal, otherwise each single-day export loses its siblings.
+    if (this.entryOutput === "monthly" && Object.keys(this.runtime.pendingWrites || {}).length) {
+      await this.restoreMonthlyHistory();
+      const task = (this.analysisQueue || Promise.resolve()).then(async () => {
+        const assertCurrent = this.analysisGuard();
+        const months = new Map();
+        for (const [key, pending] of Object.entries(this.runtime.pendingWrites || {})) {
+          if (pending.entryOutput !== "monthly" || pending.outputFolder !== this.outputFolder) continue;
+          if (options.background && Date.parse(this.runtime.pendingDates?.[key]?.retryAt) > Date.now()) continue;
+          const month = pending.record.date.slice(0, 7);
+          if (!months.has(month)) months.set(month, []);
+          months.get(month).push({ key, record: pending.record });
+        }
+        if (months.size) await this.savePluginData();
+        const completed = [];
+        for (const [month, commits] of months) {
+          assertCurrent();
+          try {
+            await this.writeMonthlyNote(month, { ...this.records, ...Object.fromEntries(commits.map(c => [c.key, c.record])) }, assertCurrent);
+            assertCurrent();
+            completed.push(...commits);
+          } catch (error) {
+            if (error.code === "analysis_cancelled") throw error;
+            if (error.code === "monthly_export_edited") {
+              // The computed results are durable in the journal. Publish them
+              // to JSON while leaving the user's edited Markdown untouched.
+              completed.push(...commits);
+              this.runtime.monthlyExportConflicts ||= {};
+              this.runtime.monthlyExportConflicts[this.monthlyPath(month)] = error.currentHash;
+            } else {
+              for (const { key, record } of commits) this.markDatePending(record.date, { recordKey: key }, "storage");
+            }
+          }
+          // Let Obsidian paint and process input between monthly transactions.
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        if (months.size) await this.savePluginData({ commits: completed });
+      });
+      this.analysisQueue = task.catch(() => {});
+      await task;
+      this.refreshRenderers();
+      return;
+    }
     for (const key of Object.keys(this.runtime.pendingWrites || {})) {
       if (this.unloaded) break;
       await this.analyzeDate(this.runtime.pendingWrites[key].record.date, { recoveryOnly: true, recordKey: key });
@@ -1678,7 +1725,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         // after an interrupted commit is idempotent; manual edits are retained.
         const normalized = current.replace(/\r\n/g, "\n");
         if (normalized !== next && normalized !== previous) {
-          if (sha256(normalized) !== previousHash) throw new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
+          if (sha256(normalized) !== previousHash) {
+            const error = new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
+            error.code = "monthly_export_edited";
+            error.currentHash = sha256(normalized);
+            throw error;
+          }
           const saved = readMonthlyRecords(normalized, month);
           const identities = new Set(Object.values(records).filter(record => record.date.startsWith(month + "-")).map(record => this.historyIdentity(record)));
           if (!saved || Object.values(this.validateRecords(saved)).some(record => !identities.has(this.historyIdentity(record)))) {
@@ -1692,6 +1744,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     this.runtime.monthlyExportHashes ||= {};
     this.runtime.monthlyExportHashes[path] = sha256(next);
+    delete this.runtime.monthlyExportConflicts?.[path];
   }
 
   async exportMonthlyHistory() {
@@ -1905,6 +1958,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return this.gatherFiles(date, this.filesForDate(date, index));
   }
 
+  sourceRevision(date, index) {
+    if (!this.app?.vault?.getMarkdownFiles) return null;
+    const files = this.filesForDate(date, index);
+    if (!files.length || files.some(file => !Number.isFinite(file.stat?.mtime) || !Number.isFinite(file.stat?.size))) return null;
+    return sha256(JSON.stringify({ version: 1, pipeline: TEXT_PIPELINE_VERSION,
+      settings: [this.settings.minimumCharacters, this.settings.maxCharactersPerDay, this.settings.enableGroq,
+        this.settings.enableMoodring, this.settings.model, MORNING_PAGES_ANALYZER_VERSION, MOODRING_VERSION],
+      files: files.map(file => [file.path, file.stat.ctime, file.stat.mtime, file.stat.size, this.topicForFile(file)]) }));
+  }
+
   async gatherLegacyDate(date, key = this.recordKey(date, true)) {
     const previous = this.records[key];
     const paths = Array.from(new Set(previous?.sourcePaths || []));
@@ -2031,7 +2094,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   handleSourceEvent(file) {
     if (this.unloaded || !this.settings.autoAnalyze || !(file instanceof TFile)) return;
     const date = this.getCreationDateForFile(file);
-    if (date) this.scheduleDate(date);
+    if (date) {
+      // A delivered event wins even if a sync provider preserves file stats.
+      const record = this.records[this.recordKey(date)];
+      if (record) delete record.sourceRevision;
+      this.scheduleDate(date);
+    }
   }
 
   scheduleDate(date) {
@@ -2398,6 +2466,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (this.unloaded || this.isMobileBackground() || !this.settings.autoAnalyze || this.activeScan || this.checkingGroq || this.automaticRecoveryRunning) return;
     this.automaticRecoveryRunning = true;
     try {
+      if (Object.entries(this.runtime.pendingWrites || {}).some(([key]) => !this.runtime.pendingDates?.[key] || Date.parse(this.runtime.pendingDates[key].retryAt) <= Date.now())) await this.recoverPendingWrites({ background: true });
       // Periodic reconciliation catches edits made while closed, missed events, and sync recovery.
       if (!this.lastAutomaticReconcileAt || Date.now() - this.lastAutomaticReconcileAt >= 300000) {
         this.lastAutomaticReconcileAt = Date.now();
@@ -2405,7 +2474,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       } else {
         for (const [key, pending] of Object.entries(this.runtime.pendingDates || {})) {
           if (this.unloaded || !this.settings.autoAnalyze) break;
-          if (Date.parse(pending.retryAt) <= Date.now()) await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
+          if (Date.parse(pending.retryAt) <= Date.now() && !this.runtime.pendingWrites?.[key]) await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
         }
       }
     } catch { /* Retain pending work; next scheduled pass can recover storage/network errors. */ }
@@ -2426,6 +2495,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // A stale persisted queue or caller must not overwrite historical records.
     if (this.records[key]?.dateBasis === HISTORICAL_DATE_BASIS || key.startsWith("created:")) key = this.recordKey(date, options.legacySources);
     const previous = this.records[key];
+    const sourceRevision = !options.legacySources ? this.sourceRevision(date, options.dateIndex) : null;
+    if (!options.force && !options.forceGroq && !options.onlyFallbacks && !this.runtime.pendingDates?.[key] &&
+      sourceRevision && previous?.sourceRevision === sourceRevision &&
+      Date.now() - Date.parse(previous.sourceRevisionCheckedAt) < 86400000) {
+      await this.clearDatePending(key);
+      return false;
+    }
     const recovering = Boolean(options.onlyFallbacks || options.legacySources);
     const dateBasis = options.legacySources ? LEGACY_DATE_BASIS : CURRENT_DATE_BASIS;
     const skipRecovery = (pending = false) => {
@@ -2459,7 +2535,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       previous.analysisSource === "none" ||
       !this.settings.enableGroq && previous.analysisSource === "morning-pages-fallback" &&
       previous.analysisFingerprint !== this.analysisFingerprint(gathered, dateBasis, true));
-    const retryNonGroqResult = this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
+    const retryNonGroqResult = (options.force || options.forceGroq || options.onlyFallbacks || this.runtime.pendingDates?.[key]) && this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
       (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback", "morning-pages-fallback"].includes(previous?.analysisSource)) &&
       !options.providerDeferred && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
     if (!options.force && !retryNonGroqResult && !localSemanticsChanged && previous?.contentHash === gathered.contentHash) {
@@ -2476,7 +2552,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         }
       }
       if (previous.dateBasis === dateBasis) {
-        if (!options.providerDeferred && !(this.settings.enableGroq && Date.now() < this.groqBlockedUntil)) await this.clearDatePending(key);
+        if (sourceRevision) {
+          previous.sourceRevision = sourceRevision;
+          previous.sourceRevisionCheckedAt = new Date().toISOString();
+        }
+        if (!options.providerDeferred) await this.clearDatePending(key);
         return false;
       }
       const promoted = { ...previous, dateBasis };
@@ -2567,6 +2647,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       dateBasis,
       recordIdentity: `v2:${dateBasis}:${date}`,
       analysisFingerprint: fingerprint,
+      ...(sourceRevision ? { sourceRevision } : {}),
+      ...(sourceRevision ? { sourceRevisionCheckedAt: new Date().toISOString() } : {}),
       contentHash: gathered.contentHash,
       sourcePaths: gathered.sourcePaths,
       analyzedAt: new Date().toISOString(),
@@ -2602,6 +2684,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeAllNow(options) {
+    if (Object.keys(this.runtime.pendingWrites || {}).length) await this.recoverPendingWrites(options);
+    if (options.background) this.lastAutomaticReconcileAt = Date.now();
     // An explicit retry bypasses an old pause once. A new rate limit pauses
     // the remaining dates in the same run instead of hammering the provider.
     if (options.forceGroq) this.clearGroqPause();
@@ -2614,7 +2698,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     let changed = 0;
     for (const [index, target] of targets.entries()) {
       try { assertCurrent(); } catch { runStats.cancelled += targets.length - index; break; }
+      if (this.runtime.pendingWrites?.[target.recordKey]) { runStats.pending++; continue; }
       if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources, recordKey: target.recordKey })) changed += 1;
+      if (index % 20 === 19) await new Promise(resolve => setTimeout(resolve, 0));
     }
     try {
       assertCurrent();
@@ -2689,6 +2775,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   groqStatus() {
     if (this.settingsValidationError || this.settingsSaveFailed || this.storageReadFailed) return { kind: "warning", text: this.settingsValidationError || "Analysis paused: restore plugin storage and save settings or reload." };
+    const conflictCount = Object.keys(this.runtime.monthlyExportConflicts || {}).length;
+    if (conflictCount) return { kind: "warning", text: `${conflictCount} edited monthly export${conflictCount === 1 ? "" : "s"} preserved. Saved scores are available in plugin history; move the edited monthly note aside, then use Export months to refresh it.` };
     const pendingCount = Object.keys(this.runtime.pendingDates || {}).length;
     if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups await recovery. Available Morning Pages fallback scores are shown. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
     if (!this.settings.enableGroq) return { kind: "local", text: "MORNING PAGES FALLBACK · Groq is disabled. Analysis stays on this device." };
@@ -2932,6 +3020,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
 
   refreshRenderers() {
     if (this.unloaded) return;
+    // A scan may commit hundreds of records. Render its final snapshot once.
+    if (this.activeScan) return;
     // Markdown renderers may be detached temporarily while Obsidian builds or
     // moves a view. Their Component unload callback owns deregistration.
     for (const element of Array.from(this.renderContainers)) this.renderDashboard(element);

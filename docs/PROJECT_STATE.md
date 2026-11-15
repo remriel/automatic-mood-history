@@ -1,3 +1,17 @@
+# Project state — 1.9.3 recovery and scan candidate (2026-11-15)
+
+The current task addresses Obsidian lag and a recovery backlog after the user reported that scores already existed. Read-only inspection of the installed `Remy/.obsidian/plugins/automatic-mood-history/data.json` found **0 committed records, 927 pending writes and 927 storage retries**. The monthly output folder had **920 parseable recovery records**. Most pending writes already contained Groq results. The 2026-11 monthly export had a valid recovery block but a personal addition; its file hash differed from the last generated hash. The live vault was not changed during diagnosis.
+
+Version 1.9.3 candidate changes `src/main.js` to restore monthly notes before replaying pending writes, write each month once, and save the journal in two batched transactions. An edited monthly note remains untouched; its pending results are published to JSON with `runtime.monthlyExportConflicts` and a dashboard warning. Ordinary scans no longer upgrade complete fallback scores without an existing pending retry or an explicit retry action. Each record can store a source metadata revision; unchanged records skip source reads until an event, metadata change, or 24-hour content verification. A scan redraws the dashboard at completion and yields between groups. The existing safety checks for source scope, provider consent, edited exports, and interrupted commits remain.
+
+An in-memory replay of the first observed stored JSON and monthly files recovered **927 committed records, 0 pending writes, 63 provider retry entries, 1 preserved edited monthly export, 2 JSON saves, and 0 provider calls**. While the session continued, Obsidian independently advanced its live file to 927 committed records and 15 pending writes; a fresh in-memory replay cleared those writes to 0, with 928 total records, 63 provider retries, one edited export conflict, two JSON saves, and no provider call. The live file itself was not changed by this work. `tests/recovery-performance.test.js` checks the batched restore, edit protection, unchanged source skipping, and periodic verification. Functional, mobile runtime, release privacy, desktop layout, and Android/iPhone layout suites passed locally. The release branch and GitHub checks remain to be completed.
+
+## RESUME HERE (1.9.3)
+
+Review the final diff and Git state; update this handoff after syncing the candidate branch and CI. Publish 1.9.3 only after review of the PR and release impact. The installed 1.9.2 bundle and live vault data are unchanged, so the user will need an updated plugin build and restart to observe the fix. The edited November monthly note should be kept; the dashboard will warn that its export needs manual resolution.
+
+---
+
 # Project state — monthly-history recovery, 1.9.2 published (2026-11-15)
 
 Commit `3a9af8b` adds startup and manual restoration from monthly recovery blocks. Plugin JSON remains authoritative. When JSON loads successfully with no records, startup imports valid monthly records before pending-write recovery, output setup, and automatic analysis. The empty dashboard and command palette support manual recovery for partial loss. Restoration adds only missing date-and-basis identities, preserves existing records and monthly Markdown, and makes no provider call. A monthly refresh now rejects a remembered hash if the recovery block still contains records absent from current JSON.
