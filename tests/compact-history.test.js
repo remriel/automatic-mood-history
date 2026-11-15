@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { fixture, date, priorRecord, TFile, clone, buildEntryMarkdown } = require("./reliability-fixture");
-const { buildMonthlyMarkdown } = require("../src/sentiment-core");
+const { buildMonthlyMarkdown, sha256 } = require("../src/sentiment-core");
+const { Element } = require("./dashboard-dom-fixture");
 
 async function run() {
   const f = fixture(); const { p, disk, files } = f;
@@ -24,6 +25,49 @@ async function run() {
   assert.equal(await p.analyzeDate(date), true);
   assert.equal(disk.files.get(path), buildMonthlyMarkdown("2031-02", p.records));
   assert(![...disk.files.keys()].some(path => path.includes("/Entries/")));
+
+  // A synced monthly export can survive the loss of the plugin's data.json.
+  const backup = buildMonthlyMarkdown("2031-02", before).replace(/\n/g, "\r\n") + "\r\nPersonal addition.\r\n";
+  const recovery = fixture({ json: { settings: { entryOutput: "monthly" }, records: {}, runtime: {} }, files: new Map([[path, backup]]) });
+  const root = new Element();
+  root.rootConnected = true;
+  const cleanup = [];
+  recovery.p.register = callback => cleanup.push(callback);
+  recovery.p.registerForegroundRecovery = () => {};
+  delete recovery.p.refreshRenderers;
+  await recovery.p.onload();
+  recovery.p.renderContainers.add(root);
+  recovery.p.renderDashboard(root);
+  assert(root.textContent.includes("No history yet"));
+  try { await recovery.p.layoutReady(); } finally { cleanup.forEach(callback => callback()); }
+  assert(root.walk().some(node => node.classList.contains("auto-mood-card-value") && node.textContent === "1"), "startup restore redraws the open dashboard");
+  assert.deepEqual(recovery.disk.json.records, recovery.p.records, "restored scores survive restart");
+  assert.equal(recovery.p.records[date].moodScore, original.moodScore);
+  assert.equal(recovery.p.providerCalls, 0, "restore never requests analysis");
+  assert.equal(recovery.disk.files.get(path), backup, "restore leaves the entire export intact");
+  assert.deepEqual(await recovery.p.restoreMonthlyHistory(), { count: 0, skippedMonths: 0 });
+  recovery.p.onunload();
+
+  const partial = fixture({ json: null, files: new Map([[path, buildMonthlyMarkdown("2031-02", before)],
+    ["Mood History/Months/2031-03.md", "# Unrelated note"],
+    ["Other/Months/2031-02.md", backup]]) });
+  const newer = { ...original, moodScore: 5 };
+  partial.p.records[`detected:${date}`] = newer;
+  assert.deepEqual(await partial.p.restoreMonthlyHistory(), { count: 1, skippedMonths: 1 });
+  assert.strictEqual(partial.p.records[`detected:${date}`], newer, "cache wins over an exported copy of the same date and basis");
+  assert.equal(partial.p.records[`legacy:${date}`].dateBasis, "legacy-note-date");
+  const failSave = fixture({ json: null, files: new Map([[path, backup]]) });
+  failSave.p.saveData = async () => { throw new Error("Storage unavailable"); };
+  await assert.rejects(failSave.p.restoreMonthlyHistory(), /Storage unavailable/);
+  assert.deepEqual(failSave.p.records, {}, "a failed save does not publish restored records");
+
+  const stale = fixture({ json: null, files: new Map([[path, buildMonthlyMarkdown("2031-02", before)]]) });
+  const preserved = stale.disk.files.get(path);
+  stale.p.settings.entryOutput = "monthly";
+  stale.p.records[date] = newer;
+  stale.p.runtime.monthlyExportHashes = { [path]: sha256(preserved) };
+  await assert.rejects(stale.p.exportMonthlyHistory(), /missing history/);
+  assert.equal(stale.disk.files.get(path), preserved, "a remembered hash cannot authorize dropping exported scores");
 
   // A user-owned or modified document must never be silently replaced.
   disk.files.set(path, disk.files.get(path) + "\nPersonal addition.\n");

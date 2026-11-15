@@ -711,12 +711,37 @@ function PathBasename(path) {
 
 // Monthly notes are portable exports, including lossless recovery data. They
 // contain analysis records only, never plugin settings, keys or source text.
+const monthlyHeader = month => ["---", 'type: "automatic-mood-month"', "automatic_mood_history: true", `month: "${month}"`, "---", ""].join("\n");
+const monthlyRecoveryHeading = [
+  "## Recovery data", "",
+  "Full saved records for this month. Keep these with your vault backups; plugin data remains the live history.",
+  "", "```json", ""
+].join("\n");
+
+function readMonthlyRecords(markdown, month) {
+  const text = markdown.replace(/\r\n/g, "\n");
+  if (!text.startsWith(monthlyHeader(month))) return null;
+  const start = text.lastIndexOf("\n" + monthlyRecoveryHeading);
+  if (start < 0) return null;
+  const body = start + monthlyRecoveryHeading.length + 1;
+  const end = text.indexOf("\n```", body);
+  if (end < 0) return null;
+  try {
+    const data = JSON.parse(text.slice(body, end));
+    if (data?.format !== "automatic-mood-history-month" || data.version !== 1 ||
+        data.month !== month || !data.records || typeof data.records !== "object" || Array.isArray(data.records)) return null;
+    return data.records;
+  } catch {
+    return null;
+  }
+}
+
 function buildMonthlyMarkdown(month, records) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Invalid export month.");
   const selected = Object.fromEntries(Object.entries(records)
     .filter(([, record]) => record.date?.slice(0, 7) === month)
     .sort(([a, left], [b, right]) => left.date.localeCompare(right.date) || a.localeCompare(b)));
-  const lines = ["---", 'type: "automatic-mood-month"', "automatic_mood_history: true", `month: "${month}"`, "---", "", `# Mood History — ${month}`, "",
+  const lines = [monthlyHeader(month), `# Mood History — ${month}`, "",
     "Generated from saved history; no analysis is rerun. Scores are text inferences, not diagnoses.",
     "This export is maintained automatically. Keep personal additions in a separate note; edited exports are preserved rather than overwritten.", ""];
   for (const record of Object.values(selected)) {
@@ -724,8 +749,7 @@ function buildMonthlyMarkdown(month, records) {
     const body = buildEntryMarkdown(record).replace(/^---\n[\s\S]*?\n---\n/, "").replace(/^# Mood[^\n]*\n/m, "");
     lines.push(body.replace(/^## /gm, "### "), "");
   }
-  lines.push("## Recovery data", "", "Full saved records for this month. Keep these with your vault backups; plugin data remains the live history.", "", "```json",
-    JSON.stringify({ format: "automatic-mood-history-month", version: 1, month, records: selected }, null, 2), "```", "");
+  lines.push(monthlyRecoveryHeading + JSON.stringify({ format: "automatic-mood-history-month", version: 1, month, records: selected }, null, 2), "```", "");
   return lines.join("\n");
 }
 
@@ -1112,6 +1136,11 @@ const AUTO_DATE_FORMATS = ["YYYY-MM-DD", "YYYY.MM.DD", "YYYY_MM_DD", "YYYYMMDD",
 const CURRENT_DATE_BASIS = "detected-note-date";
 const HISTORICAL_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
+const HISTORY_KEY_PREFIXES = new Map([
+  [CURRENT_DATE_BASIS, "detected"],
+  [HISTORICAL_DATE_BASIS, "created"],
+  [LEGACY_DATE_BASIS, "legacy"]
+]);
 const GROQ_PROMPT_VERSION = "detected-date-goemotions-v3";
 const TEXT_PIPELINE_VERSION = "markdown-text-v2";
 const MOODRING_FILENAME = "moodring-model.bin";
@@ -1261,6 +1290,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       callback: () => this.recoverFallbacksWithGroq()
     });
     this.addCommand({
+      id: "restore-monthly-history",
+      name: "Restore history from monthly notes",
+      callback: () => this.restoreMonthlyHistoryWithNotice()
+    });
+    this.addCommand({
       id: "analyze-active-note",
       name: "Analyze the active note",
       callback: async () => {
@@ -1294,6 +1328,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       const recoveryTimer = window.setInterval(() => { void this.runAutomaticRecovery(); }, 60000);
       this.register(() => window.clearInterval(recoveryTimer));
       try {
+        if (!Object.keys(this.records).length && !this.storageReadFailed && !this.settingsValidationError) {
+          await this.restoreMonthlyHistory();
+        }
+        if (this.unloaded) return;
         await this.ensureSupportFiles();
         if (this.unloaded) return;
         await this.recoverPendingWrites();
@@ -1424,14 +1462,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.exemptEntryKeys = [];
   }
 
-  async savePluginData() {
-    const commit = arguments[0]?.commit;
+  async savePluginData({ commit, restored } = {}) {
     const task = (this.storageQueue || Promise.resolve()).then(async () => {
       if (this.unloaded) this.cancelAnalysis();
       if (this.storageReadFailed) throw new Error("Plugin storage could not be read; reload after restoring storage access.");
       const settings = Object.assign({}, this.settings);
       delete settings.apiKeyEnvironmentVariable;
       const snapshot = JSON.parse(JSON.stringify({ settings, records: this.records, runtime: this.runtime }));
+      if (restored) Object.assign(snapshot.records, JSON.parse(JSON.stringify(restored)));
       if (commit) {
         snapshot.records[commit.key] = commit.record;
         delete snapshot.runtime.pendingWrites?.[commit.key];
@@ -1439,6 +1477,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       }
       await this.saveData(snapshot);
       if (commit) this.publishCommittedRecord(commit.key, commit.record);
+      if (restored) Object.assign(this.records, restored);
     });
     this.storageQueue = task.catch(() => {});
     return task;
@@ -1561,6 +1600,68 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return this.assertOutputPath(`${this.outputFolder}/Months/${month}.md`);
   }
 
+  async restoreMonthlyHistory() {
+    const assertCurrent = this.analysisGuard();
+    const task = (this.analysisQueue || Promise.resolve()).then(async () => {
+      assertCurrent();
+      const folder = `${this.outputFolder}/Months/`;
+      const restored = {};
+      const identities = new Set(Object.values(this.records).map(record => this.historyIdentity(record)));
+      let skippedMonths = 0;
+      for (const file of this.app.vault.getMarkdownFiles()) {
+        if (!file.path.startsWith(folder)) continue;
+        const month = file.path.slice(folder.length).match(/^(\d{4}-(?:0[1-9]|1[0-2]))\.md$/)?.[1];
+        if (!month) continue;
+        let saved;
+        try { saved = readMonthlyRecords(await this.app.vault.cachedRead(file), month); } catch { /* Try unreadable files again on a manual restore. */ }
+        assertCurrent();
+        if (!saved) { skippedMonths++; continue; }
+        for (const [key, record] of Object.entries(this.validateRecords(saved))) {
+          if (!record.date.startsWith(month + "-")) continue;
+          record.dateBasis ||= LEGACY_DATE_BASIS;
+          const identity = this.historyIdentity(record);
+          if (identities.has(identity)) continue;
+          const prefix = HISTORY_KEY_PREFIXES.get(record.dateBasis);
+          if (!prefix) continue;
+          const target = this.records[key] || restored[key] ? `${prefix}:${record.date}` : key;
+          if (this.records[target] || restored[target]) continue;
+          if (record.entryPath) {
+            try { record.entryPath = this.assertOutputPath(record.entryPath, true); } catch { delete record.entryPath; }
+          }
+          if (record.sourcePaths) record.sourcePaths = record.sourcePaths.filter(source => {
+            try { return vaultPath(source) === source && /\.md$/i.test(source); } catch { return false; }
+          });
+          restored[target] = record;
+          identities.add(identity);
+        }
+      }
+      const count = Object.keys(restored).length;
+      if (count) {
+        await this.savePluginData({ restored });
+        this.refreshRenderers();
+      }
+      return { count, skippedMonths };
+    });
+    this.analysisQueue = task.catch(() => {});
+    return task;
+  }
+
+  historyIdentity(record) {
+    return `${record.dateBasis || LEGACY_DATE_BASIS}:${record.date}`;
+  }
+
+  async restoreMonthlyHistoryWithNotice() {
+    try {
+      const { count, skippedMonths } = await this.restoreMonthlyHistory();
+      const message = count ? `Restored ${count} saved mood records from monthly notes.` : "No missing records found in monthly notes.";
+      new Notice(`Automatic Mood History: ${message}${skippedMonths ? ` Could not read recovery data in ${skippedMonths} monthly notes.` : ""}`);
+    } catch (error) {
+      if (!this.unloaded) new Notice(error.code === "analysis_cancelled"
+        ? "Automatic Mood History: restore unavailable. Check storage and folder settings, then retry."
+        : "Automatic Mood History: could not save restored history. Check vault storage, then retry.");
+    }
+  }
+
   async writeMonthlyNote(month, records = this.records, assertCurrent = this.analysisGuard()) {
     assertCurrent();
     const path = this.monthlyPath(month);
@@ -1576,7 +1677,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         // Compare the entire document, not just an ownership marker. Replay
         // after an interrupted commit is idempotent; manual edits are retained.
         const normalized = current.replace(/\r\n/g, "\n");
-        if (normalized !== next && normalized !== previous && sha256(normalized) !== previousHash) throw new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
+        if (normalized !== next && normalized !== previous) {
+          if (sha256(normalized) !== previousHash) throw new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
+          const saved = readMonthlyRecords(normalized, month);
+          const identities = new Set(Object.values(records).filter(record => record.date.startsWith(month + "-")).map(record => this.historyIdentity(record)));
+          if (!saved || Object.values(this.validateRecords(saved)).some(record => !identities.has(this.historyIdentity(record)))) {
+            throw new Error("Monthly export contains missing history. Restore history from monthly notes before refreshing.");
+          }
+        }
         return next;
       });
     } else {
@@ -2903,6 +3011,11 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
 
     if (!records.length) {
       wrapper.createDiv({ cls: "auto-mood-empty", text: "No history yet. Run Analyze changed to build it." });
+      if (this.app?.vault?.getMarkdownFiles) {
+        const restoreActions = wrapper.createDiv({ cls: "auto-mood-actions" });
+        const restoreButton = restoreActions.createEl("button", { text: "Restore from monthly notes", attr: { type: "button" } });
+        restoreButton.addEventListener("click", () => void this.restoreMonthlyHistoryWithNotice());
+      }
       return;
     }
 

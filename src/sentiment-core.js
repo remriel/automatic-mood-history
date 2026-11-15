@@ -469,12 +469,37 @@ function PathBasename(path) {
 
 // Monthly notes are portable exports, including lossless recovery data. They
 // contain analysis records only, never plugin settings, keys or source text.
+const monthlyHeader = month => ["---", 'type: "automatic-mood-month"', "automatic_mood_history: true", `month: "${month}"`, "---", ""].join("\n");
+const monthlyRecoveryHeading = [
+  "## Recovery data", "",
+  "Full saved records for this month. Keep these with your vault backups; plugin data remains the live history.",
+  "", "```json", ""
+].join("\n");
+
+function readMonthlyRecords(markdown, month) {
+  const text = markdown.replace(/\r\n/g, "\n");
+  if (!text.startsWith(monthlyHeader(month))) return null;
+  const start = text.lastIndexOf("\n" + monthlyRecoveryHeading);
+  if (start < 0) return null;
+  const body = start + monthlyRecoveryHeading.length + 1;
+  const end = text.indexOf("\n```", body);
+  if (end < 0) return null;
+  try {
+    const data = JSON.parse(text.slice(body, end));
+    if (data?.format !== "automatic-mood-history-month" || data.version !== 1 ||
+        data.month !== month || !data.records || typeof data.records !== "object" || Array.isArray(data.records)) return null;
+    return data.records;
+  } catch {
+    return null;
+  }
+}
+
 function buildMonthlyMarkdown(month, records) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Invalid export month.");
   const selected = Object.fromEntries(Object.entries(records)
     .filter(([, record]) => record.date?.slice(0, 7) === month)
     .sort(([a, left], [b, right]) => left.date.localeCompare(right.date) || a.localeCompare(b)));
-  const lines = ["---", 'type: "automatic-mood-month"', "automatic_mood_history: true", `month: "${month}"`, "---", "", `# Mood History — ${month}`, "",
+  const lines = [monthlyHeader(month), `# Mood History — ${month}`, "",
     "Generated from saved history; no analysis is rerun. Scores are text inferences, not diagnoses.",
     "This export is maintained automatically. Keep personal additions in a separate note; edited exports are preserved rather than overwritten.", ""];
   for (const record of Object.values(selected)) {
@@ -482,8 +507,7 @@ function buildMonthlyMarkdown(month, records) {
     const body = buildEntryMarkdown(record).replace(/^---\n[\s\S]*?\n---\n/, "").replace(/^# Mood[^\n]*\n/m, "");
     lines.push(body.replace(/^## /gm, "### "), "");
   }
-  lines.push("## Recovery data", "", "Full saved records for this month. Keep these with your vault backups; plugin data remains the live history.", "", "```json",
-    JSON.stringify({ format: "automatic-mood-history-month", version: 1, month, records: selected }, null, 2), "```", "");
+  lines.push(monthlyRecoveryHeading + JSON.stringify({ format: "automatic-mood-history-month", version: 1, month, records: selected }, null, 2), "```", "");
   return lines.join("\n");
 }
 
@@ -498,6 +522,7 @@ module.exports = {
   localSentiment,
   moodToValence,
   plainNarrative,
+  readMonthlyRecords,
   sha256,
   stripFrontmatter,
   textForAnalysis,
