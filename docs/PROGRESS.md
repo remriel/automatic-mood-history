@@ -2,7 +2,7 @@
 
 Objective: recover already-computed Automatic Mood History results without repeating 927 per-date writes or provider analysis, reduce Obsidian scan/render load, and preserve edited monthly notes.
 
-Progress: 95% toward a verified, publishable 1.9.3 candidate. Code, release metadata, regression tests, local checks, and draft GitHub PR are complete; PR CI and publication remain.
+Progress: 100% toward a verified, publishable 1.9.3 candidate. Code, release metadata, regression tests, local checks, draft GitHub PR, and CI are complete. Publication and live installation are separate pending steps.
 
 - [x] Read installed data and monthly exports without modifying the live vault; identify 927 pending writes, 920 monthly records, and one edited November note.
 - [x] Batch pending monthly recovery, preserve edits, and show export conflicts.
@@ -12,12 +12,12 @@ Progress: 95% toward a verified, publishable 1.9.3 candidate. Code, release meta
 - [x] Verify two live snapshots in memory: the first restored 927 records; the later snapshot cleared the remaining 15 pending writes and yielded 928 total records. Both ended with 0 pending writes, 63 provider retries, 1 edited export warning, 2 JSON saves and 0 provider calls.
 - [x] Pass functional, mobile runtime, privacy, desktop layout, Android and iPhone layout suites.
 - [x] Sync candidate branch to GitHub and open draft PR #29.
-- [ ] Pass PR CI.
+- [x] Pass PR CI for code commit `be2a337`: GitHub run 43748145896 succeeded.
 - [ ] Publish release and verify remote assets if approved.
 
 Current blocker: the native installed plugin still runs version 1.9.2. It recovered most pending entries by itself during this session but continues retrying the edited monthly export. No live-vault recovery has been performed by this code.
 
-Next steps: (1) wait for PR #29 CI and review its final diff; (2) publish and install only after the release impact is reviewed; (3) restart Obsidian and verify the live backlog clears while keeping the edited monthly note.
+Next steps: (1) review/approve the release impact in draft PR #29; (2) merge/publish 1.9.3 and verify the released assets; (3) install after safeguarding the live plugin data, restart Obsidian, and verify the backlog clears while keeping the edited monthly note.
 
 ---
 
