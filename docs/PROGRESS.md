@@ -1,3 +1,20 @@
+# Progress — monthly-history recovery, release 1.9.2 (2026-11-15)
+
+Objective: recover saved history from compact monthly exports without replacing newer JSON records or dropping records on refresh.
+
+Progress: 100% toward a verified, published release. [Automatic Mood History 1.9.2](https://github.com/remriel/automatic-mood-history/releases/tag/1.9.2)
+
+- [x] Add JSON-authoritative startup recovery and manual restore for partial loss.
+- [x] Preserve existing date-and-basis records and monthly Markdown; make restore analysis/provider-free.
+- [x] Reject hash-authorized monthly refreshes that would drop records from a recovery block.
+- [x] Prepare 1.9.2 metadata, release notes, changelog, README and persistence protocol updates.
+- [x] Pass targeted compact-history regression and full local functional, mobile runtime, privacy, desktop layout and mobile layout checks.
+- [x] GitHub CI 43737370306 and release workflow 43737370380 passed for commit `3a9af8b`. Verified the release tag, all four asset digests, source parity, the offline model, and the build attestation.
+
+Native Obsidian and real-vault restoration remain unverified. Next, update to 1.9.2 and reload Obsidian. If needed, use the dashboard or command palette restore after the monthly notes have synced.
+
+---
+
 # Progress — release verification (2026-11-15)
 
 Published 1.9.1: https://github.com/remriel/automatic-mood-history/releases/tag/1.9.1. Release workflow succeeded; all downloaded asset SHA-256 digests and plugin source parity verified.

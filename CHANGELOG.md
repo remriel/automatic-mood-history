@@ -1,3 +1,8 @@
+# 1.9.2
+
+- Restore valid saved records from monthly recovery blocks when plugin history is empty, with a manual restore action for partial loss.
+- Keep JSON as the authority, preserve existing records and monthly Markdown, and prevent hash-authorized exports from dropping recovered records.
+
 # 1.9.1
 
 - Preserve unchanged complete scores from any analyzer when a Groq retry fails.

@@ -6,6 +6,12 @@
 
 # Wisdom
 
+## 2026-11-15 — monthly-history recovery release
+
+1. **Least confident:** Synthetic generated notes passed the recovery checks, but real synced vault files and native Obsidian storage behavior were not tested. I would verify with copied monthly exports in an isolated vault before claiming real-vault coverage.
+2. **Biggest thing the user may be missing:** Deleting `data.json` does not fully reset history while valid monthly recovery blocks remain in the configured output folder; the next startup can restore them. Move those exports elsewhere first when a clean reset is intended.
+3. **Most consequential assumption:** Existing JSON records should win for the same date and date basis, while valid monthly records may fill missing identities. If the desired policy is to replace or merge same-identity records, the recovery rules need to change.
+
 ## 2026-11-14 — release reliability fixes in progress
 
 1. **Least confident:** Runtime checks are still underway, so the exact behavior across all analyzer sources and settings transitions is not verified yet. I would wait for the full regression results before describing these recovery paths as complete.

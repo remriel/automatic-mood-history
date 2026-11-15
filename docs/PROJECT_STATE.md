@@ -1,3 +1,15 @@
+# Project state — monthly-history recovery, 1.9.2 published (2026-11-15)
+
+Commit `3a9af8b` adds startup and manual restoration from monthly recovery blocks. Plugin JSON remains authoritative. When JSON loads successfully with no records, startup imports valid monthly records before pending-write recovery, output setup, and automatic analysis. The empty dashboard and command palette support manual recovery for partial loss. Restoration adds only missing date-and-basis identities, preserves existing records and monthly Markdown, and makes no provider call. A monthly refresh now rejects a remembered hash if the recovery block still contains records absent from current JSON.
+
+The synthetic regression demonstrated restoration of an open dashboard with missing JSON records. GitHub CI 43737370306 and release run 43737370380 passed functional, mobile runtime, desktop and mobile browser layout, and privacy checks. All four downloaded asset digests, plugin source parity, the offline model, and the main.js attestation were verified. Native Obsidian and real-vault restoration remain untested.
+
+## RESUME HERE (1.9.2)
+
+Update to [1.9.2](https://github.com/remriel/automatic-mood-history/releases/tag/1.9.2) and restart Obsidian. Use the manual restore after sync if history is still missing. For an intentional reset, move monthly exports outside the configured history folder before deleting `data.json` so startup cannot restore them.
+
+---
+
 # Project state — release verification (2026-11-15)
 
 Published 1.9.1: https://github.com/remriel/automatic-mood-history/releases/tag/1.9.1. Release workflow succeeded; all downloaded asset SHA-256 digests and plugin source parity verified.
