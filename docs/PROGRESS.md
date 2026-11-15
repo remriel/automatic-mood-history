@@ -1,3 +1,45 @@
+# Progress — remove Moodring, fill bars, remember range (2026-11-15)
+
+Objective: complete the 1.9.3 recovery candidate with Morning Pages as the sole offline fallback, no Moodring feature, gapless short-range composition, and a configurable dashboard opening range.
+
+Progress: 100% toward a verified, publishable 1.9.3 candidate. Implementation, local checks, draft PR and code CI pass. Publication and live installation remain separate pending steps.
+
+- [x] Remove Moodring code, UI, model build, release asset and dedicated tests without erasing historical record sidecars.
+- [x] Fill 7–90 day composition slots and verify adjacency in range tests.
+- [x] Add a default opening range or Last used, including remembered custom dates.
+- [x] Pass focused fallback, storage, settings, chart range and desktop layout checks.
+- [x] Pass the complete functional, mobile runtime, privacy, desktop, Android and iPhone layout checks.
+- [x] Update draft PR #29 and pass GitHub CI 43750997200 on code commit `4498f1d`.
+
+Current state: candidate is synchronized on `fix/batched-monthly-recovery-1.9.3`. The installed 1.9.2 plugin and live vault remain unchanged.
+
+Next steps: (1) review publication and live installation impact for both plugin PRs; (2) merge/publish 1.9.3 if approved and verify its three release assets; (3) install after safeguarding live plugin data, restart Obsidian, and check the edited export warning and range behavior.
+
+---
+
+# Progress — stop repeated recovery scans (2026-11-15)
+
+Objective: recover already-computed Automatic Mood History results without repeating 927 per-date writes or provider analysis, reduce Obsidian scan/render load, and preserve edited monthly notes.
+
+Progress: 100% toward a verified, publishable 1.9.3 candidate. Code, release metadata, regression tests, local checks, draft GitHub PR, and CI are complete. Publication and live installation are separate pending steps.
+
+- [x] Read installed data and monthly exports without modifying the live vault; identify 927 pending writes, 920 monthly records, and one edited November note.
+- [x] Batch pending monthly recovery, preserve edits, and show export conflicts.
+- [x] Cache unchanged source metadata with event invalidation and daily content verification; avoid repeated dashboard redraws during scans.
+- [x] Stop ordinary scans from upgrading saved fallback scores when no provider retry is pending.
+- [x] Bound automatic provider retry work to five pending dates per pass.
+- [x] Verify two live snapshots in memory: the first restored 927 records; the later snapshot cleared the remaining 15 pending writes and yielded 928 total records. Both ended with 0 pending writes, 63 provider retries, 1 edited export warning, 2 JSON saves and 0 provider calls.
+- [x] Pass functional, mobile runtime, privacy, desktop layout, Android and iPhone layout suites.
+- [x] Sync candidate branch to GitHub and open draft PR #29.
+- [x] Pass PR CI for code commit `be2a337`: GitHub run 43748145896 succeeded.
+- [ ] Publish release and verify remote assets if approved.
+
+Current blocker: the native installed plugin still runs version 1.9.2. It recovered most pending entries by itself during this session but continues retrying the edited monthly export. No live-vault recovery has been performed by this code.
+
+Next steps: (1) review/approve the release impact in draft PR #29; (2) merge/publish 1.9.3 and verify the released assets; (3) install after safeguarding the live plugin data, restart Obsidian, and verify the backlog clears while keeping the edited monthly note.
+
+---
+
 # Progress — monthly-history recovery, release 1.9.2 (2026-11-15)
 
 Objective: recover saved history from compact monthly exports without replacing newer JSON records or dropping records on refresh.

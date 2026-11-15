@@ -23,7 +23,6 @@ const {
   textForAnalysis,
   validateAnalysis
 } = require("./sentiment-core");
-const { MOODRING_VERSION, MOODRING_LABELS, validatedModel, compareMoodring } = require("./moodring-core");
 const { morningPagesSentiment, MORNING_PAGES_ANALYZER_VERSION } = require("./morning-pages-fallback");
 
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
@@ -40,12 +39,13 @@ const HISTORY_KEY_PREFIXES = new Map([
 ]);
 const GROQ_PROMPT_VERSION = "detected-date-goemotions-v3";
 const TEXT_PIPELINE_VERSION = "markdown-text-v2";
-const MOODRING_FILENAME = "moodring-model.bin";
 const GOEMOTIONS_LABELS = Object.freeze(["admiration","amusement","anger","annoyance","approval","caring","confusion","curiosity","desire","disappointment","disapproval","disgust","embarrassment","excitement","fear","gratitude","grief","joy","love","nervousness","optimism","pride","realization","relief","remorse","sadness","surprise","neutral"]);
+const DASHBOARD_RANGES = [["7 days", 7], ["14 days", 14], ["30 days", 30], ["60 days", 60], ["90 days", 90], ["180 days", 180], ["1 year", 365], ["All", 0]];
+const DASHBOARD_RANGE_DAYS = DASHBOARD_RANGES.map(([, days]) => days);
 
 const DEFAULT_SETTINGS = {
   enableGroq: false,
-  enableMoodring: false,
+  defaultRange: null,
   model: "openai/gpt-oss-20b",
   outputFolder: "Mood History",
   entryOutput: "monthly",
@@ -260,13 +260,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (this.foregroundRecoveryTimer) window.clearTimeout(this.foregroundRecoveryTimer);
     for (const timer of this.debounceTimers?.values() || []) window.clearTimeout(timer);
     this.debounceTimers?.clear();
-    this.moodringModelPromise = null;
     this.disposeDashboard();
     this.renderContainers?.clear();
   }
 
   watchSettings() {
-    const analysisKeys = new Set(["enableMoodring", "includeFolders", "excludeFolders", "outputFolder", "entryOutput", "numericDateOrder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
+    const analysisKeys = new Set(["includeFolders", "excludeFolders", "outputFolder", "entryOutput", "numericDateOrder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
     this.analysisEpoch ||= 0;
     this.settings = new Proxy(this.settings, { set: (target, key, value) => {
       if (analysisKeys.has(key) && JSON.stringify(target[key]) !== JSON.stringify(value)) this.analysisEpoch++;
@@ -279,8 +278,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const settings = { ...DEFAULT_SETTINGS, includeFolders: [], excludeFolders: [] };
     if (!isObject(saved)) return settings;
     if (["daily", "monthly", "none"].includes(saved.entryOutput)) settings.entryOutput = saved.entryOutput;
+    if (saved.defaultRange === null || DASHBOARD_RANGE_DAYS.includes(saved.defaultRange)) settings.defaultRange = saved.defaultRange;
     if (["skip", "mdy", "dmy"].includes(saved.numericDateOrder)) settings.numericDateOrder = saved.numericDateOrder;
-    for (const key of ["enableGroq", "enableMoodring", "autoAnalyze", "analyzeOnStartup"]) settings[key] = saved[key] === true;
+    for (const key of ["enableGroq", "autoAnalyze", "analyzeOnStartup"]) settings[key] = saved[key] === true;
     for (const [key, minimum, maximum] of [["debounceMilliseconds", 250, 60000], ["minimumCharacters", 1, 10000], ["maxCharactersPerDay", 100, 200000]]) {
       if (typeof saved[key] === "number" && Number.isFinite(saved[key])) settings[key] = Math.max(minimum, Math.min(maximum, Math.round(saved[key])));
     }
@@ -313,21 +313,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (record.drivers !== undefined) record.drivers = Array.isArray(record.drivers) ? record.drivers.filter(value => typeof value === "string").slice(0, 4) : [];
       for (const field of ["summary", "confidenceReason", "model", "contentHash", "analysisSource"]) if (record[field] !== undefined && typeof record[field] !== "string") delete record[field];
       for (const field of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) if (!Number.isInteger(record[field]) || record[field] < 1 || record[field] > 5) record[field] = null;
-      // Never trust saved comparison metadata loaded from a synced or edited data.json.
-      const m = record.moodring;
-      if (m !== undefined) {
-        if (!isObject(m) || m.version !== MOODRING_VERSION ||
-            typeof m.fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(m.fingerprint) ||
-            !Array.isArray(m.labels) || m.labels.length > 4 ||
-            m.labels.some(x => !isObject(x) || !MOODRING_LABELS.includes(x.label) ||
-              x.label === "neutral" || typeof x.score !== "number" || !Number.isFinite(x.score) ||
-              x.score < 0 || x.score > 1) ||
-            typeof m.abstained !== "boolean" || typeof m.truncated !== "boolean" ||
-            !Number.isInteger(m.coveredChars) || m.coveredChars < 0 || m.coveredChars > 12000) delete record.moodring;
-        else record.moodring = { version:m.version, fingerprint:m.fingerprint,
-          labels:m.labels.map(x=>({label:x.label,score:x.score})), abstained:m.abstained,
-          truncated:m.truncated,coveredChars:m.coveredChars };
-      }
+      // Preserve unknown historical sidecars in saved records without running them.
       Object.assign(record, exemptUnscorableAssessment(record));
       records[key] = record;
     }
@@ -336,8 +322,15 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   validateRuntime(saved) {
     const runtime = isObject(saved) ? { ...saved } : {};
+    const lastRange = runtime.lastDashboardRange;
+    if (isObject(lastRange) && isObject(lastRange.custom) && validDate(lastRange.custom.start) && validDate(lastRange.custom.end) && lastRange.custom.start <= lastRange.custom.end) {
+      runtime.lastDashboardRange = { custom: { start: lastRange.custom.start, end: lastRange.custom.end } };
+    } else if (isObject(lastRange) && DASHBOARD_RANGE_DAYS.includes(lastRange.days)) {
+      runtime.lastDashboardRange = { days: lastRange.days };
+    } else delete runtime.lastDashboardRange;
     runtime.pendingDates = isObject(runtime.pendingDates) ? Object.fromEntries(Object.entries(runtime.pendingDates).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && Number.isFinite(Date.parse(value.retryAt))).map(([key, value]) => [key, { kind: ["source", "storage", "output", "paused", "configuration", "authentication", "rate-limit", "request", "service", "connection"].includes(value.kind) ? value.kind : "storage", attempts: Math.max(1, Math.min(10, Math.round(Number(value.attempts) || 1))), retryAt: new Date(Date.parse(value.retryAt)).toISOString(), legacySources: value.legacySources === true }])) : {};
     runtime.pendingWrites = isObject(runtime.pendingWrites) ? Object.fromEntries(Object.entries(runtime.pendingWrites).filter(([key, value]) => validDate(dateFromKey(key)) && isObject(value) && value.version === 1 && this.validateRecords({ [key]: value.record })[key] && typeof value.outputFolder === "string" && (value.expectedHash === null || typeof value.expectedHash === "string" && /^[a-f0-9]{64}$/.test(value.expectedHash)))) : {};
+    runtime.monthlyExportConflicts = isObject(runtime.monthlyExportConflicts) ? Object.fromEntries(Object.entries(runtime.monthlyExportConflicts).filter(([path, value]) => typeof path === "string" && /^\S.*\/Months\/\d{4}-(?:0[1-9]|1[0-2])\.md$/.test(path) && typeof value === "string" && /^[a-f0-9]{64}$/.test(value))) : {};
     if (!isObject(runtime.lastGroqIssue) || typeof runtime.lastGroqIssue.message !== "string") delete runtime.lastGroqIssue;
     return runtime;
   }
@@ -359,7 +352,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.exemptEntryKeys = [];
   }
 
-  async savePluginData({ commit, restored } = {}) {
+  async savePluginData({ commit, commits = commit ? [commit] : [], restored } = {}) {
     const task = (this.storageQueue || Promise.resolve()).then(async () => {
       if (this.unloaded) this.cancelAnalysis();
       if (this.storageReadFailed) throw new Error("Plugin storage could not be read; reload after restoring storage access.");
@@ -367,13 +360,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       delete settings.apiKeyEnvironmentVariable;
       const snapshot = JSON.parse(JSON.stringify({ settings, records: this.records, runtime: this.runtime }));
       if (restored) Object.assign(snapshot.records, JSON.parse(JSON.stringify(restored)));
-      if (commit) {
+      for (const commit of commits) {
         snapshot.records[commit.key] = commit.record;
         delete snapshot.runtime.pendingWrites?.[commit.key];
-        if (!(this.settings.enableGroq && commit.record.analysisSource === "morning-pages-fallback")) delete snapshot.runtime.pendingDates?.[commit.key];
+        if (!(this.settings.enableGroq && commit.record.analysisSource === "morning-pages-fallback" &&
+          !["source", "storage"].includes(snapshot.runtime.pendingDates?.[commit.key]?.kind))) delete snapshot.runtime.pendingDates?.[commit.key];
       }
       await this.saveData(snapshot);
-      if (commit) this.publishCommittedRecord(commit.key, commit.record);
+      for (const commit of commits) this.publishCommittedRecord(commit.key, commit.record);
       if (restored) Object.assign(this.records, restored);
     });
     this.storageQueue = task.catch(() => {});
@@ -383,7 +377,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   publishCommittedRecord(key, record) {
     this.records[key] = record;
     delete this.runtime.pendingWrites?.[key];
-    if (!(this.settings.enableGroq && record.analysisSource === "morning-pages-fallback")) delete this.runtime.pendingDates?.[key];
+    if (!(this.settings.enableGroq && record.analysisSource === "morning-pages-fallback" &&
+      !["source", "storage"].includes(this.runtime.pendingDates?.[key]?.kind))) delete this.runtime.pendingDates?.[key];
   }
 
   async commitPreparedRecord(key, pending, assertCurrent = this.analysisGuard()) {
@@ -423,7 +418,51 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return pending;
   }
 
-  async recoverPendingWrites() {
+  async recoverPendingWrites(options = {}) {
+    // Cloud sync can deliver monthly exports after startup. Restore them before
+    // replaying the journal, otherwise each single-day export loses its siblings.
+    if (this.entryOutput === "monthly" && Object.keys(this.runtime.pendingWrites || {}).length) {
+      await this.restoreMonthlyHistory();
+      const task = (this.analysisQueue || Promise.resolve()).then(async () => {
+        const assertCurrent = this.analysisGuard();
+        const months = new Map();
+        for (const [key, pending] of Object.entries(this.runtime.pendingWrites || {})) {
+          if (pending.entryOutput !== "monthly" || pending.outputFolder !== this.outputFolder) continue;
+          if (options.background && Date.parse(this.runtime.pendingDates?.[key]?.retryAt) > Date.now()) continue;
+          const month = pending.record.date.slice(0, 7);
+          if (!months.has(month)) months.set(month, []);
+          months.get(month).push({ key, record: pending.record });
+        }
+        if (months.size) await this.savePluginData();
+        const completed = [];
+        for (const [month, commits] of months) {
+          assertCurrent();
+          try {
+            await this.writeMonthlyNote(month, { ...this.records, ...Object.fromEntries(commits.map(c => [c.key, c.record])) }, assertCurrent);
+            assertCurrent();
+            completed.push(...commits);
+          } catch (error) {
+            if (error.code === "analysis_cancelled") throw error;
+            if (error.code === "monthly_export_edited") {
+              // The computed results are durable in the journal. Publish them
+              // to JSON while leaving the user's edited Markdown untouched.
+              completed.push(...commits);
+              this.runtime.monthlyExportConflicts ||= {};
+              this.runtime.monthlyExportConflicts[this.monthlyPath(month)] = error.currentHash;
+            } else {
+              for (const { key, record } of commits) this.markDatePending(record.date, { recordKey: key }, "storage");
+            }
+          }
+          // Let Obsidian paint and process input between monthly transactions.
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        if (months.size) await this.savePluginData({ commits: completed });
+      });
+      this.analysisQueue = task.catch(() => {});
+      await task;
+      this.refreshRenderers();
+      return;
+    }
     for (const key of Object.keys(this.runtime.pendingWrites || {})) {
       if (this.unloaded) break;
       await this.analyzeDate(this.runtime.pendingWrites[key].record.date, { recoveryOnly: true, recordKey: key });
@@ -575,7 +614,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         // after an interrupted commit is idempotent; manual edits are retained.
         const normalized = current.replace(/\r\n/g, "\n");
         if (normalized !== next && normalized !== previous) {
-          if (sha256(normalized) !== previousHash) throw new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
+          if (sha256(normalized) !== previousHash) {
+            const error = new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
+            error.code = "monthly_export_edited";
+            error.currentHash = sha256(normalized);
+            throw error;
+          }
           const saved = readMonthlyRecords(normalized, month);
           const identities = new Set(Object.values(records).filter(record => record.date.startsWith(month + "-")).map(record => this.historyIdentity(record)));
           if (!saved || Object.values(this.validateRecords(saved)).some(record => !identities.has(this.historyIdentity(record)))) {
@@ -589,6 +633,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     this.runtime.monthlyExportHashes ||= {};
     this.runtime.monthlyExportHashes[path] = sha256(next);
+    delete this.runtime.monthlyExportConflicts?.[path];
   }
 
   async exportMonthlyHistory() {
@@ -654,6 +699,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before changing Markdown output.");
       }
       if (key === "numericDateOrder" && !["skip", "mdy", "dmy"].includes(value)) throw new Error("Choose a valid numeric date order.");
+      if (key === "defaultRange" && value !== null && !DASHBOARD_RANGE_DAYS.includes(value)) throw new Error("Choose a valid dashboard range.");
       if (["includeFolders", "excludeFolders"].includes(key)) value = checkedFolderList(value);
       if (key === "outputFolder") value = vaultPath(value);
     } catch (error) {
@@ -802,6 +848,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     return this.gatherFiles(date, this.filesForDate(date, index));
   }
 
+  sourceRevision(date, index) {
+    if (!this.app?.vault?.getMarkdownFiles) return null;
+    const files = this.filesForDate(date, index);
+    if (!files.length || files.some(file => !Number.isFinite(file.stat?.mtime) || !Number.isFinite(file.stat?.size))) return null;
+    return sha256(JSON.stringify({ version: 1, pipeline: TEXT_PIPELINE_VERSION,
+      settings: [this.settings.minimumCharacters, this.settings.maxCharactersPerDay, this.settings.enableGroq,
+        this.settings.model, MORNING_PAGES_ANALYZER_VERSION],
+      files: files.map(file => [file.path, file.stat.ctime, file.stat.mtime, file.stat.size, this.topicForFile(file)]) }));
+  }
+
   async gatherLegacyDate(date, key = this.recordKey(date, true)) {
     const previous = this.records[key];
     const paths = Array.from(new Set(previous?.sourcePaths || []));
@@ -875,7 +931,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // source reads or provider replies. Never retry with stale consent/scope.
     const signature = () => JSON.stringify([
       this.settings.includeFolders, this.settings.excludeFolders,
-      this.settings.outputFolder, this.settings.entryOutput, this.settings.numericDateOrder, this.settings.enableGroq, this.settings.enableMoodring, this.settings.model,
+      this.settings.outputFolder, this.settings.entryOutput, this.settings.numericDateOrder, this.settings.enableGroq, this.settings.model,
       this.settings.minimumCharacters, this.settings.maxCharactersPerDay,
       ...(options.background ? [this.settings.autoAnalyze, this.settings.analyzeOnStartup] : [])
     ]);
@@ -928,7 +984,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   handleSourceEvent(file) {
     if (this.unloaded || !this.settings.autoAnalyze || !(file instanceof TFile)) return;
     const date = this.getCreationDateForFile(file);
-    if (date) this.scheduleDate(date);
+    if (date) {
+      // A delivered event wins even if a sync provider preserves file stats.
+      const record = this.records[this.recordKey(date)];
+      if (record) delete record.sourceRevision;
+      this.scheduleDate(date);
+    }
   }
 
   scheduleDate(date) {
@@ -948,38 +1009,6 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     this.debounceTimers.set(date, timer);
   }
 
-  moodringPath() {
-    return `${this.app.vault.configDir || ".obsidian"}/plugins/${this.manifest.id}/${MOODRING_FILENAME}`;
-  }
-  async loadMoodring() {
-    if (!this.moodringModelPromise) this.moodringModelPromise = this.app.vault.adapter
-      .readBinary(this.moodringPath()).then(validatedModel);
-    return this.moodringModelPromise;
-  }
-  async checkMoodring() {
-    this.moodringModelPromise = null;
-    try {
-      await this.loadMoodring();
-      if (!this.unloaded) new Notice("Automatic Mood History: offline Moodring model ready. No note text uploaded.");
-      return true;
-    } catch {
-      if (!this.unloaded) new Notice("Automatic Mood History: missing or invalid moodring-model.bin. Copy it from the matching release to the plugin directory.", 9000);
-      return false;
-    }
-  }
-  async moodringFor(gathered, assertCurrent) {
-    if (!this.settings.enableMoodring || gathered.analysisText.length < this.settings.minimumCharacters) return null;
-    try {
-      const model = await this.loadMoodring();
-      assertCurrent();
-      const comparison = compareMoodring(model, gathered.analysisText);
-      return comparison ? { ...comparison, fingerprint: sha256(gathered.contentHash + "|" + MOODRING_VERSION) } : null;
-    } catch (error) {
-      if (error.code === "analysis_cancelled") throw error;
-      // Missing sidecar cannot pause Groq or corrupt an existing record.
-      return null;
-    }
-  }
   apiKey() {
     const value = globalThis.process?.env?.[GROQ_API_KEY_ENV];
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -1254,7 +1283,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       const pending = this.runtime?.pendingDates?.[options.recordKey];
       const waiting = options.background && pending && Date.parse(pending.retryAt) > Date.now();
       const providerPending = pending && !["source", "storage"].includes(pending.kind);
-      const providerDeferred = waiting && providerPending && this.settings.enableGroq;
+      const providerDeferred = options.deferProvider || waiting && providerPending && this.settings.enableGroq;
       if (waiting && !providerPending) {
         if (options.runStats) options.runStats.pending += 1;
         return false;
@@ -1295,14 +1324,19 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (this.unloaded || this.isMobileBackground() || !this.settings.autoAnalyze || this.activeScan || this.checkingGroq || this.automaticRecoveryRunning) return;
     this.automaticRecoveryRunning = true;
     try {
+      if (Object.entries(this.runtime.pendingWrites || {}).some(([key]) => !this.runtime.pendingDates?.[key] || Date.parse(this.runtime.pendingDates[key].retryAt) <= Date.now())) await this.recoverPendingWrites({ background: true });
       // Periodic reconciliation catches edits made while closed, missed events, and sync recovery.
       if (!this.lastAutomaticReconcileAt || Date.now() - this.lastAutomaticReconcileAt >= 300000) {
         this.lastAutomaticReconcileAt = Date.now();
         await this.analyzeAll({ background: true, silent: true });
       } else {
+        let retries = 0;
         for (const [key, pending] of Object.entries(this.runtime.pendingDates || {})) {
           if (this.unloaded || !this.settings.autoAnalyze) break;
-          if (Date.parse(pending.retryAt) <= Date.now()) await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
+          if (Date.parse(pending.retryAt) <= Date.now() && !this.runtime.pendingWrites?.[key]) {
+            await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
+            if (++retries >= 5) break;
+          }
         }
       }
     } catch { /* Retain pending work; next scheduled pass can recover storage/network errors. */ }
@@ -1323,6 +1357,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // A stale persisted queue or caller must not overwrite historical records.
     if (this.records[key]?.dateBasis === HISTORICAL_DATE_BASIS || key.startsWith("created:")) key = this.recordKey(date, options.legacySources);
     const previous = this.records[key];
+    const sourceRevision = !options.legacySources ? this.sourceRevision(date, options.dateIndex) : null;
+    if (!options.force && !options.forceGroq && !options.onlyFallbacks && !this.runtime.pendingDates?.[key] &&
+      sourceRevision && previous?.sourceRevision === sourceRevision &&
+      Date.now() - Date.parse(previous.sourceRevisionCheckedAt) < 86400000) {
+      await this.clearDatePending(key);
+      return false;
+    }
     const recovering = Boolean(options.onlyFallbacks || options.legacySources);
     const dateBasis = options.legacySources ? LEGACY_DATE_BASIS : CURRENT_DATE_BASIS;
     const skipRecovery = (pending = false) => {
@@ -1356,24 +1397,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       previous.analysisSource === "none" ||
       !this.settings.enableGroq && previous.analysisSource === "morning-pages-fallback" &&
       previous.analysisFingerprint !== this.analysisFingerprint(gathered, dateBasis, true));
-    const retryNonGroqResult = this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
+    const retryNonGroqResult = (options.force || options.forceGroq || options.onlyFallbacks || this.runtime.pendingDates?.[key]) && this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
       (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback", "morning-pages-fallback"].includes(previous?.analysisSource)) &&
       !options.providerDeferred && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
     if (!options.force && !retryNonGroqResult && !localSemanticsChanged && previous?.contentHash === gathered.contentHash) {
-      if (previous.dateBasis === dateBasis && previous.status === "complete" && this.settings.enableMoodring &&
-          previous.moodring?.fingerprint !== sha256(gathered.contentHash + "|" + MOODRING_VERSION)) {
-        const moodring = await this.moodringFor(gathered, assertGatheredCurrent);
-        assertGatheredCurrent();
-        if (moodring) {
-          const enriched = { ...previous, moodring };
-          const prepared = await this.prepareRecord(key, enriched, assertGatheredCurrent);
-          await this.commitPreparedRecord(key, prepared, assertGatheredCurrent);
-          this.refreshRenderers();
-          return true;
-        }
-      }
       if (previous.dateBasis === dateBasis) {
-        if (!options.providerDeferred && !(this.settings.enableGroq && Date.now() < this.groqBlockedUntil)) await this.clearDatePending(key);
+        if (sourceRevision) {
+          previous.sourceRevision = sourceRevision;
+          previous.sourceRevisionCheckedAt = new Date().toISOString();
+        }
+        if (!options.providerDeferred) await this.clearDatePending(key);
         return false;
       }
       const promoted = { ...previous, dateBasis };
@@ -1453,17 +1486,12 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       });
     }
 
-    if (record.status === "complete" && this.settings.enableMoodring) {
-      const priorValid = previous?.contentHash === gathered.contentHash &&
-        previous?.moodring?.fingerprint === sha256(gathered.contentHash + "|" + MOODRING_VERSION);
-      const comparison = priorValid ? previous.moodring : await this.moodringFor(gathered, assertGatheredCurrent);
-      assertGatheredCurrent();
-      if (comparison) record.moodring = comparison;
-    }
     Object.assign(record, {
       dateBasis,
       recordIdentity: `v2:${dateBasis}:${date}`,
       analysisFingerprint: fingerprint,
+      ...(sourceRevision ? { sourceRevision } : {}),
+      ...(sourceRevision ? { sourceRevisionCheckedAt: new Date().toISOString() } : {}),
       contentHash: gathered.contentHash,
       sourcePaths: gathered.sourcePaths,
       analyzedAt: new Date().toISOString(),
@@ -1499,6 +1527,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async analyzeAllNow(options) {
+    if (Object.keys(this.runtime.pendingWrites || {}).length) await this.recoverPendingWrites(options);
+    if (options.background) this.lastAutomaticReconcileAt = Date.now();
     // An explicit retry bypasses an old pause once. A new rate limit pauses
     // the remaining dates in the same run instead of hammering the provider.
     if (options.forceGroq) this.clearGroqPause();
@@ -1509,9 +1539,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const targets = this.getAnalysisTargets({ ...options, dateIndex });
     if (!options.silent) new Notice(`Automatic Mood History: checking ${targets.length} history groups (${targets.filter((target) => target.legacySources).length} saved legacy sources)…`);
     let changed = 0;
+    let providerRetries = 0;
     for (const [index, target] of targets.entries()) {
       try { assertCurrent(); } catch { runStats.cancelled += targets.length - index; break; }
-      if (await this.analyzeDate(target.date, { ...dateOptions, legacySources: target.legacySources, recordKey: target.recordKey })) changed += 1;
+      if (this.runtime.pendingWrites?.[target.recordKey]) { runStats.pending++; continue; }
+      const pending = this.runtime.pendingDates?.[target.recordKey];
+      const isProviderRetry = pending && !["source", "storage"].includes(pending.kind) && Date.parse(pending.retryAt) <= Date.now();
+      const deferProvider = options.background && isProviderRetry && providerRetries >= 5;
+      if (isProviderRetry && !deferProvider) providerRetries++;
+      if (await this.analyzeDate(target.date, { ...dateOptions, deferProvider, legacySources: target.legacySources, recordKey: target.recordKey })) changed += 1;
+      if (index % 20 === 19) await new Promise(resolve => setTimeout(resolve, 0));
     }
     try {
       assertCurrent();
@@ -1586,6 +1623,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   groqStatus() {
     if (this.settingsValidationError || this.settingsSaveFailed || this.storageReadFailed) return { kind: "warning", text: this.settingsValidationError || "Analysis paused: restore plugin storage and save settings or reload." };
+    const conflictCount = Object.keys(this.runtime.monthlyExportConflicts || {}).length;
+    if (conflictCount) return { kind: "warning", text: `${conflictCount} edited monthly export${conflictCount === 1 ? "" : "s"} preserved. Saved scores are available in plugin history; move the edited monthly note aside, then use Export months to refresh it.` };
     const pendingCount = Object.keys(this.runtime.pendingDates || {}).length;
     if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups await recovery. Available Morning Pages fallback scores are shown. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
     if (!this.settings.enableGroq) return { kind: "local", text: "MORNING PAGES FALLBACK · Groq is disabled. Analysis stays on this device." };
@@ -1829,9 +1868,19 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
 
   refreshRenderers() {
     if (this.unloaded) return;
+    // A scan may commit hundreds of records. Render its final snapshot once.
+    if (this.activeScan) return;
     // Markdown renderers may be detached temporarily while Obsidian builds or
     // moves a view. Their Component unload callback owns deregistration.
     for (const element of Array.from(this.renderContainers)) this.renderDashboard(element);
+  }
+
+  rememberDashboardRange(rangeState) {
+    this.runtime ||= {};
+    const next = rangeState.custom ? { custom: { start: rangeState.custom.start, end: rangeState.custom.end } } : { days: rangeState.days };
+    if (JSON.stringify(this.runtime.lastDashboardRange) === JSON.stringify(next)) return;
+    this.runtime.lastDashboardRange = next;
+    void this.savePluginData().catch(() => new Notice("Automatic Mood History: could not save the last dashboard range."));
   }
 
   disposeDashboard(element) {
@@ -1941,7 +1990,11 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     };
     this.dashboardRangeStates ||= new WeakMap();
     let rangeState = this.dashboardRangeStates.get(element);
-    if (!rangeState) { rangeState = { days: 14 }; this.dashboardRangeStates.set(element, rangeState); }
+    if (!rangeState) {
+      const last = this.settings.defaultRange == null ? this.runtime?.lastDashboardRange : { days: this.settings.defaultRange };
+      rangeState = last?.custom ? { custom: { ...last.custom } } : { days: last?.days ?? 14 };
+      this.dashboardRangeStates.set(element, rangeState);
+    }
     if (complete.length) this.renderTrendChart(wrapper, complete, updateSummaryCards, rangeState);
     else updateSummaryCards(complete);
     wrapper.appendChild(emotionHost);
@@ -2024,7 +2077,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     section.createEl("h3", { text: "TREND" });
     const rangeText = section.createEl("p", { cls: "auto-mood-chart-range" });
     const rangeControls = section.createDiv({ cls: "auto-mood-range-controls", attr: { role: "group", "aria-label": "Trend time window" } });
-    const windows = [["7 days", 7], ["14 days", 14], ["30 days", 30], ["60 days", 60], ["90 days", 90], ["180 days", 180], ["1 year", 365], ["All", 0]];
+    const windows = DASHBOARD_RANGES;
     const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
     const recordsInWindow = days => days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
     const windowBounds = days => ({ start: days ? new Date(Math.max(Date.parse("0000-01-01T00:00:00Z"), latest - (days - 1) * 86400000)).toISOString().slice(0, 10) : records[0].date, end: records[records.length - 1].date });
@@ -2040,6 +2093,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       button.addEventListener("click", () => {
         rangeState.days = days;
         delete rangeState.custom;
+        this.rememberDashboardRange(rangeState);
         customForm.hidden = true;
         customButton.setAttribute("aria-pressed", "false");
         shown = recordsInWindow(days);
@@ -2070,6 +2124,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       rangeError.setText("");
       rangeState.custom = { start: startDate.value, end: endDate.value };
+      this.rememberDashboardRange(rangeState);
       shown = records.filter(record => record.date >= startDate.value && record.date <= endDate.value);
       selected = shown.length - 1;
       updateSummaryCards(shown, { start: startDate.value, end: endDate.value });
@@ -2342,7 +2397,9 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       const tickFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
       const ticks = [...new Set([0, Math.floor((span - 1) / 2), span - 1])];
       ticks.forEach((offset, index) => make("text", { x: x(offset), y: height - 7, "text-anchor": index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle", fill: "var(--amh-text)", opacity: ".8", "font-size": 11 }, tickFormatter.format(new Date(first + offset * day))));
-      const columnWidth = Math.min(30, Math.max(1, slot * step * .7));
+      // Daily ranges use the entire calendar slot, including empty days, so
+      // short-range columns meet without leaving unused gaps between them.
+      const columnWidth = step === 1 ? slot : Math.min(30, Math.max(1, slot * step * .7));
       buckets.forEach((bucket, index) => {
         const center = x(((bucket.start + bucket.end) / 2 - first) / day);
         if (!bucket.total) {
@@ -2414,13 +2471,6 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       const emotions = card.createDiv({ cls: "auto-mood-day-emotions", attr: { "aria-label": "Emotions" } });
       for (const emotion of record.emotions || []) emotions.createEl("span", { cls: "auto-mood-emotion", text: emotion });
-      if (this.settings.enableMoodring && record.moodring) {
-        const m = record.moodring;
-        const labels = m.labels.map(x => `${x.label} (${Math.round(x.score * 100)} model score)`).join(", ");
-        card.createEl("p", { cls: "auto-mood-day-reading", text:
-          m.abstained ? "Moodring local text signals: no label passed its threshold." :
-          `Moodring local text signals: ${labels}.${m.truncated ? " First 12,000 characters only." : ""}` });
-      }
       card.createEl("p", { cls: "auto-mood-day-reading", text: record.summary || "No summary available." });
       this.renderRecordDetails(card, record);
     }
@@ -2456,6 +2506,14 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.createEl("p", {
       text: "Markdown notes use detected filename dates, or their creation date when undated. Folder rules below control which notes are analyzed. All folders are included by default. Local analysis works offline on desktop, Android and iPhone. Groq analysis is optional."
     });
+    new Setting(containerEl)
+      .setName("Default dashboard range")
+      .setDesc("Choose the range when opening the dashboard. Last used remembers your previous preset or custom dates.")
+      .addDropdown(dropdown => dropdown.addOptions({
+        last: "Last used", days7: "7 days", days14: "14 days", days30: "30 days", days60: "60 days",
+        days90: "90 days", days180: "180 days", days365: "1 year", days0: "All"
+      }).setValue(this.plugin.settings.defaultRange == null ? "last" : `days${this.plugin.settings.defaultRange}`)
+        .onChange(async value => { await this.plugin.updateSetting("defaultRange", value === "last" ? null : Number(value.slice(4))); }));
     new Setting(containerEl)
       .setName("Markdown history output")
       .setDesc("Monthly is the default and keeps one readable note per month with recovery records. Use Export months for existing history. Dashboard only creates no entry notes. Existing daily notes are preserved; Bases needs daily notes.")
@@ -2528,15 +2586,6 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           await this.plugin.updateSetting("enableGroq", value);
         }));
-    new Setting(containerEl)
-      .setName("Enable offline Moodring comparison")
-      .setDesc("Optional text-based emotion suggestions beside Groq, without changing mood scores or uploading text. Requires local moodring-model.bin from the release. Off by default.")
-      .addToggle(toggle => toggle.setValue(this.plugin.settings.enableMoodring)
-        .onChange(async value => { await this.plugin.updateSetting("enableMoodring", value); }));
-    new Setting(containerEl)
-      .setName("Check local Moodring model")
-      .setDesc("Reload the optional binary. Run Analyze changed after installation.")
-      .addButton(button => button.setButtonText("Check model").onClick(() => { void this.plugin.checkMoodring(); }));
     new Setting(containerEl)
       .setName("Groq model")
       .setDesc("A production model that supports chat completions.")

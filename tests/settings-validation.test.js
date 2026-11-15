@@ -39,6 +39,14 @@ async function run() {
   assert.equal(p.settings.debounceMilliseconds, 250); assert.deepEqual(p.settings.hiddenChartSeries, ["moodScore"]);
   assert.equal(p.records[date].sourcePathsInvalid, true); assert.deepEqual(p.runtime.pendingDates, {}); assert.deepEqual(p.runtime.pendingWrites, {});
   assert.equal(p.records.bad, undefined);
+  assert.equal(p.validateSettings({ defaultRange: 180 }).defaultRange, 180);
+  assert.equal(p.validateSettings({ defaultRange: 15 }).defaultRange, null);
+  assert.deepEqual(p.validateRuntime({ lastDashboardRange: { custom: { start: date, end: date } } }).lastDashboardRange,
+    { custom: { start: date, end: date } });
+  assert.equal(p.validateRuntime({ lastDashboardRange: { days: 15 } }).lastDashboardRange, undefined);
+  const archived = { version: "legacy", labels: [{ label: "joy", score: 0.8 }] };
+  assert.deepEqual(p.validateRecords({ [date]: { ...old, moodring: archived } })[date].moodring, archived,
+    "retiring the optional comparison preserves old sidecar data without running it");
   ({ p } = fixture()); p.loadData = async () => { throw new Error("Sync unavailable"); }; let saves = 0; p.saveData = async () => saves++;
   await p.onload(); assert.equal(saves, 0, "an unreadable data file is never overwritten with defaults"); assert.equal(await p.analyzeDate(date), false);
   console.log("PASS corrupt storage, fail-closed scope, path confinement, consent-save failures and unreadable JSON preservation");

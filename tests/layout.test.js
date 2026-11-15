@@ -117,7 +117,7 @@ async function inspectLayout(page, label) {
     }
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
-    // Check inclusive calendar boundaries, default selection and unchanged history.
+    // Check inclusive calendar boundaries and unchanged history.
     await page.evaluate(() => {
       fixture.configure({ paneWidth: 640, count: 10 });
       const values = Object.values(fixture.plugin.records);
@@ -144,7 +144,8 @@ async function inspectLayout(page, label) {
     };
     const chartDates = () => page.locator('.auto-mood-svg circle[data-series="moodScore"]').evaluateAll(nodes => nodes.map(node => node.querySelector('title').textContent.slice(0, 10)));
     const cardValues = () => page.locator('.auto-mood-card-value').allTextContents();
-    assert.equal(await page.getByRole('button', { name: '14 days', exact: true }).getAttribute('aria-pressed'), 'true', '14 days is selected on opening');
+    await page.getByRole('button', { name: '14 days', exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: '14 days', exact: true }).getAttribute('aria-pressed'), 'true', '14 days is selected');
     assert.deepStrictEqual(await chartDates(), windowDates['14 days'], 'default includes the 14-day boundary');
     assert.deepStrictEqual(await cardValues(), windowCards['14 days'], 'default summary reflects the 14-day window');
     for (const label of ['7 days', '14 days', '30 days', '60 days', '90 days', '180 days', '1 year', 'All']) {
@@ -276,6 +277,7 @@ async function inspectLayout(page, label) {
       });
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
     });
+    await page.getByRole('button', { name: '14 days', exact: true }).click();
     const compositionRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
     assert.deepStrictEqual(await page.locator('.auto-mood-composition-legend li').allTextContents(),
       ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'], 'the ten leaders come from the full saved history');
@@ -295,7 +297,7 @@ async function inspectLayout(page, label) {
     for (const tick of ['0%', '50%', '100%']) assert(plot.ticks.includes(tick), 'percentage axis is visible');
     const width = Number(plot.viewBox.split(' ')[2]);
     const slot = (width - 39 - 12) / 14;
-    assert(Math.abs(plot.marks[0].width - Math.min(30, Math.max(1, slot * .7))) < 1e-6, 'bar width matches Morning Pages calendar slots');
+    assert(Math.abs(plot.marks[0].width - slot) < 1e-6, 'short-range bars fill their calendar slots');
     const firstDate = plot.marks.find(mark => mark.period === '2099-01-01');
     const laterDate = plot.marks.find(mark => mark.period === '2099-01-10');
     assert(Math.abs(laterDate.x - firstDate.x - 9 * slot) < 1e-6, 'bars use calendar-spaced positions across empty dates');
@@ -341,6 +343,7 @@ async function inspectLayout(page, label) {
         });
         fixture.plugin.renderDashboard(document.getElementById('dashboard'));
       }, theme);
+      await page.getByRole('button', { name: 'All', exact: true }).click();
       const rendered = await page.evaluate(() => ({
         legend: Object.fromEntries([...document.querySelectorAll('.auto-mood-composition-legend li')].map(item => [item.textContent, getComputedStyle(item.querySelector('.auto-mood-composition-swatch')).backgroundColor])),
         marks: [...document.querySelectorAll('.auto-mood-composition-chart rect[data-emotion]')].map(rect => ({label: rect.dataset.emotion, fill: getComputedStyle(rect).fill})),
@@ -406,6 +409,11 @@ async function inspectLayout(page, label) {
     await page.evaluate(() => fixture.configure({ mode: "empty", paneWidth: 320 }));
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 0, "empty state leaves no observer");
     await page.evaluate(() => fixture.configure({ settingsView: true, paneWidth: 280 }));
+    assert.equal(await page.getByRole("switch", { name: "Enable offline Moodring comparison" }).count(), 0, "retired comparison setting is absent");
+    await page.getByRole("combobox", { name: "Default dashboard range" }).selectOption("days30");
+    assert.strictEqual(await page.evaluate(() => fixture.plugin.settings.defaultRange), 30);
+    await page.getByRole("combobox", { name: "Default dashboard range" }).selectOption("last");
+    assert.strictEqual(await page.evaluate(() => fixture.plugin.settings.defaultRange), null);
     await page.getByRole("switch", { name: "Enable Groq analysis", exact: true }).click();
     assert.strictEqual(await page.evaluate(() => fixture.plugin.settings.enableGroq), false);
     await page.getByRole("textbox", { name: "Groq model", exact: true }).fill("long-fictional-model-name");

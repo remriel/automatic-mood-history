@@ -111,7 +111,9 @@ async function run() {
   plugin = fixture();
   plugin.records[dates[0]] = { ...valid, date: dates[0], status: "complete", dateBasis: "detected-note-date", analysisSource: "local-fallback", contentHash: dates[0] };
   await plugin.analyzeDate(dates[0]);
-  assert.strictEqual(requests.length, 1, "unchanged fallback records are retried after a pause expires");
+  assert.strictEqual(requests.length, 0, "a saved fallback without pending work is not upgraded automatically");
+  await plugin.analyzeDate(dates[0], { force: true });
+  assert.strictEqual(requests.length, 1, "explicit reanalysis can upgrade a saved fallback");
   assert.strictEqual(plugin.records[dates[0]].analysisSource, "groq");
 
   plugin = fixture();

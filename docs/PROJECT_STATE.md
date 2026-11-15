@@ -1,3 +1,31 @@
+# Project state — 1.9.3 scope update: fallback, chart, and range (2026-11-15)
+
+The user confirmed that Morning Pages Analytics' bundled word-list matcher is the fallback and requested removal of Moodring. The 1.9.3 branch now removes the Moodring runtime, model loader, setting, comparison display, build source, CI training, release asset, and dedicated model tests. Existing historical `moodring` record fields are preserved as inert data so removal does not erase past saved metadata; the obsolete `enableMoodring` setting is no longer loaded. Groq scoring and Morning Pages fallback remain separate primary analyzers. The build output no longer contains Moodring code.
+
+The user also requested no gaps between Composition bars at shorter ranges. Daily periods (7–90 days) now use the full calendar slot; weekly and longer-period widths retain their previous geometry. `tests/dashboard-ranges.test.js` checks adjacent columns for every short preset; desktop layout tests verify the rendered width and alignment.
+
+Dashboard settings add a default opening range. `null` means Last used, which reopens the last selected preset or valid custom date interval saved in `runtime.lastDashboardRange`; a numeric preset overrides that choice only when a new dashboard opens. Existing open dashboards keep their selection. New installs fall back to 14 days until a range is chosen. Historical saved scores and source notes are not reanalyzed by these display settings. Relevant code: `src/main.js`, `scripts/build.js`, `tests/dashboard-ranges.test.js`, `tests/settings-validation.test.js`, workflows and README. Updated draft [PR #29](https://github.com/remriel/automatic-mood-history/pull/29) is mergeable; GitHub CI [43750997200](https://github.com/remriel/automatic-mood-history/actions/runs/43750997200) passed on code commit `4498f1d`.
+
+## RESUME HERE (updated 1.9.3 candidate)
+
+The complete functional, mobile runtime, release privacy, desktop, Android and iPhone layout checks passed after this scope update. The updated draft PR #29 is synchronized and its code commit passed CI. The installed plugin and live vault have not been changed by this candidate. Keep the November edited monthly export protected. Release and live installation remain pending review.
+
+---
+
+# Project state — 1.9.3 recovery and scan candidate (2026-11-15)
+
+The current task addresses Obsidian lag and a recovery backlog after the user reported that scores already existed. Read-only inspection of the installed `Remy/.obsidian/plugins/automatic-mood-history/data.json` found **0 committed records, 927 pending writes and 927 storage retries**. The monthly output folder had **920 parseable recovery records**. Most pending writes already contained Groq results. The 2026-11 monthly export had a valid recovery block but a personal addition; its file hash differed from the last generated hash. The live vault was not changed during diagnosis.
+
+Version 1.9.3 candidate changes `src/main.js` to restore monthly notes before replaying pending writes, write each month once, and save the journal in two batched transactions. An edited monthly note remains untouched; its pending results are published to JSON with `runtime.monthlyExportConflicts` and a dashboard warning. Ordinary scans no longer upgrade complete fallback scores without an existing pending retry or an explicit retry action. Automatic passes attempt at most five provider retries at a time. Each record can store a source metadata revision; unchanged records skip source reads until an event, metadata change, or 24-hour content verification. A scan redraws the dashboard at completion and yields between groups. The existing safety checks for source scope, provider consent, edited exports, and interrupted commits remain.
+
+An in-memory replay of the first observed stored JSON and monthly files recovered **927 committed records, 0 pending writes, 63 provider retry entries, 1 preserved edited monthly export, 2 JSON saves, and 0 provider calls**. While the session continued, Obsidian independently advanced its live file to 927 committed records and 15 pending writes; a fresh in-memory replay cleared those writes to 0, with 928 total records, 63 provider retries, one edited export conflict, two JSON saves, and no provider call. The live file itself was not changed by this work. `tests/recovery-performance.test.js` checks the batched restore, edit protection, unchanged source skipping, daily verification, and five-retry bound. Functional, mobile runtime, release privacy, desktop layout, and Android/iPhone layout suites passed locally. Draft [PR #29](https://github.com/remriel/automatic-mood-history/pull/29) contains the candidate; GitHub CI [43748145896](https://github.com/remriel/automatic-mood-history/actions/runs/43748145896) passed on the code commit `be2a337`.
+
+## RESUME HERE (1.9.3)
+
+PR #29 is mergeable and its code commit passed CI. Review release impact before publishing 1.9.3 or installing it into the personal vault. The installed 1.9.2 bundle and live vault data are unchanged, so the user will need an updated plugin build and restart to observe the fix. The edited November monthly note should be kept; the dashboard will warn that its export needs manual resolution.
+
+---
+
 # Project state — monthly-history recovery, 1.9.2 published (2026-11-15)
 
 Commit `3a9af8b` adds startup and manual restoration from monthly recovery blocks. Plugin JSON remains authoritative. When JSON loads successfully with no records, startup imports valid monthly records before pending-write recovery, output setup, and automatic analysis. The empty dashboard and command palette support manual recovery for partial loss. Restoration adds only missing date-and-basis identities, preserves existing records and monthly Markdown, and makes no provider call. A monthly refresh now rejects a remembered hash if the recovery block still contains records absent from current JSON.
