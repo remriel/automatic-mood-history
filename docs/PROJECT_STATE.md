@@ -4,11 +4,11 @@ The user confirmed that Morning Pages Analytics' bundled word-list matcher is th
 
 The user also requested no gaps between Composition bars at shorter ranges. Daily periods (7–90 days) now use the full calendar slot; weekly and longer-period widths retain their previous geometry. `tests/dashboard-ranges.test.js` checks adjacent columns for every short preset; desktop layout tests verify the rendered width and alignment.
 
-Dashboard settings add a default opening range. `null` means Last used, which reopens the last selected preset or valid custom date interval saved in `runtime.lastDashboardRange`; a numeric preset overrides that choice only when a new dashboard opens. Existing open dashboards keep their selection. New installs fall back to 14 days until a range is chosen. Historical saved scores and source notes are not reanalyzed by these display settings. Relevant code: `src/main.js`, `scripts/build.js`, `tests/dashboard-ranges.test.js`, `tests/settings-validation.test.js`, workflows and README.
+Dashboard settings add a default opening range. `null` means Last used, which reopens the last selected preset or valid custom date interval saved in `runtime.lastDashboardRange`; a numeric preset overrides that choice only when a new dashboard opens. Existing open dashboards keep their selection. New installs fall back to 14 days until a range is chosen. Historical saved scores and source notes are not reanalyzed by these display settings. Relevant code: `src/main.js`, `scripts/build.js`, `tests/dashboard-ranges.test.js`, `tests/settings-validation.test.js`, workflows and README. Updated draft [PR #29](https://github.com/remriel/automatic-mood-history/pull/29) is mergeable; GitHub CI [43750997200](https://github.com/remriel/automatic-mood-history/actions/runs/43750997200) passed on code commit `4498f1d`.
 
 ## RESUME HERE (updated 1.9.3 candidate)
 
-The complete functional, mobile runtime, release privacy, desktop, Android and iPhone layout checks passed after this scope update. Push the updated draft PR #29 and verify its final CI. The installed plugin and live vault have not been changed by this candidate. Keep the November edited monthly export protected. Release and live installation remain pending review.
+The complete functional, mobile runtime, release privacy, desktop, Android and iPhone layout checks passed after this scope update. The updated draft PR #29 is synchronized and its code commit passed CI. The installed plugin and live vault have not been changed by this candidate. Keep the November edited monthly export protected. Release and live installation remain pending review.
 
 ---
 
