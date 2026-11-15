@@ -19,7 +19,7 @@ Start with offline analysis that runs inside Obsidian. Optionally connect Groq f
 - Folder include/exclude lists, with subfolder support and exclusions taking precedence
 - One consolidated result per calendar date
 - Optional Groq structured-output analysis with GoEmotions-informed vocabulary and a validated three-stage JSON fallback
-- Local VADER sentiment scoring that works without a network connection or API key
+- Morning Pages word-list fallback scoring that works without a network connection or API key
 - Choose daily Markdown entries, compact monthly exports, or dashboard-only history
 - Monthly exports include readable daily details and lossless JSON recovery records; the optional Obsidian Base uses daily entries
 - Mood, energy, connection, and intensity scores from 1–5, all plotted in the trend chart
@@ -36,8 +36,8 @@ This plugin can transmit cleaned text from eligible Markdown notes created on a 
 - Keys are never written to plugin data, generated notes or intentional logs. Obsidian manages secret storage separately.
 - Groq receives the detected entry date, cleaned text consolidated across that day's notes, scoring instructions, and response schema.
 - Filenames and vault paths remain local and are not included in the Groq prompt.
-- Generated records include the analyzer used: `groq`, `local` (intentional local analysis), `local-fallback`, `reviewed-backfill` (legacy records), or `none`.
-- When Groq is enabled, eligible analysis uses Groq only. If Groq is unavailable, paused, or returns unusable output, existing records are preserved and new or changed work stays pending; it is not silently scored locally.
+- Generated records include the analyzer used: `groq`, `morning-pages-fallback`, `local` or `local-fallback` (older scores), `reviewed-backfill`, or `none`.
+- When Groq is disabled, unavailable, paused, or returns unusable output, new or changed writing receives a clearly labeled Morning Pages fallback score. Failed Groq attempts remain pending for retry. An unchanged saved result is preserved when an explicit retry fails.
 
 Automatic note watching and startup backfill are also disabled by default. Do not enable Groq analysis if you do not want your dated-note text sent to Groq.
 
@@ -132,13 +132,13 @@ Changes affect future analysis and what may be transmitted to Groq. Older genera
 
 ### Pane-responsive dashboard
 
-**Retry fallback entries** retries only saved `local-fallback` results. **Analyze changed** also includes every legacy-date record, regardless of its previous analyzer, when Groq is enabled. Legacy recovery reads its saved source notes rather than substituting unrelated notes created on that calendar date, and keeps the legacy date label. Missing/empty sources and failed/provider-paused retries keep the existing result unchanged. A connected provider status does not mean cached history has already been reanalysed; the dashboard reports pending fallbacks. No automatic/startup analysis preference is enabled by this recovery change.
+**Retry fallback entries** retries saved `morning-pages-fallback` and older `local-fallback` results. **Analyze changed** also includes every legacy-date record, regardless of its previous analyzer, when Groq is enabled. Legacy recovery reads its saved source notes rather than substituting unrelated notes created on that calendar date, and keeps the legacy date label. Missing/empty sources and failed/provider-paused retries keep the existing result unchanged. A connected provider status does not mean cached history has already been reanalysed; the dashboard reports pending fallbacks. No automatic/startup analysis preference is enabled by this recovery change.
 
 The dashboard is designed for vertical scrolling only. Charts redraw for the note pane's width with readable axes and fewer date labels when space is tight; no data points are dropped. Day-by-day cards wrap scores, emotion labels, analyzer/date-basis badges, and the complete summary rather than forcing a wide table or truncating text. Controls and settings also reflow based on their own pane, not the overall application window.
 
 Existing plugin-owned dashboard notes have only their exact Base embed replaced by a link; custom writing and metadata are preserved. The optional native Base table remains available as a separate Obsidian view with its own table behavior, but it is no longer embedded in the dashboard.
 
-Local VADER-based analysis is the default. Automatic note watching and startup analysis are off for new installs. Enabling Groq can send the cleaned text from every eligible note in an analyzed date group or saved legacy-date group to Groq; review the opt-in settings before running a full scan. Text below the minimum evidence threshold remains marked insufficient without scores.
+Morning Pages fallback analysis is the default. Automatic note watching and startup analysis are off for new installs. Enabling Groq can send the cleaned text from every eligible note in an analyzed date group or saved legacy-date group to Groq; review the opt-in settings before running a full scan. Text below the minimum evidence threshold remains marked insufficient without scores.
 
 Generated files are stored under `Mood History/` by default:
 
@@ -167,9 +167,9 @@ This is a reflective journaling tool. It is not a clinical, diagnostic, crisis-d
 ## Analysis methods and licenses
 
 - **Groq (opt-in):** Uses the 28-category [GoEmotions](https://github.com/google-research/google-research/tree/master/goemotions) taxonomy as an emotion vocabulary, with instructions to assess the author's own feelings and abstain when evidence is absent. This is prompt guidance, not the GoEmotions trained model.
-- **Local:** Uses [VADER Sentiment JS](https://github.com/vaderSentiment/vaderSentiment-js) v1.1.3 for text polarity, retaining deterministic heuristics for energy, connection, intensity and emotion labels. Local output remains low confidence and is never silently substituted if Groq is enabled.
-- VADER is Copyright 2018 Comcast Cable Communications Management, LLC, licensed Apache-2.0. The complete license is included in `src/vendor/APACHE-2.0.txt` and the bundled `main.js`. Plugin-authored code remains MIT.
-- Existing Groq results remain cached after prompt changes until explicitly reanalyzed. Local records refresh on the next authorized scan when scoring semantics change.
+- **Morning Pages fallback:** Uses a bundled copy of the built-in feelings and topics lists and word matcher from Morning Pages Analytics. Positive and negative feeling counts determine mood; joy, pride and sadness counts estimate energy; affection and relationship topic counts estimate connection; and feeling-word counts estimate intensity. With no matching words, mood, energy and connection default to 3 and intensity to 1. These simple counts do not interpret negation or attribution and have low confidence. The other plugin need not be installed; its customized word lists are not shared.
+- Morning Pages Analytics is Copyright 2026 Remriel and licensed MIT; its license is included in `src/vendor/MORNING-PAGES-LICENSE.txt` and the bundle. The retained VADER library is Copyright 2018 Comcast Cable Communications Management, LLC, licensed Apache-2.0; its full license is included in `src/vendor/APACHE-2.0.txt` and the bundle.
+- Existing Groq and older local-engine results remain cached for unchanged source text until explicitly reanalyzed. Current Morning Pages fallback and insufficient-evidence results can refresh on the next authorized scan when relevant local scoring settings change.
 
 ## Offline Moodring classifier (optional, 1.5.5+)
 
@@ -190,13 +190,13 @@ The model source/runtime comes from pinned [Moodring commit 05202588](https://gi
 
 ## Reliability and rendering
 
-Analysis caching uses a versioned fingerprint covering the source hash, text pipeline, analyzer/prompt/model, evidence thresholds and local topic semantics. Local results with fingerprints refresh when those semantics change. Unchanged Groq results are preserved after model or prompt changes until you explicitly choose **Retry all with Groq** or analyze the active note; a model change alone does not spend provider quota. Changed source text is analyzed during the next authorized scan. Records without fingerprints keep their historical provenance and result until source changes or explicit reanalysis; no missing provenance is invented.
+Analysis caching uses a versioned fingerprint covering the source hash, text pipeline, analyzer/prompt/model, evidence thresholds and local topic semantics. Current Morning Pages fallback and insufficient-evidence records can be reevaluated when relevant scoring settings change. Earlier `local`, `local-fallback`, and Groq results remain intact for unchanged source text when Groq is disabled or the analyzer changes; changed text uses the current fallback or enabled provider. Existing Groq results also remain cached after prompt/model changes until you explicitly retry them or analyze the active note; changing a model alone does not spend provider quota. Records without fingerprints keep their historical provenance and result until source changes or explicit reanalysis; no missing provenance is invented.
 
 Full scans build a temporary date-to-files index once. Source eligibility, file identity and metadata are checked again before reads and requests; changed scope cancels the scan. The index retains file references and paths only, and is discarded after each scan. It does not cache note text or reduce provider latency.
 
 Generated provider summaries, drivers and confidence explanations are bounded plain text. Markdown punctuation is serialized as literal characters and line breaks are collapsed, so narrative fields cannot create links, images, embeds or HTML. Intended source-note links remain available separately. Summaries and confidence explanations are limited to 500 characters; each of up to four drivers is limited to 250 characters. Native Obsidian 1.14.4 synthetic checks verify literal readable output with no narrative link/image/embed/script elements.
 
-Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Local scoring uses the Apache-2.0 VADER JavaScript engine for written polarity plus simple English keyword heuristics for energy, connection, intensity and emotion suggestions. VADER handles common negation and emphasis, but neither local component performs Groq's full speaker attribution or contextual reasoning; confidence remains low.
+Empty, standard Markdown image-only, wikilink image-only, HTML image-only and frontmatter-only notes provide no written evidence. Morning Pages fallback uses English feelings and topics word counts, without speaker attribution, contextual reasoning or negation handling; confidence remains low.
 
 ## Development
 
@@ -235,9 +235,9 @@ If a cloud-only source note is unreadable, make it available locally and check t
 
 ### Exploring the trend
 
-Each score has its own labeled plot with a solid line, making trends easier to follow without overlapping series. The trend uses calendar spacing, so a longer gap between recorded days occupies more space. Lines connect recorded scores; they do not estimate scores on unrecorded days. If a recorded day has no score for a metric, its line breaks at that day. Choose **7 days**, **14 days**, **30 days**, **60 days**, **90 days**, **1 year** (365 days), or **All** to change the chart window. The chart opens at **14 days**. Windows end on the latest scored day, even if it is not today, and include that day. The average-score tiles and Days scored tile above the chart follow the selected range; history continues to show all records.
+Each score has its own labeled plot with a solid line, making trends easier to follow without overlapping series. The trend uses calendar spacing, so a longer gap between recorded days occupies more space. Lines connect recorded scores; they do not estimate scores on unrecorded days. If a recorded day has no score for a metric, its line breaks at that day. Choose **7 days**, **14 days**, **30 days**, **60 days**, **90 days**, **180 days**, **1 year** (365 days), or **All** to change the chart window. The chart opens at **14 days**. Windows end on the latest scored day, even if it is not today, and include that day. The average-score tiles and Days scored tile above the chart follow the selected range; history continues to show all records.
 
-Use the **Explore a recorded day** slider with a keyboard or touch, or select the chart, to inspect the date and all four values. The guide and highlighted points mark that day, and each plot shows its selected value at the upper right. The chart window and selected day reset when the dashboard refreshes; series visibility is saved separately.
+Use the **Explore a recorded day** slider with a keyboard or touch, or select the chart, to inspect the date and all four values. The guide and highlighted points mark that day, and each plot shows its selected value at the upper right. The selected range is kept across dashboard redraws; the selected day resets to the latest visible record. Series visibility is saved separately.
 
 ### Chart series visibility
 
@@ -258,9 +258,9 @@ Filename dates are recognized in any included folder using the configured Daily 
 Run **Analyze changed** after updating to build the detected-date history. Previous creation-date results and their Markdown files are preserved in **Previous grouping history**, excluded from current charts and averages. New results are analyzed from their actual sources; old scores are never moved or split between dates. Renamed, deleted or excluded sources also place outdated results in that section until reanalysis. Existing automatic-analysis and Groq consent settings still apply.
 
 
-Choose **Custom** in the trend ranges to apply inclusive start and end dates. The trend and summary tiles use that interval; reopening the dashboard restores the default range.
+Choose **Custom** in the trend ranges to apply inclusive start and end dates. The trend, summary tiles, and composition use that interval. A redraw keeps the selection; a newly opened dashboard starts at 14 days.
 
-Common Emotions follows the selected range. **Composition over time** uses the ten most common emotions across all saved, scored history, including older records, so its legend stays fixed when the range changes. The chart follows Morning Pages Analytics' 100% stacked-column style and groups longer ranges into calendar periods. Percentages use only the ten displayed emotions in each period; remaining labels are excluded. Exact counts and percentages are available under **Period details**, and a period without any displayed emotion has no bar.
+Common Emotions follows the selected range. **Composition over time** uses the ten most common emotions across all saved, scored history, including older records, so its legend stays fixed when the range changes. The chart follows Morning Pages Analytics' 100% stacked-column style and groups longer ranges into calendar periods. Percentages use only the ten displayed emotions in each period; remaining labels are excluded. Exact counts and percentages are available under **Period details**, and a period without any displayed emotion has a neutral gray placeholder.
 
 
 Composition uses ten distinct pastel colors for the displayed emotions. A label keeps its color when the same labels change rank; if the global top ten changes as history grows, colors may be reassigned to keep all visible categories distinct. The chart and legend use matching colors even with themes that style SVG graphics. Textual period details make the values available without relying on color alone.

@@ -1,3 +1,33 @@
+# Project state — 1.9.0 candidate (2026-11-14)
+
+The repository was at version 1.8.5 before this release commit; metadata now targets 1.9.0 in `manifest.json`, `package.json`, both root version fields in `package-lock.json`, and `versions.json` (minimum Obsidian version remains 1.5.0). The local release commit and both local tags, `v1.9.0` and `1.9.0`, point to HEAD. Nothing has been pushed or published.
+
+This candidate bundles Morning Pages Analytics' built-in English feelings/topics lists and matcher with its MIT license. When Groq is disabled or cannot score new or changed writing, the plugin stores a low-confidence `morning-pages-fallback` result and leaves the Groq retry/backoff state intact. The fallback uses built-in lists only; it does not inherit another plugin's custom lists, reason about negation, quotations, or speaker attribution, and defaults neutral or low when no words match. Existing Groq, `local`, and `local-fallback` scores for unchanged text remain preserved when Groq is disabled or analyzer settings change. Existing Morning Pages fallback and insufficient-evidence records can be recalculated when relevant local scoring settings change. Changed text can receive the current fallback while Groq is paused, and a later permitted retry can replace it with Groq.
+
+Dashboard changes add a 180-day trend window, retain a dashboard's selected preset or applied custom range through redraws, and keep a renderer registered until its Obsidian Component unloads even if its element is temporarily detached. Newly opened dashboards still default to 14 days. Composition creates all periods in the selected date interval and displays neutral gray columns when no top-ten emotion is present; period details distinguish no scored records from scored records with no displayed emotion.
+
+The original task used the word “Grok”; this was interpreted as Groq because Groq is the configured provider in the plugin. No xAI Grok integration was added. See [release notes](RELEASE_NOTES_1.9.0.md).
+
+## Verification and constraints
+
+- `npm run build` passed on the final source and generated `main.js` (306976 bytes).
+- `npm test` passed on the final source after `moment@2.31.0` was made available from the local npm cache. A normal dependency install was unavailable offline; Playwright is not installed locally.
+- The primary agent reports `npm run test:mobile` passed after updating mobile expectations and Groq-backoff recovery coverage.
+- `npm run audit:release` could not execute because the sandbox rejects the script's `spawnSync git` call with `EPERM`. The primary agent's equivalent final staged-file scan passed: 106 files, `sensitiveFiles=[]`, `privateArtifacts=[]`.
+- Local `npm run test:layout` cannot start because Playwright is not installed or cached. `/opt/meta-chromium/chrome` exists, but startup exits 13 with `Hatch WebGL domain policy is required for browser startup`. Browser layout, native Obsidian behavior, and a live Groq request remain unverified. Functional tests use synthetic notes and stubbed provider responses.
+
+## Release handoff
+
+The release workflow requires `docs/RELEASE_NOTES_1.9.0.md`; it now exists. The workflow runs for every tag and for a `main` push that changes `manifest.json`, installs Playwright browsers, runs the complete functional/mobile/layout/privacy checks, trains `moodring-model.bin`, and attaches it with `main.js`, `manifest.json`, and `styles.css`.
+
+Obsidian's [release documentation](https://docs.obsidian.md/plugins/releasing/submit-plugin) says the release tag must exactly match the manifest version (`1.9.0`, without a `v` prefix). The release workflow enforces the same exact equality, so a pushed `v1.9.0` tag will run and then fail its version check. Both requested local tags exist at HEAD, but publication should follow the workspace [release steps](../../RELEASE_STEPS.md): first inspect remote branch/tag/release state and confirm targets; then push `main` only, letting the manifest-triggered workflow create the numeric release tag. Do not separately push `1.9.0` because it can race with that workflow, and do not push `v1.9.0`. Monitor the workflow and verify the remote release, release notes, and all four actual assets (`main.js`, `manifest.json`, `styles.css`, and workflow-generated `moodring-model.bin`) by digest and source parity; verify the optional model and attestation before calling publication complete.
+
+## RESUME HERE
+
+Local release commit and both tags (`v1.9.0` and `1.9.0`) are at HEAD. Next, inspect remote `main`, the numeric remote tag, and any existing GitHub release; reconcile rather than overwrite if any already exist. Push `main` only and let its manifest change trigger the release workflow. Monitor CI, then verify the numeric release notes and actual assets, their digests/source parity, and model/attestation. Do not push either tag separately. Browser layout checks could not run locally; native Obsidian and live Groq remain unverified.
+
+---
+
 # Project state — centered dashboard, no moving averages (2026-11-14)
 
 Version 1.8.5 centers toolbar actions, summary-card rows (including wrapped rows), range controls and series controls. Dashboard buttons match the compact range-button typography, padding and height, with 44px minimum on coarse pointers. Narrow cards retain legible CONNECTION labels. User explicitly requested complete removal of moving averages: toggle, explanation, calculations, dashed paths, markers and readout values were removed. Range-relative summary averages and recorded-score trend lines remain.

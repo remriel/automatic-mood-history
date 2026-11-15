@@ -26,7 +26,7 @@ async function run(){
  p=fixture();const prior={...valid,date:dates[0],contentHash:'old',analysisSource:'groq',status:'complete',dateBasis:'detected-note-date'};p.records[dates[0]]=prior;
  p.analyzeWithGroq=async date=>{if(date===dates[0]){const e=new Error('Fictional invalid output');e.status=422;throw e;}return {...valid};};
  const result=await p.analyzeAll({silent:true});
- assert.equal(result.pending,1);assert.equal(result.groq,1);assert.equal(p.records[dates[0]],prior);assert.equal(p.records[dates[1]].analysisSource,'groq');
+ assert.equal(result.pending,1);assert.equal(result.fallback,1);assert.equal(result.groq,1);assert.equal(p.records[dates[0]].analysisSource,'morning-pages-fallback');assert.equal(p.records[dates[1]].analysisSource,'groq');
  assert.equal(p.groqBlockedUntil,0,'one invalid date cannot pause every other date');assert.equal(p.runtime.pendingDates[dates[0]].kind,'output');
  assert.equal(p.runtime.pendingDates[dates[1]],undefined);
 

@@ -90,9 +90,11 @@ async function run() {
   assert.equal(p.settings.enableGroq, false);
   assert.equal(p.settings.autoAnalyze, false);
   const result = await p.analyzeAll({ silent: true });
-  assert.equal(result.local, 1, "offline local analysis works without Node");
+  assert.equal(result.fallback, 1, "Morning Pages fallback works offline without Node");
   const record = Object.values(p.records)[0];
-  assert.equal(record.analysisSource, "local");
+  assert.equal(record.analysisSource, "morning-pages-fallback");
+  assert.equal(record.confidence, "low");
+  assert(record.emotions.includes("joy"), "the bundled word lists find emotion cues on mobile");
   assert.equal(record.contentHash.length, 64);
   assert.equal(p.settings.entryOutput, "monthly", "new mobile installations default to monthly history");
   assert(f.text.get(`Mood History/Months/${record.date.slice(0, 7)}.md`).includes("Fictional"), "monthly output uses the mobile vault adapter");
@@ -136,6 +138,7 @@ async function run() {
 
   // Resume events only schedule opted-in automatic work and coalesce into one run.
   let scans = 0;
+  const analyzeAll = p.analyzeAll.bind(p);
   p.analyzeAll = async () => { scans++; };
   f.window.dispatchEvent(new Event("focus"));
   assert.equal(p.foregroundRecoveryTimer, undefined, "manual installs stay manual on resume");
@@ -162,13 +165,20 @@ async function run() {
   assert.equal(scans, 2, "a real foreground return reconciles interrupted scans before the five-minute timer");
   p.lastAutomaticReconcileAt = 0;
   p.groqBlockedUntil = Date.now() + 60000;
+  f.text.set("Journal/Fictional.md", "I feel sad and anxious after a difficult day and a worrying conversation with my friend.");
+  let pausedScan;
+  p.analyzeAll = (...args) => { scans++; return (pausedScan = analyzeAll(...args)); };
   f.window.dispatchEvent(new Event("online")); await f.flushResume();
-  assert.equal(scans, 2, "resume respects provider backoff");
+  await pausedScan;
+  assert.equal(scans, 3, "resume reconciles local changes during a provider pause");
+  assert.equal(f.requests.length, 2, "resume does not bypass provider backoff");
+  assert.equal(Object.values(p.records)[0].analysisSource, "morning-pages-fallback");
+  assert(Object.values(p.records)[0].emotions.includes("sadness"), "resume scores changed writing locally");
   p.clearGroqPause();
   f.window.dispatchEvent(new Event("focus"));
   p.settings.autoAnalyze = false;
   await f.flushResume();
-  assert.equal(scans, 2, "opting out while resume is queued prevents analysis");
+  assert.equal(scans, 3, "opting out while resume is queued prevents analysis");
   p.settings.autoAnalyze = true;
   f.window.dispatchEvent(new Event("focus"));
   const pending = p.foregroundRecoveryTimer;

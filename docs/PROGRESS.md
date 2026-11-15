@@ -1,3 +1,27 @@
+# Progress — 1.9.0 release candidate (2026-11-14)
+
+Objective: add an offline Morning Pages word-list fallback for Groq-offline/failure cases, improve dashboard range refresh and composition periods, and prepare a verified 1.9.0 release.
+
+Progress: 90% — implementation, local release commit/tags, release notes, and functional/mobile checks are complete; remote state review, CI, release asset verification, and publication remain.
+
+- [x] Confirm original release version was 1.8.5 in `HEAD`; set `manifest.json`, `package.json`, `package-lock.json`, and `versions.json` to 1.9.0 while retaining minimum Obsidian 1.5.0.
+- [x] Bundle the Morning Pages default feelings/topics matcher and MIT license; keep fallback scores labeled and low confidence, preserve unchanged Groq and older local scores, and retain Groq retry backoff.
+- [x] Add the 180-day range, preserve applied preset/custom selection across redraws, retain temporarily detached dashboards until unload, and draw neutral placeholders for all empty composition periods.
+- [x] Update README reliability guidance, `CHANGELOG.md`, and required `docs/RELEASE_NOTES_1.9.0.md`; record that task wording “Grok” was interpreted as the plugin's existing Groq provider.
+- [x] `npm run build` passed on the final source (306976-byte `main.js`); `npm test` exited 0 after using cached `moment@2.31.0`.
+- [x] Primary-agent run of `npm run test:mobile` passed. The release commit and local `v1.9.0` and `1.9.0` tags are at HEAD.
+- [x] Final staged privacy scan passed over 106 files with `sensitiveFiles=[]` and `privateArtifacts=[]`; the `npm run audit:release` wrapper itself remains blocked by sandbox `spawnSync git` `EPERM`.
+- [ ] Remote state review, main push, workflow/asset verification, and publication remain.
+- [ ] Local browser layout check remains unverified: Playwright is not installed or cached; `/opt/meta-chromium/chrome` startup exits 13 with `Hatch WebGL domain policy is required for browser startup`. Native Obsidian and live Groq remain unverified.
+
+Release tag constraint: Obsidian requires the GitHub release tag to equal manifest version exactly, `1.9.0`. The release workflow also rejects a pushed `v1.9.0` tag and runs on any tag; keep the requested v-prefixed alias local. See [Obsidian release docs](https://docs.obsidian.md/plugins/releasing/submit-plugin) and the ordered workspace [release steps](../../RELEASE_STEPS.md). A push to `main` changing `manifest.json` also triggers the workflow and can publish automatically.
+
+`npm run audit:release` could not run locally because its child `spawnSync git` received sandbox `EPERM`; the primary agent's equivalent final staged-file scan passed for 106 files with no sensitive files or private artifacts. The local dependency cache lacked Playwright, so browser layout checks were not run; available Chromium startup also requires the unavailable WebGL domain policy.
+
+Next, in order: (1) inspect remote `main`, remote tag `1.9.0`, and any existing GitHub release, confirming targets and reconciling any existing release; (2) push `main` only so the manifest-triggered workflow creates the numeric tag and release (do not separately push either local tag); (3) monitor the release workflow through completion; (4) verify the release uses tag `1.9.0`, contains the expected notes and actual assets `main.js`, `manifest.json`, `styles.css`, and `moodring-model.bin`, and confirm asset digests, source parity, model validation and attestation; (5) report publication only after these checks pass. Do not claim browser, native Obsidian, or live Groq verification from local tests.
+
+---
+
 # Progress — centered controls and moving-average removal (2026-11-14)
 
 Objective: streamline the dashboard top, center controls and summary cards, and remove moving averages entirely.

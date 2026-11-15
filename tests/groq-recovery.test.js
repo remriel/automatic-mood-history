@@ -90,7 +90,8 @@ async function run() {
   const before = Date.now();
   const limited = await plugin.analyzeAll({ force: true, forceGroq: true });
   assert.strictEqual(requests.length, 1, "a new provider pause applies to the remaining dates of a forced run");
-  assert.strictEqual(limited.fallback, 0, "provider pauses do not create local-fallback records");
+  assert.strictEqual(limited.fallback, 2, "failed and paused days receive Morning Pages fallback scores");
+  assert(dates.every(date => plugin.records[date].analysisSource === "morning-pages-fallback"));
   assert.strictEqual(limited.pending, 2, "the failed and paused groups remain queued for Groq");
   assert.strictEqual(limited.failures, 1);
   assert(plugin.groqBlockedUntil >= before + 120000 && plugin.groqBlockedUntil <= Date.now() + 120000);
@@ -139,9 +140,9 @@ async function run() {
   plugin.settings.enableGroq = false;
   await plugin.analyzeDate(dates[0]);
   assert.strictEqual(requests.length, 0);
-  assert.strictEqual(plugin.records[dates[0]].analysisSource, "local");
+  assert.strictEqual(plugin.records[dates[0]].analysisSource, "morning-pages-fallback");
   assert(!plugin.records[dates[0]].confidenceReason.includes("Groq"));
-  assert(buildEntryMarkdown(plugin.records[dates[0]]).includes("Local scoring analyzed"));
+  assert(buildEntryMarkdown(plugin.records[dates[0]]).includes("Morning Pages fallback analyzed"));
 
   plugin = fixture();
   respond = () => ({ status: 503, get json() { throw new Error("not JSON"); }, text: "PRIVATE_RESPONSE_BODY" });

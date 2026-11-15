@@ -204,6 +204,30 @@
    limitations under the License.
 
 */
+/* Morning Pages Analytics MIT license
+MIT License
+
+Copyright (c) 2026 Remriel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
 const vaderSentimentModule = { exports: {} };
 (function (exports) {
 /*
@@ -647,7 +671,7 @@ function buildEntryMarkdown(record) {
     `# Mood — ${record.date}`,
     "",
     "> [!info] Automatic inference",
-    `> ${record.analysisSource === "groq" ? "Groq analyzed" : record.analysisSource === "reviewed-backfill" ? "A reviewed backfill analyzed" : record.analysisSource === "local" ? "Local scoring analyzed" : "A local fallback analyzed"} this day’s writing. This is a reading of the text, not a diagnosis or a statement of objective truth.`,
+    `> ${record.analysisSource === "groq" ? "Groq analyzed" : record.analysisSource === "reviewed-backfill" ? "A reviewed backfill analyzed" : record.analysisSource === "local" ? "Local scoring analyzed" : record.analysisSource === "morning-pages-fallback" ? "Morning Pages fallback analyzed" : "A local fallback analyzed"} this day’s writing. This is a reading of the text, not a diagnosis or a statement of objective truth.`,
     "",
     "## Snapshot",
     ""
@@ -852,6 +876,220 @@ function compareMoodring(model, text) {
     coveredChars:subset.length, truncated:text.length>max };
 }
 
+const morningPagesAnalysis = (() => {
+const module = { exports: {} };
+const WORD_GOAL = 750;
+let configuredGoal = WORD_GOAL;
+let configuredWordLists = {};
+function getWordGoal() { return configuredGoal; }
+function categoryWords(name, key, defaults, additions, overrides) {
+  const replacement = overrides?.[name]?.[key];
+  const added = additions?.[name]?.[key];
+  const base = typeof replacement === "string" ? frequenciesOf(replacement).keys() : defaults;
+  return new Set([...base, ...frequenciesOf(typeof added === "string" ? added : "").keys()]);
+}
+
+function normalizeWordListOverrides(overrides) {
+  const result = {};
+  for (const [name, group] of Object.entries(GROUPS)) {
+    for (const { key } of group) {
+      const value = overrides?.[name]?.[key];
+      if (typeof value === "string") (result[name] ||= {})[key] = value;
+    }
+  }
+  return result;
+}
+
+function configureAnalysis(goal, additions = {}, overrides = {}) {
+  configuredGoal = Number.isSafeInteger(goal) && goal >= 1 ? goal : WORD_GOAL;
+  configuredWordLists = {};
+  for (const [name, group] of Object.entries(GROUPS)) {
+    configuredWordLists[name] = {};
+    for (const { key, words } of group) {
+      configuredWordLists[name][key] = categoryWords(name, key, words, additions, overrides);
+    }
+  }
+}
+const WORD = /[\p{L}\p{N}][\p{L}\p{M}\p{N}]*(?:[’'-][\p{L}\p{N}][\p{L}\p{M}\p{N}]*)*/gu;
+const wordSet = (list) => new Set(list.split(" "));
+const groups = (rows) => rows.map(([key, label, color, words]) => ({ key, label, color, words: wordSet(words) }));
+const GROUPS = {
+  feelings: groups([
+    ["anxiety", "Anxiety", "violet", "afraid anxiety anxious dread fear fearful nervous panic panicked scared tense unease worried worry worrying"],
+    ["love", "Affection", "pink", "affection appreciate care caring compassion hug hugs kind love loved loving tender warmth"],
+    ["anger", "Anger", "red", "angry anger annoyed bitter furious frustration frustrated hate irritated outrage rage resent resentful"],
+    ["surprise", "Surprise", "amber", "astonished disbelief shocked startling sudden surprise surprised unexpected unexpectedly wow"],
+    ["sadness", "Sadness", "blue", "cry cried crying disappointed grief grief-stricken grieving heartbroken lonely loss melancholy miserable sad sadness sorrow tears unhappy"],
+    ["joy", "Joy", "green", "amused cheerful delighted enjoy enjoyed excited fun glad happiness happy joy joyful laugh laughed smile smiled thrilled"],
+    ["pride", "Pride", "orange", "accomplished achievement brave confidence confident courage earned empowered proud pride satisfied success triumphant"],
+  ]),
+  topics: groups([
+    ["growth", "Growth", "green", "adapt change develop goal goals grow growth habit habits improve improvement learn learning practice progress recover reflect reflection skills"],
+    ["health", "Health & rest", "red", "body doctor exercise fitness gym health healthy illness meditation nap pain rest running sleep slept tired walk workout yoga"],
+    ["play", "Creativity & play", "amber", "art book books creative dance design draw film game games movie music paint photo play read reading story travel write writing"],
+    ["work", "Work & learning", "orange", "boss class client code colleague deadline exam job learn learning meeting office project research school study team work working"],
+    ["home", "Home & routines", "mint", "apartment breakfast clean coffee cooking dinner dishes food garden home house kitchen laundry lunch morning routine chores"],
+    ["belief", "Belief & meaning", "violet", "belief beliefs church faith god gratitude meaning meditation pray prayer purpose religious ritual sacred soul spiritual"],
+    ["people", "Family & friends", "blue", "brother child children dad family friend friends friendship mom parent parents sister together visit"],
+    ["money", "Money", "indigo", "bank bills budget buy cost debt earn expense invest money pay rent salary save savings spend taxes"],
+    ["intimacy", "Relationships", "pink", "affection attraction crush date dating divorce husband intimate intimacy kiss love marriage partner relationship romance wife"],
+    ["loss", "Loss & mortality", "slate", "death died dying funeral grief grieving loss mourn mourning mortality passed remembrance"],
+    ["conflict", "Conflict", "brick", "argument argue argued conflict confront debate disagree fight fighting fought tension threat violence war"],
+  ]),
+  mindset: groups([
+    ["extrovert", "Extrovert", "amber", "we us our ours ourselves you your yours yourself friends group social team together"],
+    ["introvert", "Introvert", "blue", "i i'm i've i'd i'll me my mine myself alone solitary solitude quiet"],
+    ["positive", "Positive", "green", "accomplished amazing appreciate beautiful better calm cheerful confident delighted easy enjoy enjoyed excited glad good grateful gratitude great happy hope hopeful inspired joy kind laugh laughed love loved lovely optimistic peaceful proud relief relieved satisfied smile smiled success thankful warm wonderful"],
+    ["negative", "Negative", "red", "afraid angry annoyed anxious ashamed awful bad bitter bored confused disappointed dreadful exhausted failure fear frustrated grief guilty hate helpless hurt lonely miserable nervous overwhelmed painful regret sad scared shame stressful struggle terrible tired upset worried worry worse"],
+    ["uncertain", "Uncertain", "orange", "apparently doubt guess likely may maybe might perhaps possibly seem seems uncertain unclear unsure wonder wondering"],
+    ["certain", "Certain", "violet", "always certain certainly clear convinced definitely exact guarantee know known must never obvious prove sure surely"],
+    ["feeling", "Feeling", "pink", "afraid anxious angry emotion emotional emotions feel feeling feelings felt grateful happy joy love nervous sad worry"],
+    ["thinking", "Thinking", "slate", "analyze assume believe consider decide estimate explain figure idea infer know logic opinion reason reflect remember think thinking thought understand"],
+  ]),
+  time: groups([
+    ["past", "Past", "orange", "ago before did earlier formerly had last previously remembered used was were yesterday"],
+    ["present", "Present", "green", "am are currently does feel feels has have is now present presently still today tonight"],
+    ["future", "Future", "blue", "afterward future going hope intend later next plan planning shall soon tomorrow upcoming will"],
+  ]),
+  senses: groups([
+    ["sight", "Sight", "amber", "bright color colors dark gaze glimpse glow light look looked looks observe saw see seen shadow sight visible watch"],
+    ["sound", "Sound", "violet", "bang echo hear heard listen listening loud music noise quiet ring shout silence sound sounds voice whisper"],
+    ["touch", "Touch", "pink", "cold cool feel felt grab grip heat hold hot pressure rough smooth soft texture touch warm"],
+    ["taste", "Taste", "green", "bitter delicious flavor flavors salty savory sour spicy sweet taste tasted tasty"],
+    ["smell", "Smell", "blue", "aroma fragrant odor perfume scent smell smelled smoky stink"],
+  ]),
+  pronouns: groups([
+    ["i", "I", "blue", "i i'm i've i'd i'll me my mine myself"],
+    ["we", "We", "green", "we we're we've we'd we'll us our ours ourselves"],
+    ["you", "You", "amber", "you you're you've you'd you'll your yours yourself yourselves"],
+    ["they", "They", "pink", "they they're they've they'd they'll them their theirs themselves he him his himself she her hers herself"],
+  ]),
+};
+const PAIRS = [
+  { key: "social", label: "Social focus", sides: ["extrovert", "introvert"] },
+  { key: "tone", label: "Tone", sides: ["positive", "negative"] },
+  { key: "confidence", label: "Certainty", sides: ["uncertain", "certain"] },
+  { key: "approach", label: "Approach", sides: ["feeling", "thinking"] },
+];
+const STOP = wordSet("a about after all also am an and any are as at back be because been before being both but by can could did do does doing down each for from get going got had has have he her here him his how i i'm i've if in into is it it's its just like me more most much my new no not now of on once one only or other our out over really said see she so some than that that's the their them then there these they thing things think this those through time to too up us very was way we well were what when where which who will with would you your you're");
+
+function prose(markdown) {
+  let fence = null;
+  return markdown.replace(/%%[\s\S]*?%%|<!--[\s\S]*?-->/g, " ").split(/\r?\n/).map((line) => {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = null;
+      return "";
+    }
+    if (marker) {
+      fence = marker[1];
+      return "";
+    }
+    return line;
+  }).join("\n")
+    .replace(/!\[\[[^\]\n]+\]\]|!\[[^\]\n]*\]\([^\n)]*\)/g, " ")
+    .replace(/\[\[([^\]\n]+)\]\]/g, (_, link) => link.split("|").at(-1))
+    .replace(/\[([^\]\n]+)\]\([^\n)]*\)/g, "$1")
+    .replace(/(`+)[^`\n]+\1|https?:\/\/[^\s<>]+|<\/?[a-z][^>\n]*>/gi, " ");
+}
+
+function frequenciesOf(text) {
+  const frequencies = new Map();
+  for (const match of text.matchAll(WORD)) {
+    const token = match[0].toLowerCase().replaceAll("’", "'");
+    frequencies.set(token, (frequencies.get(token) ?? 0) + 1);
+  }
+  return frequencies;
+}
+
+function keywordsFrom(frequencies) {
+  return new Map([...frequencies].filter(([word]) => word.length > 2 && word.length <= 64 && !STOP.has(word) && /\p{L}/u.test(word)));
+}
+
+function keywordCounts(markdown) {
+  return keywordsFrom(frequenciesOf(prose(markdown)));
+}
+
+function rankKeywords(counts, limit = 40) {
+  return [...counts].sort(([a, n], [b, m]) => m - n || a.localeCompare(b)).slice(0, limit);
+}
+
+function analyzeWriting(markdown, customWords, wordListOverrides) {
+  const text = prose(markdown);
+  const frequencies = frequenciesOf(text);
+  const count = (set) => [...set].reduce((sum, token) => sum + (frequencies.get(token) ?? 0), 0);
+  const hasWords = (part) => /[\p{L}\p{N}]/u.test(part);
+  const breakdowns = Object.fromEntries(Object.entries(GROUPS).map(([name, group]) => [name,
+    Object.fromEntries(group.map(({ key, words }) => [key, count(
+      customWords !== undefined || wordListOverrides !== undefined
+        ? categoryWords(name, key, words, customWords, wordListOverrides)
+        : configuredWordLists[name]?.[key] || words,
+    )])),
+  ]));
+  return {
+    words: [...frequencies.values()].reduce((sum, value) => sum + value, 0),
+    unique: frequencies.size,
+    paragraphs: text.split(/\n\s*\n/u).filter(hasWords).length,
+    sentences: text.split(/[.!?…]+["'”’)]*(?=\s|$)|\n\s*\n/u).filter(hasWords).length,
+    ...breakdowns,
+    positive: breakdowns.mindset.positive,
+    negative: breakdowns.mindset.negative,
+    keywords: keywordsFrom(frequencies),
+  };
+}
+
+module.exports = { WORD_GOAL, getWordGoal, configureAnalysis, normalizeWordListOverrides, GROUPS, PAIRS, analyzeWriting, keywordCounts, rankKeywords };
+
+return module.exports;
+})();
+const morningPagesFallback = (() => {
+const module = { exports: {} };
+const require = () => morningPagesAnalysis;
+// The bundled Morning Pages module supplies its built-in word lists and matcher.
+const { analyzeWriting, GROUPS } = require("./vendor/morning-pages-analysis");
+
+const MORNING_PAGES_ANALYZER_VERSION = "morning-pages-feelings-topics-v1";
+
+function morningPagesSentiment(text, topic = "") {
+  // Pass explicit empty customizations so this copy always uses the published
+  // defaults, independent of another plugin's process-local settings.
+  const { feelings, topics } = analyzeWriting(text, {}, {});
+  const positive = feelings.love + feelings.joy + feelings.pride;
+  const negative = feelings.anxiety + feelings.anger + feelings.sadness;
+  const balancedScore = (up, down) => {
+    const difference = up - down;
+    return 3 + Math.sign(difference) * (Math.abs(difference) >= 3 ? 2 : Math.abs(difference) ? 1 : 0);
+  };
+  const moodScore = balancedScore(positive, negative);
+  const energyScore = balancedScore(feelings.joy + feelings.pride, feelings.sadness);
+  const connections = feelings.love + topics.people + topics.intimacy;
+  const connectionScore = connections >= 3 ? 5 : connections ? 4 : 3;
+  const totalFeelings = Object.values(feelings).reduce((sum, value) => sum + value, 0);
+  const intensityScore = totalFeelings >= 10 ? 5 : totalFeelings >= 6 ? 4 : totalFeelings >= 3 ? 3 : totalFeelings ? 2 : 1;
+  const ranked = (group, counts) => GROUPS[group]
+    .map(item => ({ label: item.label.toLowerCase(), count: counts[item.key] }))
+    .filter(item => item.count > 0).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  const emotions = ranked("feelings", feelings).slice(0, 6).map(item => item.label);
+  const topicLabels = ranked("topics", topics).slice(0, 3).map(item => item.label);
+  const drivers = [
+    `Feeling word matches: ${positive} positive, ${negative} negative.`,
+    topicLabels.length ? `Topic categories: ${topicLabels.join(", ")}.` : "No topic categories matched."
+  ];
+  return {
+    moodScore, energyScore, connectionScore, intensityScore,
+    valence: ["", "very_negative", "negative", "mixed", "positive", "very_positive"][moodScore],
+    emotions,
+    summary: topic || `Morning Pages word-list estimate${topicLabels.length ? `; topics: ${topicLabels.join(", ")}` : ""}.`,
+    drivers,
+    confidence: "low",
+    confidenceReason: "Word counts are approximate and may misread negation, quotations, or feelings attributed to others."
+  };
+}
+
+module.exports = { morningPagesSentiment, MORNING_PAGES_ANALYZER_VERSION };
+
+return module.exports;
+})();
 const {
   Component,
   Notice,
@@ -865,6 +1103,7 @@ const {
   requestUrl
 } = require("obsidian");
 
+const { morningPagesSentiment, MORNING_PAGES_ANALYZER_VERSION } = morningPagesFallback;
 
 const GROQ_API_KEY_ENV = "GROQ_API_KEY";
 const GROQ_API_KEY_SECRET = "automatic-mood-history-groq";
@@ -873,7 +1112,6 @@ const AUTO_DATE_FORMATS = ["YYYY-MM-DD", "YYYY.MM.DD", "YYYY_MM_DD", "YYYYMMDD",
 const CURRENT_DATE_BASIS = "detected-note-date";
 const HISTORICAL_DATE_BASIS = "created-at-local-date";
 const LEGACY_DATE_BASIS = "legacy-note-date";
-const LOCAL_ANALYZER_VERSION = "vader-sentiment-js-1.1.3-plus-heuristics-v1";
 const GROQ_PROMPT_VERSION = "detected-date-goemotions-v3";
 const TEXT_PIPELINE_VERSION = "markdown-text-v2";
 const MOODRING_FILENAME = "moodring-model.bin";
@@ -1197,7 +1435,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (commit) {
         snapshot.records[commit.key] = commit.record;
         delete snapshot.runtime.pendingWrites?.[commit.key];
-        delete snapshot.runtime.pendingDates?.[commit.key];
+        if (!(this.settings.enableGroq && commit.record.analysisSource === "morning-pages-fallback")) delete snapshot.runtime.pendingDates?.[commit.key];
       }
       await this.saveData(snapshot);
       if (commit) this.publishCommittedRecord(commit.key, commit.record);
@@ -1209,7 +1447,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   publishCommittedRecord(key, record) {
     this.records[key] = record;
     delete this.runtime.pendingWrites?.[key];
-    delete this.runtime.pendingDates?.[key];
+    if (!(this.settings.enableGroq && record.analysisSource === "morning-pages-fallback")) delete this.runtime.pendingDates?.[key];
   }
 
   async commitPreparedRecord(key, pending, assertCurrent = this.analysisGuard()) {
@@ -1419,6 +1657,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     this.settings[key] = value;
     if (["enableGroq", "model"].includes(key)) this.clearGroqPause();
+    if (key === "enableGroq" && !value) {
+      for (const [date, pending] of Object.entries(this.runtime.pendingDates || {})) {
+        if (!["source", "storage"].includes(pending.kind)) delete this.runtime.pendingDates[date];
+      }
+    }
     try {
       checkedFolderList(this.settings.includeFolders); checkedFolderList(this.settings.excludeFolders); void this.outputFolder;
       this.settingsValidationError = "";
@@ -1606,14 +1849,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     };
   }
 
-  analysisFingerprint(gathered, dateBasis) {
+  analysisFingerprint(gathered, dateBasis, enableGroq = this.settings.enableGroq) {
     const insufficient = gathered.analysisText.length < this.settings.minimumCharacters;
     return sha256(JSON.stringify({ version: 1, sourceHash: gathered.contentHash, dateBasis,
       textPipeline: TEXT_PIPELINE_VERSION, minimumCharacters: this.settings.minimumCharacters,
-      maxCharactersPerDay: this.settings.maxCharactersPerDay, analyzer: insufficient ? "none" : this.settings.enableGroq ? "groq" : LOCAL_ANALYZER_VERSION,
-      model: this.settings.enableGroq && !insufficient ? this.settings.model : null,
-      prompt: this.settings.enableGroq && !insufficient ? GROQ_PROMPT_VERSION : null,
-      topic: this.settings.enableGroq || insufficient ? null : gathered.topic || "" }));
+      maxCharactersPerDay: this.settings.maxCharactersPerDay, analyzer: insufficient ? "none" : enableGroq ? "groq" : MORNING_PAGES_ANALYZER_VERSION,
+      model: enableGroq && !insufficient ? this.settings.model : null,
+      prompt: enableGroq && !insufficient ? GROQ_PROMPT_VERSION : null,
+      topic: enableGroq || insufficient ? null : gathered.topic || "" }));
   }
 
   cancelAnalysis() {
@@ -1640,7 +1883,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   fallbackRecords() {
-    return Object.values(this.records || {}).filter((record) => record.status === "complete" && record.analysisSource === "local-fallback" && record.dateBasis !== HISTORICAL_DATE_BASIS);
+    return Object.values(this.records || {}).filter((record) => record.status === "complete" && ["local-fallback", "morning-pages-fallback"].includes(record.analysisSource) && record.dateBasis !== HISTORICAL_DATE_BASIS);
   }
 
   legacyRecords() {
@@ -2004,11 +2247,14 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // Serialize scans, active-note commands, and debounced note events.
     const task = (this.analysisQueue || Promise.resolve()).then(async () => {
       const pending = this.runtime?.pendingDates?.[options.recordKey];
-      if (options.background && pending && Date.parse(pending.retryAt) > Date.now()) {
+      const waiting = options.background && pending && Date.parse(pending.retryAt) > Date.now();
+      const providerPending = pending && !["source", "storage"].includes(pending.kind);
+      const providerDeferred = waiting && providerPending && this.settings.enableGroq;
+      if (waiting && !providerPending) {
         if (options.runStats) options.runStats.pending += 1;
         return false;
       }
-      try { assertQueuedCurrent(); return await this.analyzeDateNow(date, options); } catch (error) {
+      try { assertQueuedCurrent(); return await this.analyzeDateNow(date, { ...options, providerDeferred }); } catch (error) {
         if (this.unloaded || error.code === "analysis_cancelled") {
           if (options.runStats) options.runStats.cancelled += 1;
           return false;
@@ -2041,7 +2287,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async runAutomaticRecovery() {
-    if (this.unloaded || this.isMobileBackground() || !this.settings.autoAnalyze || this.activeScan || this.checkingGroq || this.automaticRecoveryRunning || Date.now() < this.groqBlockedUntil) return;
+    if (this.unloaded || this.isMobileBackground() || !this.settings.autoAnalyze || this.activeScan || this.checkingGroq || this.automaticRecoveryRunning) return;
     this.automaticRecoveryRunning = true;
     try {
       // Periodic reconciliation catches edits made while closed, missed events, and sync recovery.
@@ -2050,7 +2296,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         await this.analyzeAll({ background: true, silent: true });
       } else {
         for (const [key, pending] of Object.entries(this.runtime.pendingDates || {})) {
-          if (this.unloaded || !this.settings.autoAnalyze || Date.now() < this.groqBlockedUntil) break;
+          if (this.unloaded || !this.settings.autoAnalyze) break;
           if (Date.parse(pending.retryAt) <= Date.now()) await this.analyzeDate(dateFromKey(key), { background: true, legacySources: pending.legacySources, recordKey: key });
         }
       }
@@ -2098,18 +2344,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return skipRecovery(Boolean(recovering && this.settings.enableGroq && previous?.status === "complete" && previous.analysisSource !== "groq"));
     }
     const fingerprint = this.analysisFingerprint(gathered, dateBasis);
-    const localSemanticsChanged = !this.settings.enableGroq && previous?.analysisFingerprint && previous.analysisFingerprint !== fingerprint;
+    // Changing the default analyzer or disabling Groq must not silently
+    // replace an unchanged, previously saved score. Re-evaluate the current
+    // local analyzer (and too-short inputs) when its settings change.
+    const localSemanticsChanged = !this.settings.enableGroq &&
+      ["morning-pages-fallback", "none"].includes(previous?.analysisSource) &&
+      previous?.analysisFingerprint && previous.analysisFingerprint !== fingerprint &&
+      previous.analysisFingerprint !== this.analysisFingerprint(gathered, dateBasis, true);
     const retryNonGroqResult = this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
-      (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback"].includes(previous?.analysisSource)) &&
-      (options.forceGroq || Date.now() >= this.groqBlockedUntil);
-    const pendingDuringPause = this.settings.enableGroq && !options.forceGroq && Date.now() < this.groqBlockedUntil &&
-      (options.force || previous?.contentHash !== gathered.contentHash || previous?.dateBasis !== dateBasis || previous?.status === "complete" && previous?.analysisSource !== "groq");
-    if (pendingDuringPause) {
-      this.markDatePending(date, options, "paused");
-      if (options.runStats) options.runStats.pending += 1;
-      await this.savePluginData();
-      return false;
-    }
+      (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback", "morning-pages-fallback"].includes(previous?.analysisSource)) &&
+      !options.providerDeferred && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
     if (!options.force && !retryNonGroqResult && !localSemanticsChanged && previous?.contentHash === gathered.contentHash) {
       if (previous.dateBasis === dateBasis && previous.status === "complete" && this.settings.enableMoodring &&
           previous.moodring?.fingerprint !== sha256(gathered.contentHash + "|" + MOODRING_VERSION)) {
@@ -2123,7 +2367,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
           return true;
         }
       }
-      if (previous.dateBasis === dateBasis) { await this.clearDatePending(key); return false; }
+      if (previous.dateBasis === dateBasis) {
+        if (!options.providerDeferred && !(this.settings.enableGroq && Date.now() < this.groqBlockedUntil)) await this.clearDatePending(key);
+        return false;
+      }
       const promoted = { ...previous, dateBasis };
       const pending = await this.prepareRecord(key, promoted, assertGatheredCurrent);
       await this.commitPreparedRecord(key, pending, assertGatheredCurrent);
@@ -2153,11 +2400,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       let analysis;
       let analysisSource;
       let model;
-      const canTryGroq = this.settings.enableGroq && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
-      if (this.settings.enableGroq && !canTryGroq) {
-        if (options.runStats) options.runStats.pending += 1;
-        return false;
-      }
+      let providerIssue;
+      const canTryGroq = this.settings.enableGroq && !options.providerDeferred && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
       if (canTryGroq) {
         try {
           analysis = await this.analyzeWithGroq(date, gathered.analysisText, { ...options, assertCurrent: assertGatheredCurrent });
@@ -2174,23 +2418,32 @@ class AutomaticMoodHistoryPlugin extends Plugin {
             options.runStats.failures += 1;
             options.runStats.pending += 1;
           }
-          // Groq-enabled mode is provider-only. Keep a saved result as-is and
-          // leave new/changed groups pending instead of silently scoring local.
-          await this.savePluginData();
-          this.refreshRenderers();
-          return false;
+          // A failed explicit retry must not replace an unchanged saved score.
+          if (recovering || previous?.analysisSource === "groq" && previous.contentHash === gathered.contentHash) {
+            await this.savePluginData();
+            this.refreshRenderers();
+            return false;
+          }
+          providerIssue = issue;
         }
-      } else {
-        analysis = localSentiment(gathered.analysisText, gathered.topic);
-        analysisSource = "local";
-        model = LOCAL_ANALYZER_VERSION;
+      }
+      if (!analysis) {
+        if (this.settings.enableGroq && !providerIssue) {
+          providerIssue = this.runtime.lastGroqIssue || { kind: "paused", message: "Groq retry is temporarily paused." };
+          if (!this.runtime.pendingDates?.[key]) this.markDatePending(date, options, "paused");
+          if (options.runStats) options.runStats.pending += 1;
+        }
+        analysis = morningPagesSentiment(gathered.analysisText, gathered.topic);
+        analysisSource = "morning-pages-fallback";
+        model = MORNING_PAGES_ANALYZER_VERSION;
       }
       record = exemptUnscorableAssessment({
         date,
         status: "complete",
         analysisSource,
         model,
-        ...analysis
+        ...analysis,
+        ...(providerIssue ? { providerIssue } : {})
       });
     }
 
@@ -2260,9 +2513,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       assertCurrent();
       await this.savePluginData();
     } catch (error) { if (error.code !== "analysis_cancelled") throw error; }
-    const suffix = runStats.pending ? ` ${runStats.pending} groups remain pending; existing results were kept. Check the dashboard for recovery status.` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
+    const suffix = runStats.pending ? ` ${runStats.pending} groups await recovery; available fallback scores are shown on the dashboard.` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
     const pendingFallbacks = this.fallbackRecords().length;
-    const pending = this.settings.enableGroq && pendingFallbacks ? ` ${pendingFallbacks} saved local-fallback entries still await a successful Groq result.` : "";
+    const pending = this.settings.enableGroq && pendingFallbacks ? ` ${pendingFallbacks} saved fallback entries still await a successful Groq result.` : "";
     if (!options.silent && !this.unloaded) new Notice(`Automatic Mood History: ${changed} history groups updated.${runStats.cancelled ? ` ${runStats.cancelled} groups cancelled; run again with your current settings.` : ""}${suffix}${pending}`, 9000);
     return { updated: changed, ...runStats, pendingFallbacks };
   }
@@ -2328,15 +2581,15 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   groqStatus() {
     if (this.settingsValidationError || this.settingsSaveFailed || this.storageReadFailed) return { kind: "warning", text: this.settingsValidationError || "Analysis paused: restore plugin storage and save settings or reload." };
     const pendingCount = Object.keys(this.runtime.pendingDates || {}).length;
-    if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups pending. Existing results are preserved. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
-    if (!this.settings.enableGroq) return { kind: "local", text: "LOCAL MODE · Groq is disabled. Analysis stays on this device." };
+    if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups await recovery. Available Morning Pages fallback scores are shown. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
+    if (!this.settings.enableGroq) return { kind: "local", text: "MORNING PAGES FALLBACK · Groq is disabled. Analysis stays on this device." };
     if (!this.apiKey()) return { kind: "warning", text: "GROQ KEY MISSING · Add a Groq API key in Automatic Mood History settings (Obsidian 1.11.4+), or set GROQ_API_KEY on desktop." };
     if (this.checkingGroq) return { kind: "ready", text: "CHECKING GROQ · Sending fictional sample text." };
     if (this.activeScan) return { kind: "ready", text: "ANALYZING · Notes are grouped by detected filename date or creation date." };
     const issue = this.runtime.lastGroqIssue;
     if (issue) {
       const remaining = Math.max(0, Math.ceil((this.groqBlockedUntil - Date.now()) / 1000));
-      return { kind: "warning", text: `${issue.message}${remaining ? ` Retry pause: ${remaining}s; Groq-enabled analysis stays pending.` : " Run Analyze changed to retry with Groq."}` };
+      return { kind: "warning", text: `${issue.message}${remaining ? ` Retry pause: ${remaining}s; Morning Pages fallback is used for new or changed writing.` : " Run Analyze changed to retry with Groq."}` };
     }
     if (this.runtime.lastGroqSuccessAt && this.runtime.lastGroqModel === this.settings.model) {
       const pending = this.fallbackRecords().length;
@@ -2500,7 +2753,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     assertCurrent();
     const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by their detected filename date, or by their local creation date when the name has no recognized date. Include/exclude folder settings control which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
-const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes use an unambiguous date detected in their filename, using the Daily Notes format and common date formats. Undated names use the local calendar day of their Obsidian creation timestamp. Ambiguous dates are skipped. Include/exclude folder settings determine eligibility; frontmatter dates and aliases do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Undated notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes assigned to the same date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is enabled, eligible text is analyzed only with Groq. If Groq is unavailable, paused, or returns an unusable response, existing records are preserved and new or changed groups remain pending for Groq. Local word-pattern scoring is used only when Groq is disabled. The API key comes from the desktop GROQ_API_KEY environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
+const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes use an unambiguous date detected in their filename, using the Daily Notes format and common date formats. Undated names use the local calendar day of their Obsidian creation timestamp. Ambiguous dates are skipped. Include/exclude folder settings determine eligibility; frontmatter dates and aliases do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Undated notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes assigned to the same date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is disabled, unavailable, paused, or returns an unusable response, new or changed writing is scored locally with Morning Pages Analytics built-in feelings and topics word lists and marked Morning Pages fallback. Counts determine mood, energy, connection, and intensity; the result is a low-confidence approximation that does not interpret context or negation. Groq retries respect the existing retry pause; an unchanged saved result is preserved if its retry fails. The API key comes from the desktop GROQ_API_KEY environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, this.entryOutput === "daily" ? dashboard : this.compactDashboardText(dashboard), false);
     assertCurrent();
     await this.upgradeDashboardLayout();
@@ -2570,21 +2823,17 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
 
   refreshRenderers() {
     if (this.unloaded) return;
-    for (const element of Array.from(this.renderContainers)) {
-      if (!element.isConnected) {
-        this.disposeDashboard(element);
-        this.renderContainers.delete(element);
-      }
-      else this.renderDashboard(element);
-    }
+    // Markdown renderers may be detached temporarily while Obsidian builds or
+    // moves a view. Their Component unload callback owns deregistration.
+    for (const element of Array.from(this.renderContainers)) this.renderDashboard(element);
   }
 
   disposeDashboard(element) {
     for (const [svg] of this.chartSeriesViews || []) {
-      if (!element || !svg.isConnected || element.contains(svg)) this.chartSeriesViews.delete(svg);
+      if (!element || element.contains(svg)) this.chartSeriesViews.delete(svg);
     }
     for (const [svg, observer] of this.chartObservers || []) {
-      if (!element || !svg.isConnected || element.contains(svg)) {
+      if (!element || element.contains(svg)) {
         observer.disconnect();
         this.chartObservers.delete(svg);
       }
@@ -2679,9 +2928,11 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       this.renderEmotionBars(emotionHost, visibleRecords, compositionPalette);
       this.renderEmotionComposition(emotionHost, visibleRecords, compositionLeaders, range);
     };
-    updateSummaryCards(complete);
-
-    if (complete.length) this.renderTrendChart(wrapper, complete, updateSummaryCards);
+    this.dashboardRangeStates ||= new WeakMap();
+    let rangeState = this.dashboardRangeStates.get(element);
+    if (!rangeState) { rangeState = { days: 14 }; this.dashboardRangeStates.set(element, rangeState); }
+    if (complete.length) this.renderTrendChart(wrapper, complete, updateSummaryCards, rangeState);
+    else updateSummaryCards(complete);
     wrapper.appendChild(emotionHost);
     this.renderHistoryCards(wrapper, [...partitions.current, ...partitions.legacy].sort((a, b) => a.date.localeCompare(b.date)));
     const historical = partitions.previous;
@@ -2696,9 +2947,10 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const groqCount = complete.filter((record) => record.analysisSource === "groq").length;
     const reviewedCount = complete.filter((record) => record.analysisSource === "reviewed-backfill").length;
     const fallbackCount = complete.filter((record) => record.analysisSource === "local-fallback").length;
+    const morningPagesCount = complete.filter((record) => record.analysisSource === "morning-pages-fallback").length;
     const localCount = complete.filter((record) => record.analysisSource === "local").length;
     const legacyFallbackCount = records.filter((record) => record.dateBasis === LEGACY_DATE_BASIS && record.analysisSource === "local-fallback").length;
-    provenance.setText(`Detected date groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved separately and excluded from current charts.${legacyFallbackCount ? ` ${legacyFallbackCount} legacy fallback entries can be recovered with Retry fallback entries.` : ""}`);
+    provenance.setText(`Detected date groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${morningPagesCount} Morning Pages fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-scope records are preserved separately and excluded from current charts.${legacyFallbackCount ? ` ${legacyFallbackCount} legacy fallback entries can be recovered with Retry fallback entries.` : ""}`);
   }
 
   installChartSeriesControls(svg, legend, series) {
@@ -2756,23 +3008,27 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
   }
 
 
-  renderTrendChart(parent, records, updateSummaryCards) {
+  renderTrendChart(parent, records, updateSummaryCards, rangeState = { days: 14 }) {
     const section = parent.createDiv({ cls: "auto-mood-section" });
     section.createEl("h3", { text: "TREND" });
     const rangeText = section.createEl("p", { cls: "auto-mood-chart-range" });
     const rangeControls = section.createDiv({ cls: "auto-mood-range-controls", attr: { role: "group", "aria-label": "Trend time window" } });
-    const windows = [["7 days", 7], ["14 days", 14], ["30 days", 30], ["60 days", 60], ["90 days", 90], ["1 year", 365], ["All", 0]];
-    const defaultDays = 14;
+    const windows = [["7 days", 7], ["14 days", 14], ["30 days", 30], ["60 days", 60], ["90 days", 90], ["180 days", 180], ["1 year", 365], ["All", 0]];
     const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
     const recordsInWindow = days => days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
     const windowBounds = days => ({ start: days ? new Date(Math.max(Date.parse("0000-01-01T00:00:00Z"), latest - (days - 1) * 86400000)).toISOString().slice(0, 10) : records[0].date, end: records[records.length - 1].date });
-    let shown = recordsInWindow(defaultDays);
-    updateSummaryCards(shown, windowBounds(defaultDays));
+    const selectedBounds = rangeState.custom || windowBounds(rangeState.days ?? 14);
+    let shown = rangeState.custom
+      ? records.filter(record => record.date >= selectedBounds.start && record.date <= selectedBounds.end)
+      : recordsInWindow(rangeState.days ?? 14);
+    updateSummaryCards(shown, selectedBounds);
     let selected = shown.length - 1;
     let redraw = () => {};
     const rangeButtons = windows.map(([label, days]) => {
-      const button = rangeControls.createEl("button", { text: label, attr: { type: "button", "aria-pressed": String(days === defaultDays) } });
+      const button = rangeControls.createEl("button", { text: label, attr: { type: "button", "aria-pressed": String(!rangeState.custom && days === (rangeState.days ?? 14)) } });
       button.addEventListener("click", () => {
+        rangeState.days = days;
+        delete rangeState.custom;
         customForm.hidden = true;
         customButton.setAttribute("aria-pressed", "false");
         shown = recordsInWindow(days);
@@ -2783,15 +3039,15 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       });
       return { button, days };
     });
-    const customButton = rangeControls.createEl("button", { text: "Custom", attr: { type: "button", "aria-pressed": "false" } });
+    const customButton = rangeControls.createEl("button", { text: "Custom", attr: { type: "button", "aria-pressed": String(Boolean(rangeState.custom)) } });
     const customForm = section.createEl("form", { cls: "auto-mood-custom-range" });
-    customForm.hidden = true;
+    customForm.hidden = !rangeState.custom;
     const inputDate = (text, value) => {
       const label = customForm.createEl("label", { text });
       return label.createEl("input", { attr: { type: "date", value, required: "", "aria-label": text } });
     };
-    const startDate = inputDate("Start date", records[0].date);
-    const endDate = inputDate("End date", records[records.length - 1].date);
+    const startDate = inputDate("Start date", rangeState.custom?.start || records[0].date);
+    const endDate = inputDate("End date", rangeState.custom?.end || records[records.length - 1].date);
     customForm.createEl("button", { text: "Apply range", attr: { type: "submit" } });
     const rangeError = customForm.createEl("p", { cls: "auto-mood-range-error", attr: { role: "status", "aria-live": "polite" } });
     customButton.addEventListener("click", () => { customForm.hidden = false; startDate.focus(); });
@@ -2802,6 +3058,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         return;
       }
       rangeError.setText("");
+      rangeState.custom = { start: startDate.value, end: endDate.value };
       shown = records.filter(record => record.date >= startDate.value && record.date <= endDate.value);
       selected = shown.length - 1;
       updateSummaryCards(shown, { start: startDate.value, end: endDate.value });
@@ -2863,7 +3120,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         slider.max = "0"; slider.value = "0";
         slider.removeAttribute("aria-valuetext");
         readout.setText("No scored days in this range.");
-        rangeText.setText(`${startDate.value} to ${endDate.value} ? 0 recorded days.`);
+        rangeText.setText(`${rangeState.custom?.start || startDate.value} to ${rangeState.custom?.end || endDate.value} · 0 recorded days.`);
         return;
       }
       rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded scores, not estimates for unrecorded days. A missing score breaks its line. Values at right reflect the selected day.`);
@@ -3019,7 +3276,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
   }
 
   renderEmotionComposition(parent, records, leaders = this.compositionLeaders(records), range) {
-    if (!records.length) return;
+    if (!records.length && !range) return;
     const section = parent.createDiv({ cls: "auto-mood-section auto-mood-composition" });
     section.createEl("h3", { text: "Composition over time" });
     const first = Date.parse(`${range?.start || records[0].date}T00:00:00Z`);
@@ -3027,19 +3284,22 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const day = 86400000, span = Math.floor((last - first) / day) + 1;
     const step = span <= 90 ? 1 : span <= 365 ? 7 : Math.max(7, Math.ceil(span / 90 / 7) * 7);
     const iso = time => new Date(time).toISOString().slice(0, 10);
-    if (!leaders.length) { section.createEl("p", { text: "No recorded emotions in this range." }); return; }
     const labels = leaders, colors = this.compositionColors(labels), grouped = new Map();
+    for (let start = first; start <= last; start += step * day) {
+      grouped.set(start, { start, end: Math.min(last, start + (step - 1) * day), counts: new Map(), total: 0, records: 0 });
+    }
     for (const record of records) {
       const start = first + Math.floor((Date.parse(`${record.date}T00:00:00Z`) - first) / day / step) * step * day;
-      if (!grouped.has(start)) grouped.set(start, { start, end: Math.min(last, start + (step - 1) * day), counts: new Map(), total: 0 });
       const bucket = grouped.get(start);
+      if (!bucket) continue;
+      bucket.records++;
       for (const emotion of new Set(record.emotions || [])) {
         if (!leaders.includes(emotion)) continue;
         bucket.counts.set(emotion, (bucket.counts.get(emotion) || 0) + 1); bucket.total++;
       }
     }
     const buckets = [...grouped.values()].sort((a, b) => a.start - b.start);
-    section.createEl("p", { cls: "auto-mood-composition-caption", text: `Share of the ten most common emotions in all saved, scored history (including older records) per ${step === 1 ? "day" : `${step}-day period`}. Remaining labels are excluded; shares are not intensity.` });
+    section.createEl("p", { cls: "auto-mood-composition-caption", text: `Share of the ten most common emotions in all saved, scored history (including older records) per ${step === 1 ? "day" : `${step}-day period`}. Gray means no top-ten emotions were recorded. Remaining labels are excluded; shares are not intensity.` });
     const legend = section.createEl("ul", { cls: "auto-mood-composition-legend", attr: { "aria-label": "Emotion colors" } });
     labels.forEach((label, i) => {
       const item = legend.createEl("li");
@@ -3073,8 +3333,13 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       ticks.forEach((offset, index) => make("text", { x: x(offset), y: height - 7, "text-anchor": index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle", fill: "var(--amh-text)", opacity: ".8", "font-size": 11 }, tickFormatter.format(new Date(first + offset * day))));
       const columnWidth = Math.min(30, Math.max(1, slot * step * .7));
       buckets.forEach((bucket, index) => {
-        if (!bucket.total) return;
         const center = x(((bucket.start + bucket.end) / 2 - first) / day);
+        if (!bucket.total) {
+          const rect = make("rect", { x: center - columnWidth / 2, y: y(100), width: columnWidth, height: y(0) - y(100), fill: "#9ca3af", "data-period": iso(bucket.start), "data-column": index, "data-empty": "true" });
+          rect.style.setProperty("fill", "#9ca3af", "important");
+          make("title", {}, `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`} · ${bucket.records ? "No top-ten emotions recorded" : "No scored records"}`, rect);
+          return;
+        }
         let used = 0;
         labels.forEach((label, color) => {
           const count = bucket.counts.get(label) || 0;
@@ -3096,7 +3361,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const list = details.createEl("ul", { cls: "auto-mood-composition-details" });
     for (const bucket of buckets) {
       const values = labels.filter(label => bucket.counts.has(label)).map(label => `${label}: ${bucket.counts.get(label)} (${(bucket.counts.get(label) / bucket.total * 100).toFixed(1)}%)`);
-      list.createEl("li", { text: `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`}: ${values.join("; ") || "No top-ten emotions recorded"}.` });
+      list.createEl("li", { text: `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`}: ${values.join("; ") || (bucket.records ? "No top-ten emotions recorded" : "No scored records")}.` });
     }
   }
 
@@ -3118,7 +3383,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       } else heading.setText(record.date);
       const badges = header.createDiv({ cls: "auto-mood-day-badges" });
       badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CURRENT_DATE_BASIS ? "Detected date" : record.dateBasis === HISTORICAL_DATE_BASIS ? "Previous creation date" : "Legacy date" });
-      const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource || "none" });
+      const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource === "morning-pages-fallback" ? "Morning Pages fallback" : record.analysisSource || "none" });
       if (record.providerIssue?.message) analyzer.setAttribute("title", record.providerIssue.message);
       if (record.status === "insufficient" || hasNoEmotionalEvidence(record)) {
         card.createEl("p", { cls: "auto-mood-insufficient", text: "Insufficient evidence · no scores assigned" });
@@ -3246,7 +3511,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     }
     new Setting(containerEl)
       .setName("Enable Groq analysis")
-      .setDesc("Only text from notes allowed by folder rules is sent to Groq. Failed or paused requests remain pending. This setting is off by default.")
+      .setDesc("Only text from notes allowed by folder rules is sent to Groq. When Groq is off, fails or is paused, Morning Pages fallback scores new or changed writing. This setting is off by default.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.enableGroq)
         .onChange(async (value) => {
@@ -3326,7 +3591,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       }));
     new Setting(containerEl)
       .setName("Retry fallback entries with Groq")
-      .setDesc("Retry only saved local-fallback results, including legacy entries using their original source notes. Successful Groq results are not rerun; missing sources and failed retries keep the existing result.")
+      .setDesc("Retry saved fallback results, including legacy entries using their original source notes. Successful Groq results are not rerun; missing sources and failed retries keep the existing result.")
       .addButton((button) => button.setButtonText("Retry fallbacks").onClick(() => {
         void this.plugin.recoverFallbacksWithGroq();
       }));

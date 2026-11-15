@@ -1,3 +1,9 @@
+# 1.9.0
+
+- Use bundled Morning Pages feelings and topics word lists for low-confidence offline scores when Groq is disabled or unavailable; retain Groq retries and preserve unchanged earlier results.
+- Keep the selected dashboard preset or custom range across redraws, retain temporarily detached dashboards until unload, and add a 180-day range.
+- Show gray composition periods when there are no scored records or no displayed top-ten emotions.
+
 # 1.8.5
 
 - Center summary cards and dashboard controls, with consistent compact button sizing.

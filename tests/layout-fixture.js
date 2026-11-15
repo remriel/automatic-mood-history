@@ -47,6 +47,7 @@ function fixtureHTML() {
     plugin.analyzeAll=()=>action('analyze');plugin.retryAllWithGroq=()=>action('retry');plugin.checkGroqConnection=()=>action('check');plugin.recoverFallbacksWithGroq=()=>action('recover');
     const tab=new AutomaticMoodHistorySettingTab({},plugin);tab.containerEl=document.getElementById('settings');
     function configure(options={}) {
+      plugin.dashboardRangeStates?.delete(dashboard);
       document.documentElement.style.fontSize=options.largeText?'32px':'16px';document.body.className=options.theme==='light'?'theme-light':'theme-dark';document.getElementById('pane').style.width=options.paneWidth?options.paneWidth+'px':'100%';
       statusText=options.longText?'PROVIDER STATUS · '+('LongUnbrokenModelName'.repeat(18)):'SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';
       const count=options.mode==='empty'?0:options.count??32;plugin.records={};

@@ -138,6 +138,7 @@ async function inspectLayout(page, label) {
       '30 days': ['7', '3.4', '2.6', '2.9', '3.0'],
       '60 days': ['9', '3.2', '3.0', '2.9', '3.1'],
       '90 days': ['10', '3.0', '3.0', '3.0', '3.0'],
+      '180 days': ['10', '3.0', '3.0', '3.0', '3.0'],
       '1 year': ['10', '3.0', '3.0', '3.0', '3.0'],
       'All': ['10', '3.0', '3.0', '3.0', '3.0']
     };
@@ -146,7 +147,7 @@ async function inspectLayout(page, label) {
     assert.equal(await page.getByRole('button', { name: '14 days', exact: true }).getAttribute('aria-pressed'), 'true', '14 days is selected on opening');
     assert.deepStrictEqual(await chartDates(), windowDates['14 days'], 'default includes the 14-day boundary');
     assert.deepStrictEqual(await cardValues(), windowCards['14 days'], 'default summary reflects the 14-day window');
-    for (const label of ['7 days', '14 days', '30 days', '60 days', '90 days', '1 year', 'All']) {
+    for (const label of ['7 days', '14 days', '30 days', '60 days', '90 days', '180 days', '1 year', 'All']) {
       await page.getByRole('button', { name: label, exact: true }).click();
       assert.equal(await page.getByRole('button', { name: label, exact: true }).getAttribute('aria-pressed'), 'true');
       assert.equal(await page.locator('.auto-mood-range-controls button[aria-pressed="true"]').count(), 1, 'only the selected window is pressed');
@@ -178,7 +179,7 @@ async function inspectLayout(page, label) {
     await page.getByRole('button', { name: 'Apply range', exact: true }).click();
     assert.equal((await cardValues())[0], '0');
     assert.equal(await page.locator('.auto-mood-range-emotions .auto-mood-bar-row').count(), 0, 'empty range clears emotions');
-    assert.equal(await page.locator('.auto-mood-composition').count(), 0, 'empty range clears composition');
+    assert.equal(await page.locator('.auto-mood-composition-chart rect[data-empty="true"]').count(), 2, 'empty range shows both gray periods');
     assert.equal(await page.locator('.auto-mood-svg .data-point').count(), 0);
     assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).isDisabled(), true);
     await page.getByRole('button', { name: 'All', exact: true }).click();
@@ -186,9 +187,8 @@ async function inspectLayout(page, label) {
     assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), rangeRecordsBefore, 'changing range does not alter records');
     assert.equal(await page.locator('.auto-mood-day').count(), historyBefore, 'changing range does not filter history');
     await page.evaluate(() => fixture.plugin.renderDashboard(document.getElementById('dashboard')));
-    assert.equal(await page.getByRole('button', { name: '14 days', exact: true }).getAttribute('aria-pressed'), 'true', 'opening the dashboard again restores the default');
-    assert.deepStrictEqual(await chartDates(), windowDates['14 days']);
-    assert.deepStrictEqual(await cardValues(), windowCards['14 days']);
+    assert.equal(await page.getByRole('button', { name: 'All', exact: true }).getAttribute('aria-pressed'), 'true', 'redrawing the same dashboard keeps the selected range');
+    assert.deepStrictEqual(await cardValues(), windowCards.All);
     await page.evaluate(() => {
       for (const date of ['2099-03-26', '2099-03-27']) fixture.plugin.records[date].energyScore = null;
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
@@ -284,7 +284,7 @@ async function inspectLayout(page, label) {
     assert.equal(await dayEight.count(), 2, 'both top-ten labels appear in the period');
     assert.equal(await dayEight.first().getAttribute('data-emotion'), 'golf');
     assert.equal(Number(await dayEight.first().getAttribute('data-share')), 50, 'share is normalized among displayed labels');
-    assert.equal(await page.locator('.auto-mood-composition-chart rect[data-period="2099-01-11"]').count(), 0, 'a day with only excluded emotions is blank');
+    assert.equal(await page.locator('.auto-mood-composition-chart rect[data-period="2099-01-11"][data-empty="true"]').count(), 1, 'a day with only excluded emotions uses a placeholder');
     assert((await page.locator('.auto-mood-composition-details').textContent()).includes('2099-01-11: No top-ten emotions recorded.'), 'blank period is described accurately');
     const plot = await page.evaluate(() => {
       const svg = document.querySelector('.auto-mood-composition-chart svg');

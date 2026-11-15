@@ -51,8 +51,9 @@ async function run() {
   // A failed provider or source read must never retire or rewrite old history.
   const failed = await historicalFixture();
   failed.p.analyzeWithGroq = async () => { throw Object.assign(new Error('Synthetic outage'), { code: 'connection' }); };
-  assert.equal(await failed.p.analyzeDate(date), false);
+  assert.equal(await failed.p.analyzeDate(date), true);
   assert.deepEqual(failed.p.records[date], failed.old);
+  assert.equal(failed.p.records[`detected:${date}`].analysisSource, 'morning-pages-fallback');
   assert(failed.p.runtime.pendingDates[`detected:${date}`]);
   const unreadable = await historicalFixture();
   unreadable.p.app.vault.cachedRead = async () => { throw new Error('Synthetic unavailable source'); };
