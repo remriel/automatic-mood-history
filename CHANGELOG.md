@@ -1,3 +1,7 @@
+# 1.9.4
+
+- Add space between composition bars in daily ranges, matching the 180-day chart.
+
 # 1.9.3
 
 - Recover pending monthly results in batches, restoring existing monthly history first and publishing already-computed scores to JSON without another provider call.

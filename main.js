@@ -3355,9 +3355,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       const tickFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
       const ticks = [...new Set([0, Math.floor((span - 1) / 2), span - 1])];
       ticks.forEach((offset, index) => make("text", { x: x(offset), y: height - 7, "text-anchor": index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle", fill: "var(--amh-text)", opacity: ".8", "font-size": 11 }, tickFormatter.format(new Date(first + offset * day))));
-      // Daily ranges use the entire calendar slot, including empty days, so
-      // short-range columns meet without leaving unused gaps between them.
-      const columnWidth = step === 1 ? slot : Math.min(30, Math.max(1, slot * step * .7));
+      // Keep the same spacing between periods at every range.
+      const columnWidth = Math.min(30, Math.max(1, slot * step * .7));
       buckets.forEach((bucket, index) => {
         const center = x(((bucket.start + bucket.end) / 2 - first) / day);
         if (!bucket.total) {

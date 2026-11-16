@@ -1,3 +1,13 @@
+# Project state ? composition bar spacing (1.9.4)
+
+Composition daily bars use the existing 180-day width rule: 70% of each calendar period, capped at 30 SVG units. Empty and scored periods use the same geometry. Source: `src/main.js`; range and browser coverage: `tests/dashboard-ranges.test.js`, `tests/layout.test.js`. No scoring or saved history changes.
+
+## RESUME HERE
+
+Verify checks, publish 1.9.4 and verify release assets.
+
+---
+
 # Project state — 1.9.3 scope update: fallback, chart, and range (2026-11-15)
 
 The user confirmed that Morning Pages Analytics' bundled word-list matcher is the fallback and requested removal of Moodring. Version 1.9.3 removes the Moodring runtime, model loader, setting, comparison display, build source, CI training, release asset, and dedicated model tests. Existing historical `moodring` record fields are preserved as inert data so removal does not erase past saved metadata; the obsolete `enableMoodring` setting is no longer loaded. Groq scoring and Morning Pages fallback remain separate primary analyzers. The build output no longer contains Moodring code.

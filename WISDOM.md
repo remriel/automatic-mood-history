@@ -1,3 +1,11 @@
+# 2026-11-16 ? composition spacing
+
+1. Least confident: actual appearance in the user?s Obsidian theme; verify with a native visual check if needed.
+2. Spacing changes only the display; existing mood scores and history are unchanged.
+3. Assumption: the 180-day proportional width rule is the desired reference across daily and custom ranges; adjust the ratio if the gaps should differ.
+
+---
+
 ## 2026-11-15 — 1.9.3 published
 
 1. **Least confident:** CI and downloaded asset hashes passed, but native Obsidian installation and live recovery remain unchecked. I would verify them after the user updates the plugin, preserving the edited November export.

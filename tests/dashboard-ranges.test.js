@@ -40,7 +40,9 @@ for (const [label, span] of [["7 days", 7], ["14 days", 14], ["30 days", 30], ["
     assert.equal(columns.length, span, `${label} has a column for every calendar day`);
     for (let i = 1; i < columns.length; i++) {
       const previousEnd = Number(columns[i - 1].getAttribute("x")) + Number(columns[i - 1].getAttribute("width"));
-      assert(Math.abs(Number(columns[i].getAttribute("x")) - previousEnd) < 1e-6, `${label} has no gap between columns`);
+      assert(Number(columns[i].getAttribute("x")) - previousEnd > 0, `${label} has a gap between columns`);
+      const slot = Number(columns[i].getAttribute("x")) - Number(columns[i - 1].getAttribute("x"));
+      assert(Math.abs(Number(columns[i].getAttribute("width")) - Math.min(30, Math.max(1, slot * .7))) < 1e-6, `${label} uses the same width rule as 180 days`);
     }
   }
   if (span === 180) {

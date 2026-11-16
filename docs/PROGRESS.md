@@ -1,3 +1,19 @@
+# Progress ? composition bar spacing (1.9.4)
+
+Objective: match other composition ranges to the 180-day bar spacing and publish.
+
+Progress: 90% ? all local functional, mobile, desktop/mobile layout and release audit checks passed; publication pending.
+
+- [x] Apply the existing 180-day spacing rule to daily bars.
+- [x] Update range and layout assertions.
+- [x] Run functional, desktop layout, mobile runtime and release audit checks.
+- [x] Pass Android and iPhone layout checks.
+- [ ] Publish and verify the release.
+
+Next: publish 1.9.4, then verify workflow and release assets.
+
+---
+
 # Progress — remove Moodring, fill bars, remember range (2026-11-15)
 
 Objective: complete the 1.9.3 recovery candidate with Morning Pages as the sole offline fallback, no Moodring feature, gapless short-range composition, and a configurable dashboard opening range.

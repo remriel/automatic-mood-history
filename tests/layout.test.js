@@ -297,7 +297,7 @@ async function inspectLayout(page, label) {
     for (const tick of ['0%', '50%', '100%']) assert(plot.ticks.includes(tick), 'percentage axis is visible');
     const width = Number(plot.viewBox.split(' ')[2]);
     const slot = (width - 39 - 12) / 14;
-    assert(Math.abs(plot.marks[0].width - slot) < 1e-6, 'short-range bars fill their calendar slots');
+    assert(Math.abs(plot.marks[0].width - Math.min(30, Math.max(1, slot * .7))) < 1e-6, 'short-range bars use the 180-day spacing');
     const firstDate = plot.marks.find(mark => mark.period === '2099-01-01');
     const laterDate = plot.marks.find(mark => mark.period === '2099-01-10');
     assert(Math.abs(laterDate.x - firstDate.x - 9 * slot) < 1e-6, 'bars use calendar-spaced positions across empty dates');
