@@ -4,7 +4,7 @@ Composition daily bars use the existing 180-day width rule: 70% of each calendar
 
 ## RESUME HERE
 
-Verify checks, publish 1.9.4 and verify release assets.
+Version 1.9.4 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.9.4. Release workflow 43969862378 and CI 43969862437 passed; all three downloaded assets match GitHub SHA-256 digests and release commit bytes. Local functional, mobile runtime, desktop/mobile layout and privacy checks also passed. Native Obsidian and the user?s theme remain unverified. No vault changes were made.
 
 ---
 

@@ -2,15 +2,16 @@
 
 Objective: match other composition ranges to the 180-day bar spacing and publish.
 
-Progress: 90% ? all local functional, mobile, desktop/mobile layout and release audit checks passed; publication pending.
+Progress: 100% ? 1.9.4 published and release assets verified.
 
 - [x] Apply the existing 180-day spacing rule to daily bars.
 - [x] Update range and layout assertions.
 - [x] Run functional, desktop layout, mobile runtime and release audit checks.
 - [x] Pass Android and iPhone layout checks.
-- [ ] Publish and verify the release.
+- [x] Publish 1.9.4; GitHub release workflow 43969862378 and CI 43969862437 passed.
+- [x] Download all three release assets; SHA-256 digests match GitHub and files match the release commit.
 
-Next: publish 1.9.4, then verify workflow and release assets.
+Next: update the plugin in Obsidian and visually check the chart in the user?s theme if desired. Native Obsidian has not been tested.
 
 ---
 
