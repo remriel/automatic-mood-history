@@ -745,3 +745,9 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-record-details { margin-top: 12px; overflow-wrap: anywhere; }
 .auto-mood-record-details summary { cursor: pointer; min-height: 44px; display: list-item; padding-block: 10px; box-sizing: border-box; font-weight: 800; }
 .auto-mood-settings select { min-width: min(100%, 280px); max-width: 100%; min-height: 44px; height: auto; white-space: normal; box-sizing: border-box; }
+
+/* Month panels keep large histories compact and defer detail DOM until opened. */
+.auto-mood-month { margin-top: 10px; border: 2px solid var(--amh-frame); border-left: 5px solid #6335ce; padding: 0 12px; }
+.auto-mood-month > summary { cursor: pointer; font-weight: 800; min-height: 44px; padding: 12px 0; box-sizing: border-box; }
+.auto-mood-month > summary:focus-visible { outline: 3px solid #b39aff; outline-offset: 2px; }
+.auto-mood-month[open] { padding-bottom: 12px; }

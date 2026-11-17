@@ -1,3 +1,24 @@
+# Progress — large-history responsiveness (1.9.5)
+
+Objective: reduce initial history rendering and repeated parsing overhead in Automatic Mood History, then prepare a reviewable release candidate.
+
+Progress: 90% — both build artifacts and release metadata are prepared and reviewed; publication, workflow, and asset verification remain.
+
+- [x] Collapse month groups by default and defer day-card creation until expanded, preserving counts and source links.
+- [x] Cache filename date detection with relevant setting/locale keys and a 20,000-entry bound; skip built-in parsing only for titles with no Unicode numeric characters and keep configured Daily Notes formats active.
+- [x] Skip support-file checks when opening an existing dashboard.
+- [x] Verify latest published release 1.9.4 and prepare 1.9.5 version metadata and release notes.
+- [x] Build the final candidate and review the complete diff (`npm run build`, `node --check main.js`, `git diff --check`; full tests deferred to required CI).
+- [ ] Publish through the existing release workflow; retain its required CI checks.
+- [ ] Verify release workflow success and all three asset digests.
+- [ ] User checks native Obsidian behavior and performance in their vault.
+
+Tests/verification: primary agent reports source syntax and diff checks passed. Full test suites have not been rerun locally for this candidate; CI will run through the existing release workflow. Native Obsidian behavior remains unverified.
+
+Next, commit and push to trigger the existing release workflow, then verify the release assets.
+
+---
+
 # Progress ? composition bar spacing (1.9.4)
 
 Objective: match other composition ranges to the 180-day bar spacing and publish.

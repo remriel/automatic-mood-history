@@ -755,6 +755,19 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   detectFilenameDate(name) {
+    // Filename parsing is independent of note contents. Reuse it across scans,
+    // dashboard renders and unchanged-note events, including undated names.
+    const dailyFormat = this.app.internalPlugins?.getPluginById?.("daily-notes")?.instance?.options?.format;
+    const key = JSON.stringify([name, dailyFormat, this.settings.numericDateOrder, typeof moment?.locale === "function" ? moment.locale() : ""]);
+    this.filenameDateCache ||= new Map();
+    if (this.filenameDateCache.has(key)) return this.filenameDateCache.get(key);
+    const result = this.parseFilenameDate(name);
+    if (this.filenameDateCache.size >= 20000) this.filenameDateCache.delete(this.filenameDateCache.keys().next().value);
+    this.filenameDateCache.set(key, result);
+    return result;
+  }
+
+  parseFilenameDate(name) {
     const dailyFormat = this.app.internalPlugins?.getPluginById?.("daily-notes")?.instance?.options?.format;
     const formats = [...new Set([dailyFormat, ...AUTO_DATE_FORMATS,
       "YYYY-M-D", "YYYY.M.D", "YYYY_M_D", "M-D-YYYY", "D-M-YYYY", "M.D.YYYY", "D.M.YYYY", "M_D_YYYY", "D_M_YYYY",
@@ -779,6 +792,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       }
       if (typeof moment !== "function") return matches;
       for (const format of formats) {
+        // Every built-in format requires a numeric year. Avoid dozens of
+        // expensive failed parses for ordinary undated note titles. A user's
+        // Daily Notes format can differ and must still be tried.
+        if (format !== dailyFormat && !/\p{N}/u.test(text)) continue;
         const parsed = moment(text, format, true);
         if (parsed.isValid()) matches.add(parsed.format("YYYY-MM-DD"));
       }
@@ -1857,7 +1874,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
 
   async openDashboard() {
     if (this.unloaded) return;
-    await this.ensureSupportFiles();
+    // Startup/settings own migrations; an existing dashboard opens without I/O.
+    if (!(this.app.vault.getAbstractFileByPath(this.dashboardPath) instanceof TFile)) await this.ensureSupportFiles();
     if (this.unloaded) return;
     const file = this.app.vault.getAbstractFileByPath(this.dashboardPath);
     if (!(file instanceof TFile)) return;
@@ -2435,8 +2453,28 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
   renderHistoryCards(parent, records) {
     const section = parent.createDiv({ cls: "auto-mood-section" });
     section.createEl("h3", { text: "DAY BY DAY" });
-    const list = section.createDiv({ cls: "auto-mood-history-list" });
-    for (const record of [...records].reverse()) {
+    const months = new Map();
+    for (const record of [...records].sort((a, b) => b.date.localeCompare(a.date))) {
+      const month = record.date.slice(0, 7);
+      if (!months.has(month)) months.set(month, []);
+      months.get(month).push(record);
+    }
+    for (const [month, entries] of months) {
+      const panel = section.createEl("details", { cls: "auto-mood-month" });
+      const label = new Date(`${month}-01T12:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+      panel.createEl("summary", { text: `${label} - ${entries.length} ${entries.length === 1 ? "entry" : "entries"}` });
+      let rendered = false;
+      panel.addEventListener("toggle", () => {
+        if (!panel.open || rendered) return;
+        rendered = true;
+        this.renderDayCards(panel, entries);
+      });
+    }
+  }
+
+  renderDayCards(parent, records) {
+    const list = parent.createDiv({ cls: "auto-mood-history-list" });
+    for (const record of records) {
       const card = list.createEl("article", { cls: "auto-mood-day", attr: { "aria-label": `Mood history for ${record.date}` } });
       const header = card.createDiv({ cls: "auto-mood-day-header" });
       const heading = header.createEl("h4", { cls: "auto-mood-day-date" });

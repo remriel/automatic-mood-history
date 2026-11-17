@@ -1,3 +1,9 @@
+# 1.9.5
+
+- Defer day cards until a month is expanded, keeping large histories compact while retaining entry counts and source links.
+- Cache filename date parsing with a 20,000-entry bound and skip built-in date-format parsing for ordinary undated titles while honoring the configured Daily Notes format.
+- Open an existing dashboard without rechecking or rewriting support files.
+
 # 1.9.4
 
 - Add space between composition bars in daily ranges, matching the 180-day chart.

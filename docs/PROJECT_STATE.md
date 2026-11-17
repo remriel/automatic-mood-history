@@ -1,3 +1,17 @@
+# Project state — large-history responsiveness candidate (1.9.5, 2026-11-17)
+
+The 1.9.5 candidate reduces dashboard DOM creation and repeated filename parsing. `src/main.js` groups the day-by-day history into collapsed month panels and builds day cards only when a panel is opened. Month summaries retain chronological record counts; expanded cards keep the existing details and source links. `detectFilenameDate` caches results in a bounded 20,000-entry map keyed by filename, Daily Notes format, numeric date order, and Moment locale. The fast path skips built-in date-format attempts only for titles with no Unicode numeric characters, preserving localized digits; a configured Daily Notes format is still attempted. Opening an existing dashboard skips `ensureSupportFiles`.
+
+No record scoring or note content changes are intended. The native Obsidian CPU and interaction effect remains unmeasured; the user plans to test the release in their vault. The primary agent reports source syntax and diff checks passed; the mandatory release workflow will run the existing test suites after review.
+
+Relevant files: `src/main.js`, generated `main.js`, `styles.css`, layout fixtures in `tests/`, `versions.json`, and `docs/RELEASE_NOTES_1.9.5.md`. Latest published version verified read-only from GitHub is 1.9.4; no 1.9.5 release exists yet. The final build and `node --check main.js` pass; `git diff --check` passes. The full test suite was not rerun locally for this candidate.
+
+## RESUME HERE (1.9.5)
+
+The final candidate build and diff review are complete. Push the commit on `main` to trigger the existing release workflow; it runs functional, mobile, privacy, desktop, and mobile-layout checks before attaching `main.js`, `manifest.json`, and `styles.css`. The tag must match manifest version `1.9.5`. After the release, verify the workflow and all three asset digests. Do not claim native performance is verified until the user tests Obsidian.
+
+---
+
 # Project state ? composition bar spacing (1.9.4)
 
 Composition daily bars use the existing 180-day width rule: 70% of each calendar period, capped at 30 SVG units. Empty and scored periods use the same geometry. Source: `src/main.js`; range and browser coverage: `tests/dashboard-ranges.test.js`, `tests/layout.test.js`. No scoring or saved history changes.

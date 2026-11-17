@@ -2,6 +2,13 @@ const assert = require("assert");
 const { chromium } = require("playwright");
 const { fixtureHTML } = require("./layout-fixture");
 
+async function expandMonths(page) {
+  await page.locator(".auto-mood-month").evaluateAll(panels => panels.forEach(panel => {
+    panel.open = true;
+    panel.dispatchEvent(new Event("toggle"));
+  }));
+}
+
 async function inspectLayout(page, label) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const issues = await page.evaluate(() => {
@@ -48,6 +55,8 @@ async function inspectLayout(page, label) {
     for (const theme of ["light", "dark"]) {
       for (const width of [240, 280, 320, 360, 390, 480, 620, 760, 1024, 1440]) {
         await page.evaluate(options => fixture.configure(options), { theme, paneWidth: width, count: 32, longText: true });
+        assert.strictEqual(await page.locator(".auto-mood-day").count(), 0, "month cards are lazy and collapsed by default");
+        await expandMonths(page);
         await inspectLayout(page, `${theme} ${width}px pane inside a 1600px window`);
         assert.strictEqual(await page.locator(".auto-mood-day").count(), 32, "all days remain available");
         await page.getByRole("button", { name: "All", exact: true }).click();
@@ -402,6 +411,7 @@ async function inspectLayout(page, label) {
       await page.waitForFunction(() => !fixture.plugin.activeScan && !fixture.plugin.checkingGroq);
       assert.strictEqual(await page.evaluate(key => fixture.calls[key], counter), 1);
     }
+    await expandMonths(page);
     await page.locator(".auto-mood-day-date a").first().click();
     assert((await page.evaluate(() => window.lastOpenedEntry)).endsWith("(Automatic Mood History)"), "conflict-safe entry link is preserved");
     await page.evaluate(() => { for (let i = 0; i < 5; i++) fixture.plugin.refreshRenderers(); });
@@ -428,6 +438,7 @@ async function inspectLayout(page, label) {
       record.drivers = ["<script>Fictional text stays text</script>"];
       fixture.plugin.renderDashboard(document.getElementById("dashboard"));
     });
+    await expandMonths(page);
     assert.strictEqual(await page.locator('.auto-mood-day-date a').count(), 0, "dashboard-only dates have no missing daily-note links");
     await page.getByText("Signals and source notes", { exact: true }).click();
     assert.strictEqual(await page.locator('.auto-mood-record-details a').getAttribute('data-href'), "Imported/2099-01-01 (2).md");
@@ -438,6 +449,7 @@ async function inspectLayout(page, label) {
       fixture.plugin.app.vault = { getAbstractFileByPath: () => new fixture.FixtureFile() };
       fixture.plugin.renderDashboard(document.getElementById("dashboard"));
     });
+    await expandMonths(page);
     assert.strictEqual(await page.locator('.auto-mood-day-date a').getAttribute('data-href'), "Mood History/Months/2099-01#2099-01-01 (detected-note-date)");
     await page.evaluate(() => { fixture.plugin.onunload(); });
     assert.strictEqual(await page.evaluate(() => fixture.plugin.chartObservers.size), 0, "plugin unload disposes observers");

@@ -85,6 +85,7 @@ async function run() {
         await page.waitForFunction(() => !fixture.plugin.activeScan && !fixture.plugin.checkingGroq);
         assert.equal(await page.evaluate(key => fixture.calls[key], key), 1);
       }
+      await page.locator(".auto-mood-month > summary").first().tap();
       await page.locator(".auto-mood-day-date a").first().tap();
       assert((await page.evaluate(() => window.lastOpenedEntry)).endsWith("(Automatic Mood History)"));
       if (process.env.MOBILE_QA_DIR) {

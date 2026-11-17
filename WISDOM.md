@@ -1,3 +1,11 @@
+# 2026-11-17 — 1.9.5 large-history responsiveness candidate
+
+1. **Least confident:** How much faster the dashboard feels in the user's actual vault and Obsidian theme. The candidate changes are prepared, but native CPU and interaction behavior has not been measured. I would check a large history after installation and watch for slow expansion or missing entry details.
+2. **Biggest missing point:** Deferring day cards and caching filename parsing only target dashboard rendering and date grouping. Other plugins, vault sync, or analysis providers may still dominate perceived lag. I would compare the user's reported slow action with the new version before attributing all improvement to these changes.
+3. **Most consequential assumption:** The cache key covers every setting that changes filename-date parsing: filename, Daily Notes format, numeric date order, and Moment locale. If parsing also depends on another mutable setting, include it in the key or explicitly invalidate the cache.
+
+---
+
 # 2026-11-16 ? composition spacing
 
 1. Least confident: actual appearance in the user?s Obsidian theme; verify with a native visual check if needed.
