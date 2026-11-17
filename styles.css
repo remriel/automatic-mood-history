@@ -754,7 +754,7 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 
 .auto-mood-toolbar > strong { font-size: clamp(1.1rem, 4cqi, 1.8rem); letter-spacing: -.025em; line-height: 1.15; }
 .auto-mood-toolbar .auto-mood-actions { gap: 8px; }
-.auto-mood-toolbar .auto-mood-actions button { padding: 6px 10px; font-size: .78rem; }
+
 .auto-mood-toolbar .auto-mood-actions button:first-child { background: #101216; color: white; }
 .auto-mood-month { background: var(--amh-surface); }
 .auto-mood-month[open] { border-left-color: var(--amh-series-energy); }

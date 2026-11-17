@@ -1,0 +1,1 @@
+Trend presets use binary search for the date boundary. History reuses a month formatter and avoids a redundant sort. Month counts, dashboard typography and the primary analysis action are easier to scan.
