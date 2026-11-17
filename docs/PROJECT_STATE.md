@@ -427,3 +427,5 @@ Finish mobile verification, review and publish the release at the user's explici
 
 ## RESUME HERE ? 1.7.7 complete
 Stable 1.7.7 is published/latest: https://github.com/remriel/automatic-mood-history/releases/tag/1.7.7, source PR #21 merge 1e6a94ea446630acbf2c61a781219634c8a8c970. CI 43528117906 and Release 43528117968 passed. Four downloaded assets match GitHub digests, three plugin source files match after line-ending normalization, and main.js release-workflow attestation verified. Top-seven composition and toggleable seven-day moving averages require no reanalysis. User will test native Obsidian. AI Brain vault was unavailable. No publication work remains.
+
+RESUME HERE, 2026-11-17: Version 1.9.5 already recognizes descriptive filename dates and duplicate suffixes. getCreationDateForFile applies folder filters before filename detection and uses local creation day for undated files. Current-basis saved records matched the audited vault.

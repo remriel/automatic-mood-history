@@ -309,3 +309,5 @@ Completed: https://github.com/remriel/automatic-mood-history/releases/tag/1.7.7
 PR #21 merge/source: 1e6a94ea446630acbf2c61a781219634c8a8c970. CI 43528117906 and Release 43528117968 passed. All four asset digests match downloads; plugin file contents match source after line-ending normalization. main.js release-workflow attestation verification exited 0. Latest stable is 1.7.7.
 
 Next: no publication work remains. Native Obsidian testing is the user?s next step; no reanalysis is needed.
+
+Source audit, 2026-11-17: 100% complete. Compared eligible Markdown paths and resolved dates with persisted current-basis record sources. Zero missing or extra pairs. Import-date and folder-filter tests passed. No repair pending.
