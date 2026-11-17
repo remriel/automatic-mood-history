@@ -758,5 +758,6 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-toolbar .auto-mood-actions button:first-child { background: #101216; color: white; }
 .auto-mood-month { background: var(--amh-surface); }
 .auto-mood-month[open] { border-left-color: var(--amh-series-energy); }
-.auto-mood-month-count { float: inline-end; font-size: .8em; font-variant-numeric: tabular-nums; padding-inline: .6em; background: var(--amh-surface-alt); border: 1px solid var(--amh-frame); }
+.auto-mood-month-count { display: inline-block; margin-inline-start: .75em; font-size: .8em; font-variant-numeric: tabular-nums; padding-inline: .6em; background: var(--amh-surface-alt); border: 1px solid var(--amh-frame); }
 .auto-mood-card-value { font-variant-numeric: tabular-nums; }
+
