@@ -751,3 +751,12 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-month > summary { cursor: pointer; font-weight: 800; min-height: 44px; padding: 12px 0; box-sizing: border-box; }
 .auto-mood-month > summary:focus-visible { outline: 3px solid #b39aff; outline-offset: 2px; }
 .auto-mood-month[open] { padding-bottom: 12px; }
+
+.auto-mood-toolbar > strong { font-size: clamp(1.1rem, 4cqi, 1.8rem); letter-spacing: -.025em; line-height: 1.15; }
+.auto-mood-toolbar .auto-mood-actions { gap: 8px; }
+.auto-mood-toolbar .auto-mood-actions button { padding: 6px 10px; font-size: .78rem; }
+.auto-mood-toolbar .auto-mood-actions button:first-child { background: #101216; color: white; }
+.auto-mood-month { background: var(--amh-surface); }
+.auto-mood-month[open] { border-left-color: var(--amh-series-energy); }
+.auto-mood-month-count { float: inline-end; font-size: .8em; font-variant-numeric: tabular-nums; padding-inline: .6em; background: var(--amh-surface-alt); border: 1px solid var(--amh-frame); }
+.auto-mood-card-value { font-variant-numeric: tabular-nums; }

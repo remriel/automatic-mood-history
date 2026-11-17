@@ -152,3 +152,5 @@ Top-seven update:
 1.7.7 release: Stable is published and verified. Least confidence remains native Obsidian display. The key consideration is that percentages use displayed top-seven labels and averages need at least two scores in seven calendar days. The key assumption is that the requested moving window is seven days; add an adjustable window if the user wants a different one.
 
 Source audit reflections, 2026-11-17: (1) Undated notes rely on creation timestamps, which can reflect import day. Inspect a specific note if its date seems wrong. (2) Each detected day can reference multiple source notes. (3) Coverage assumes the configured folder exclusions are intentional. Recheck scope if the desired source set changes.
+
+1.9.6 reflections: Device-specific rendering remains the least certain. Dashboard navigation cost depends on history size. The release prioritizes repeated interactions and preserves source attribution.

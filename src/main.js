@@ -2016,7 +2016,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     if (complete.length) this.renderTrendChart(wrapper, complete, updateSummaryCards, rangeState);
     else updateSummaryCards(complete);
     wrapper.appendChild(emotionHost);
-    this.renderHistoryCards(wrapper, [...partitions.current, ...partitions.legacy].sort((a, b) => a.date.localeCompare(b.date)));
+    this.renderHistoryCards(wrapper, [...partitions.current, ...partitions.legacy]);
     const historical = partitions.previous;
     if (historical.length) {
       const archive = wrapper.createEl("details", { cls: "auto-mood-historical" });
@@ -2097,7 +2097,18 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const rangeControls = section.createDiv({ cls: "auto-mood-range-controls", attr: { role: "group", "aria-label": "Trend time window" } });
     const windows = DASHBOARD_RANGES;
     const latest = Date.parse(`${records[records.length - 1].date}T00:00:00Z`);
-    const recordsInWindow = days => days ? records.filter(record => Date.parse(`${record.date}T00:00:00Z`) >= latest - (days - 1) * 86400000) : records;
+    const recordsInWindow = days => {
+      if (!days) return records;
+      const { start } = windowBounds(days);
+      let low = 0;
+      let high = records.length;
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        if (records[mid].date < start) low = mid + 1;
+        else high = mid;
+      }
+      return records.slice(low);
+    };
     const windowBounds = days => ({ start: days ? new Date(Math.max(Date.parse("0000-01-01T00:00:00Z"), latest - (days - 1) * 86400000)).toISOString().slice(0, 10) : records[0].date, end: records[records.length - 1].date });
     const selectedBounds = rangeState.custom || windowBounds(rangeState.days ?? 14);
     let shown = rangeState.custom
@@ -2459,10 +2470,13 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       if (!months.has(month)) months.set(month, []);
       months.get(month).push(record);
     }
+    const monthLabel = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
     for (const [month, entries] of months) {
       const panel = section.createEl("details", { cls: "auto-mood-month" });
-      const label = new Date(`${month}-01T12:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-      panel.createEl("summary", { text: `${label} - ${entries.length} ${entries.length === 1 ? "entry" : "entries"}` });
+      const label = monthLabel.format(new Date(`${month}-01T12:00:00`));
+      const summary = panel.createEl("summary");
+      summary.createEl("span", { text: label });
+      summary.createEl("span", { cls: "auto-mood-month-count", text: `${entries.length} ${entries.length === 1 ? "entry" : "entries"}` });
       let rendered = false;
       panel.addEventListener("toggle", () => {
         if (!panel.open || rendered) return;
