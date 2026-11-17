@@ -107,6 +107,7 @@ async function inspectLayout(page, label) {
       const marks = [...document.querySelectorAll(".auto-mood-svg .data-point")];
       if (marks.length !== 20) throw new Error("Exempt date must have zero chart points");
       if (marks.some(mark => mark.querySelector("title")?.textContent.includes(excludedDate))) throw new Error("Exempt date plotted");
+      document.querySelectorAll(".auto-mood-month").forEach(panel => { panel.open = true; panel.dispatchEvent(new Event("toggle")); });
       if (!document.querySelector(".auto-mood-insufficient")) throw new Error("Exempt date must show no scores in the history");
       if (!document.querySelector(".auto-mood-cards")?.textContent.includes("5")) throw new Error("Scored count must exclude exempt date");
     });
