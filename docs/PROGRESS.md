@@ -1,3 +1,7 @@
+# Verified release 1.9.7
+
+100% complete. Published https://github.com/remriel/automatic-mood-history/releases/tag/1.9.7 and verified SHA-256 digests of main.js, manifest.json and styles.css after installation in Remy. Browser checks passed. Native device responsiveness remains unmeasured. RESUME HERE for the next release.
+
 # 1.9.6 dashboard update
 
 Trend presets use binary search for the date boundary. History reuses a month formatter and avoids a redundant sort. Month counts, dashboard typography and the primary analysis action are easier to scan.
@@ -317,4 +321,5 @@ PR #21 merge/source: 1e6a94ea446630acbf2c61a781219634c8a8c970. CI 43528117906 an
 Next: no publication work remains. Native Obsidian testing is the user?s next step; no reanalysis is needed.
 
 Source audit, 2026-11-17: 100% complete. Compared eligible Markdown paths and resolved dates with persisted current-basis record sources. Zero missing or extra pairs. Import-date and folder-filter tests passed. No repair pending.
+
 
