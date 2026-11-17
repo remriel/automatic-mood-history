@@ -1,14 +1,14 @@
-# Project state — large-history responsiveness candidate (1.9.5, 2026-11-17)
+# Project state — 1.9.5 published (2026-11-17)
 
 The 1.9.5 candidate reduces dashboard DOM creation and repeated filename parsing. `src/main.js` groups the day-by-day history into collapsed month panels and builds day cards only when a panel is opened. Month summaries retain chronological record counts; expanded cards keep the existing details and source links. `detectFilenameDate` caches results in a bounded 20,000-entry map keyed by filename, Daily Notes format, numeric date order, and Moment locale. The fast path skips built-in date-format attempts only for titles with no Unicode numeric characters, preserving localized digits; a configured Daily Notes format is still attempted. Opening an existing dashboard skips `ensureSupportFiles`.
 
-No record scoring or note content changes are intended. The native Obsidian CPU and interaction effect remains unmeasured; the user plans to test the release in their vault. The primary agent reports source syntax and diff checks passed; the mandatory release workflow will run the existing test suites after review.
+No record scoring or note content changes are intended. Release [1.9.5](https://github.com/remriel/automatic-mood-history/releases/tag/1.9.5) is published from commit `944d14172ace23092a2cd3e383b8564ae1bcd703`. CI [44156399770](https://github.com/remriel/automatic-mood-history/actions/runs/44156399770) and Release [44156401933](https://github.com/remriel/automatic-mood-history/actions/runs/44156401933) passed all required tests and publishing. All three release assets match GitHub's SHA-256 digests and match local generated files after normalizing Windows line endings.
 
-Relevant files: `src/main.js`, generated `main.js`, `styles.css`, layout fixtures in `tests/`, `versions.json`, and `docs/RELEASE_NOTES_1.9.5.md`. Latest published version verified read-only from GitHub is 1.9.4; no 1.9.5 release exists yet. The final build and `node --check main.js` pass; `git diff --check` passes. The full test suite was not rerun locally for this candidate.
+Relevant files: `src/main.js`, generated `main.js`, `styles.css`, layout fixtures in `tests/`, `versions.json`, and `docs/RELEASE_NOTES_1.9.5.md`. The first workflow run failed because an existing layout assertion expected lazily rendered cards while the new month panels were collapsed; the fixture now opens the relevant month panels. The subsequent CI and release workflows passed. Native Obsidian performance remains unmeasured; the user plans to test the release in their vault. No personal vault was changed.
 
 ## RESUME HERE (1.9.5)
 
-The final candidate build and diff review are complete. Push the commit on `main` to trigger the existing release workflow; it runs functional, mobile, privacy, desktop, and mobile-layout checks before attaching `main.js`, `manifest.json`, and `styles.css`. The tag must match manifest version `1.9.5`. After the release, verify the workflow and all three asset digests. Do not claim native performance is verified until the user tests Obsidian.
+No release work remains. The user-owned follow-up is to install/reload 1.9.5 in Obsidian and check month expansion, source links, and responsiveness in their vault. Do not present native performance as verified before that check.
 
 ---
 

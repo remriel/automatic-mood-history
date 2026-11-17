@@ -1,21 +1,21 @@
 # Progress — large-history responsiveness (1.9.5)
 
-Objective: reduce initial history rendering and repeated parsing overhead in Automatic Mood History, then prepare a reviewable release candidate.
+Objective: reduce initial history rendering and repeated parsing overhead in Automatic Mood History and publish a verified release.
 
-Progress: 90% — both build artifacts and release metadata are prepared and reviewed; publication, workflow, and asset verification remain.
+Progress: 100% — 1.9.5 is published; CI, release workflow, and asset verification passed. Native Obsidian testing is a user-owned follow-up.
 
 - [x] Collapse month groups by default and defer day-card creation until expanded, preserving counts and source links.
 - [x] Cache filename date detection with relevant setting/locale keys and a 20,000-entry bound; skip built-in parsing only for titles with no Unicode numeric characters and keep configured Daily Notes formats active.
 - [x] Skip support-file checks when opening an existing dashboard.
 - [x] Verify latest published release 1.9.4 and prepare 1.9.5 version metadata and release notes.
 - [x] Build the final candidate and review the complete diff (`npm run build`, `node --check main.js`, `git diff --check`; full tests deferred to required CI).
-- [ ] Publish through the existing release workflow; retain its required CI checks.
-- [ ] Verify release workflow success and all three asset digests.
-- [ ] User checks native Obsidian behavior and performance in their vault.
+- [x] Publish through the existing release workflow; required CI checks passed.
+- [x] Verify CI 44156399770, Release 44156401933, and all three asset digests.
+- [ ] User-owned follow-up: check native Obsidian behavior and performance in their vault.
 
-Tests/verification: primary agent reports source syntax and diff checks passed. Full test suites have not been rerun locally for this candidate; CI will run through the existing release workflow. Native Obsidian behavior remains unverified.
+Tests/verification: release workflow passed `npm test`, mobile runtime, privacy audit, desktop layout, and mobile layout. The initial release attempt exposed a layout fixture that needed to expand collapsed month panels; the corrected run and CI passed. All three asset digests match GitHub, and bundle/manifest/styles match local files after line-ending normalization. Native Obsidian behavior remains unverified.
 
-Next, commit and push to trigger the existing release workflow, then verify the release assets.
+Next, the user can install/reload 1.9.5 and check responsiveness in native Obsidian. No release work remains.
 
 ---
 

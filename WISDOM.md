@@ -1,4 +1,6 @@
-# 2026-11-17 — 1.9.5 large-history responsiveness candidate
+# 2026-11-17 — 1.9.5 published
+
+Release workflows 44156399770 and 44156401933 passed; all three asset digests and normalized plugin asset parity were verified. Native Obsidian behavior and personal-vault performance remain the user's follow-up.
 
 1. **Least confident:** How much faster the dashboard feels in the user's actual vault and Obsidian theme. The candidate changes are prepared, but native CPU and interaction behavior has not been measured. I would check a large history after installation and watch for slow expansion or missing entry details.
 2. **Biggest missing point:** Deferring day cards and caching filename parsing only target dashboard rendering and date grouping. Other plugins, vault sync, or analysis providers may still dominate perceived lag. I would compare the user's reported slow action with the new version before attributing all improvement to these changes.
