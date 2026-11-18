@@ -158,3 +158,7 @@ Source audit reflections, 2026-11-17: (1) Undated notes rely on creation timesta
 ## 1.9.8 audit
 
 Confidence is lowest in native mobile behavior. A full-suite pass covers modeled cases. The audit assumes supported vault data follows the documented schema. A device smoke test would reduce uncertainty.
+
+1. Confidence is lowest in native mobile behavior. Repeat the affected flow in Obsidian on a physical device.
+2. Publishing does not establish which build a running Obsidian instance has loaded. Check the installed version when diagnosing a recurring symptom.
+3. The audit assumes the official repository matches the plugin in use. If it is a fork or local edit, compare its installed bundle with the release asset.

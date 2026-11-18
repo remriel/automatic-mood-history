@@ -327,3 +327,4 @@ Source audit, 2026-11-17: 100% complete. Compared eligible Markdown paths and re
 ## 1.9.8 audit
 
 Implementation and regression checks prepared. Next: verify CI and published downloads.
+Verified release 1.9.8 - 100%. Local suite passed. CI 44390209173 passed all functional, mobile, privacy and layout checks. All three published downloads match tagged Git blobs byte-for-byte. Attestation workflow pending at manual publication. Publication complete.

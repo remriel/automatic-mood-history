@@ -445,3 +445,4 @@ RESUME HERE, 2026-11-17: Version 1.9.5 already recognizes descriptive filename d
 ## 1.9.8 audit
 
 RESUME HERE: Future cache verification timestamps could bypass the daily content check after clock rollback or sync. Revalidate immediately when cache age is negative. Overlarge Retry-After values could throw during rate-limit handling. Fall back to the standard pause for unrepresentable deadlines.
+RESUME HERE - https://github.com/remriel/automatic-mood-history/releases/tag/1.9.8 is published and verified. Native-device smoke testing remains outside the verified coverage.
