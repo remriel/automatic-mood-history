@@ -323,3 +323,7 @@ Next: no publication work remains. Native Obsidian testing is the user?s next st
 Source audit, 2026-11-17: 100% complete. Compared eligible Markdown paths and resolved dates with persisted current-basis record sources. Zero missing or extra pairs. Import-date and folder-filter tests passed. No repair pending.
 
 
+
+## 1.9.8 audit
+
+Implementation and regression checks prepared. Next: verify CI and published downloads.

@@ -154,3 +154,7 @@ Top-seven update:
 Source audit reflections, 2026-11-17: (1) Undated notes rely on creation timestamps, which can reflect import day. Inspect a specific note if its date seems wrong. (2) Each detected day can reference multiple source notes. (3) Coverage assumes the configured folder exclusions are intentional. Recheck scope if the desired source set changes.
 
 1.9.6 reflections: Device-specific rendering remains the least certain. Dashboard navigation cost depends on history size. The release prioritizes repeated interactions and preserves source attribution.
+
+## 1.9.8 audit
+
+Confidence is lowest in native mobile behavior. A full-suite pass covers modeled cases. The audit assumes supported vault data follows the documented schema. A device smoke test would reduce uncertainty.

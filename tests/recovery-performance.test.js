@@ -63,9 +63,13 @@ async function run() {
   cached.p.records[date].sourceRevisionCheckedAt = new Date(0).toISOString();
   await cached.p.analyzeAll({ background: true, silent: true });
   assert.equal(sourceReads, 2, "periodic content verification still detects silent sync changes");
+  cached.p.records[date].sourceRevisionCheckedAt = "2099-01-01T00:00:00Z";
+  await cached.p.analyzeAll({ background: true, silent: true });
+  assert.equal(sourceReads, 3, "future timestamps require immediate revalidation");
+  assert.equal(fixture().p.recordGroqFailure({status: 429, retryAfterMilliseconds: 1e20}).kind, "rate-limit");
   cached.p.handleSourceEvent(cached.source);
   await cached.p.analyzeDate(date);
-  assert.equal(sourceReads, 3, "a source event invalidates the metadata shortcut");
+  assert.equal(sourceReads, 4, "a source event invalidates the metadata shortcut");
   assert.equal(cached.p.providerCalls, 1, "unchanged content never calls the provider twice");
 
   const bounded = fixture();

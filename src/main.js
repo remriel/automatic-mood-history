@@ -1123,7 +1123,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       delay = 5 * 60 * 1000;
     } else if (status === 429) {
       kind = "rate-limit";
-      delay = error.retryAfterMilliseconds || delay;
+      const retryDelay = error.retryAfterMilliseconds;
+      if (retryDelay > 0 && Number.isFinite(new Date(Date.now() + retryDelay).getTime())) delay = retryDelay;
       message = "Groq reached its rate limit (HTTP 429). Retry after the pause.";
     } else if (status === 400 || status === 404 || status === 413) {
       kind = "request";
@@ -1375,9 +1376,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (this.records[key]?.dateBasis === HISTORICAL_DATE_BASIS || key.startsWith("created:")) key = this.recordKey(date, options.legacySources);
     const previous = this.records[key];
     const sourceRevision = !options.legacySources ? this.sourceRevision(date, options.dateIndex) : null;
+    const revisionAge = Date.now() - Date.parse(previous?.sourceRevisionCheckedAt);
     if (!options.force && !options.forceGroq && !options.onlyFallbacks && !this.runtime.pendingDates?.[key] &&
       sourceRevision && previous?.sourceRevision === sourceRevision &&
-      Date.now() - Date.parse(previous.sourceRevisionCheckedAt) < 86400000) {
+      revisionAge >= 0 && revisionAge < 86400000) {
       await this.clearDatePending(key);
       return false;
     }
