@@ -1,3 +1,11 @@
+# 2026-11-19 — 1.9.10 composition chart
+
+1. **Least confident:** How easily closely related colors can be distinguished in the user's Obsidian theme. I would check the busiest range in that theme, including how readable the period details are.
+2. **Biggest missing point:** A period can change appearance when the selected range changes because percentages use the emotions displayed in that range. For comparisons across ranges, I would check the counts in Period details alongside the percentages.
+3. **Most consequential assumption:** The user meant that the legend should change with the selected dates. If they wanted every emotion within a range to remain accessible even when it falls outside the top ten, I would add a way to reveal those additional labels.
+
+---
+
 # 2026-11-17 — 1.9.5 published
 
 Release workflows 44156399770 and 44156401933 passed; all three asset digests and normalized plugin asset parity were verified. Native Obsidian behavior and personal-vault performance remain the user's follow-up.

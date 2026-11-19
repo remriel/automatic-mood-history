@@ -2,15 +2,15 @@
 
 **Objective** Publish the range-aware composition chart and its emotion colors.
 
-**Progress** 80%. Local verification is complete. GitHub publication and asset verification remain.
+**Progress** 100%. The [1.9.10 release](https://github.com/remriel/automatic-mood-history/releases/tag/1.9.10) is live and verified.
 
 - [x] Rank emotions per active range and use stable emotion colors in both charts.
 - [x] Update browser and functional regressions, rebuild the bundle, and prepare 1.9.10 release metadata.
 - [x] Pass the functional, mobile runtime, privacy, desktop browser, and Android and iPhone browser layout suites.
-- [ ] Push the release commit and confirm the GitHub CI and Release workflows succeed.
-- [ ] Verify the published tag and three asset digests, and record the result here.
+- [x] Push the release commit and confirm GitHub CI run 44616465724 and Release run 44616465428 passed.
+- [x] Verify that the stable tag points to `6b2bbdb` and that the downloaded `main.js`, `manifest.json`, and `styles.css` match both GitHub's SHA-256 digests and the tagged source files.
 
-Native Obsidian verification was outside this release task.
+No release steps remain. Native Obsidian verification remains open.
 
 ---
 

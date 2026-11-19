@@ -8,7 +8,7 @@ The change applies to saved records at display time and needs no schema migratio
 
 ## RESUME HERE
 
-1.9.10 passed local functional, mobile runtime, privacy, desktop browser, and mobile browser checks. Publish through the GitHub release workflow and verify all three published assets against the release commit. Native Obsidian remains untested.
+[1.9.10](https://github.com/remriel/automatic-mood-history/releases/tag/1.9.10) is the latest stable release from commit `6b2bbdb76daa0bf0eeb9565c48f356c71daa7e89`. [CI](https://github.com/remriel/automatic-mood-history/actions/runs/44616465724) and the [release workflow](https://github.com/remriel/automatic-mood-history/actions/runs/44616465428) passed the functional, mobile runtime, privacy, desktop browser, and mobile browser checks. The three downloaded plugin files matched the published SHA-256 digests and Git blobs at the tag. No release work remains. Native Obsidian remains untested.
 
 ---
 
