@@ -332,3 +332,5 @@ Verified release 1.9.8 - 100%. Local suite passed. CI 44390209173 passed all fun
 2026-11-19: 3/4 checks complete (75%). Reproduced source membership drift and stale monthly exports. Rebuilt October and November with original backups. npm test passed and installed bundle hash verified. Next: reload the plugin in Remy and verify the 60-day chart and November 19 daily card in native Obsidian. CLI reload disabled.
 
 1.9.9: functional regressions and privacy audit passed. Live fallback recovery verified. Publish and verify release assets.
+
+1.9.9 complete (100%). CI and release succeeded. Verified all three downloads against the tag and the installed plugin reported zero fallbacks. README condensed and two synthetic-data plugin screenshots visually checked.
