@@ -389,7 +389,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     await this.savePluginData();
     assertCurrent();
     if (mode === "daily") await this.writeEntryNote(pending.record, { pending, key, assertCurrent });
-    if (mode === "monthly") await this.writeMonthlyNote(pending.record.date.slice(0, 7), { ...this.records, [key]: pending.record }, assertCurrent);
+    if (mode === "monthly") {
+      const month = pending.record.date.slice(0, 7);
+      try {
+        await this.writeMonthlyNote(month, { ...this.records, [key]: pending.record }, assertCurrent);
+      } catch (error) {
+        if (error.code !== "monthly_export_edited") throw error;
+        this.runtime.monthlyExportConflicts ||= {};
+        this.runtime.monthlyExportConflicts[this.monthlyPath(month)] = error.currentHash;
+      }
+    }
     assertCurrent();
     await this.savePluginData({ commit: { key, record: pending.record } });
     // Also supports adapters that wrap savePluginData for instrumentation.
@@ -1174,6 +1183,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     if (!parsed || Array.isArray(parsed) || ANALYSIS_SCHEMA.required.some((key) => !Object.hasOwn(parsed, key))) {
       throw new Error("Groq omitted required analysis fields.");
+    }
+    // An explicit abstention has no scores or valence to validate. Keep
+    // only the final narratives and construct the canonical unscored record.
+    if (typeof parsed.summary === "string" && parsed.summary.trim() &&
+        typeof parsed.confidenceReason === "string" && parsed.confidenceReason.trim()) {
+      const narrative = { summary: parsed.summary.trim(), confidenceReason: parsed.confidenceReason.trim() };
+      if (hasNoEmotionalEvidence(narrative)) return exemptUnscorableAssessment(narrative);
     }
     for (const key of ["moodScore", "energyScore", "connectionScore", "intensityScore"]) {
       if (!Number.isInteger(parsed[key]) || parsed[key] < 1 || parsed[key] > 5) throw new Error("Groq returned an invalid score.");

@@ -61,6 +61,11 @@ async function run() {
     assert.deepStrictEqual(payload.messages.map((message) => message.role), ["system", "user"]);
     return success({ ...valid, emotions: ["hopeful", "hopeful"] });
   };
+  const abstention = { ...valid, valence: "neutral", summary: "No assessable emotional evidence." };
+  const unscored = plugin.parseGroqAnalysis(success(abstention).json);
+  assert.equal(unscored.status, "insufficient");
+  assert.equal(unscored.moodScore, null);
+  assert.throws(() => plugin.parseGroqAnalysis(success({ ...valid, valence: "neutral" }).json));
   const result = await plugin.analyzeWithGroq(dates[0], "Synthetic sample.");
   assert.deepStrictEqual(result.emotions, ["hopeful"], "local validation deduplicates without an unsupported remote constraint");
   assert.strictEqual(requests.length, 1);

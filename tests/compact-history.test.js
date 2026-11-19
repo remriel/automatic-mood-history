@@ -74,14 +74,15 @@ async function run() {
   const edited = disk.files.get(path);
   await assert.rejects(p.exportMonthlyHistory(), /edited/);
   assert.equal(disk.files.get(path), edited);
-  assert.equal(await p.analyzeDate(date, { force: true }), false);
-  assert(Object.keys(p.runtime.pendingWrites).length, "failed output retains prepared result");
-  assert.equal(await p.updateSetting("entryOutput", "none"), false, "pending mode cannot change");
-  assert.equal(p.entryOutput, "monthly");
-  disk.files.delete(path); files.delete(path); // User moves the edited file aside.
+  assert.equal(await p.analyzeDate(date, { force: true }), true);
+  assert.equal(disk.files.get(path), edited);
+  assert.equal(disk.json.runtime.monthlyExportConflicts[path], sha256(edited));
+  assert.deepEqual(disk.json.records, p.records);
+  assert.equal(Object.keys(p.runtime.pendingWrites).length, 0);
+  disk.files.delete(path); files.delete(path);
   const requests = p.providerCalls;
-  assert.equal(await p.analyzeDate(date), true);
-  assert.equal(p.providerCalls, requests, "recovery uses saved result");
+  await p.exportMonthlyHistory();
+  assert.equal(p.providerCalls, requests);
   assert.equal(disk.files.get(path), buildMonthlyMarkdown("2031-02", p.records));
 
   // Recover all persisted boundaries without replaying a provider request.

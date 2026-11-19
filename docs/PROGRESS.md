@@ -330,3 +330,5 @@ Implementation and regression checks prepared. Next: verify CI and published dow
 Verified release 1.9.8 - 100%. Local suite passed. CI 44390209173 passed all functional, mobile, privacy and layout checks. All three published downloads match tagged Git blobs byte-for-byte. Attestation workflow pending at manual publication. Publication complete.
 
 2026-11-19: 3/4 checks complete (75%). Reproduced source membership drift and stale monthly exports. Rebuilt October and November with original backups. npm test passed and installed bundle hash verified. Next: reload the plugin in Remy and verify the 60-day chart and November 19 daily card in native Obsidian. CLI reload disabled.
+
+1.9.9: functional regressions and privacy audit passed. Live fallback recovery verified. Publish and verify release assets.

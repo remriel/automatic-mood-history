@@ -164,3 +164,5 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 3. The audit assumes the official repository matches the plugin in use. If it is a fork or local edit, compare its installed bundle with the release asset.
 
 2026-11-19. Least confidence: native display after reload; verify on-device. Hidden factor: sync can change source membership while saved dates survive. Assumption: users want dated snapshots even after source changes; refresh analysis when a current-source score is required.
+
+1.9.9. Least certain: broader provider wording; retain strict scored validation. Hidden issue: storage conflicts can mask a successful provider result. Assumption: explicit no-evidence narratives should yield insufficient status; keep separate from scored days.
