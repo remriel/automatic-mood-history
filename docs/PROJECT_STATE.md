@@ -1,3 +1,17 @@
+# 1.9.10 composition chart
+
+The dashboard ranks up to ten emotion labels from the scored records in the active preset or custom date range. Archived records outside the trend do not contribute to the ranking. A day contributes once per label. Ties use alphabetical order, and each period is normalized by its displayed label count. Gray periods and the text details distinguish the absence of scored records from the absence of displayed labels.
+
+`src/main.js` owns ranking, grouping, and SVG rendering. The same range-local ranking supplies Common Emotions and Composition over time. The fixed color map covers GoEmotions and common earlier labels. Custom labels use a deterministic SHA-256-derived hue, saturation, and lightness so their colors survive changes to the visible set. The previous ten-slot palette reassigned colors when labels entered or left the chart. Labels with closely related meanings can still have similar colors. Exact counts and shares remain available in Period details.
+
+The change applies to saved records at display time and needs no schema migration or reanalysis. Coverage includes presets, custom ranges, live redraws, archive exclusion, normalized percentages, theme overrides, and desktop and mobile layouts.
+
+## RESUME HERE
+
+1.9.10 passed local functional, mobile runtime, privacy, desktop browser, and mobile browser checks. Publish through the GitHub release workflow and verify all three published assets against the release commit. Native Obsidian remains untested.
+
+---
+
 # Verified release 1.9.7
 
 100% complete. Published https://github.com/remriel/automatic-mood-history/releases/tag/1.9.7 and verified SHA-256 digests of main.js, manifest.json and styles.css after installation in Remy. Browser checks passed. Native device responsiveness remains unmeasured. RESUME HERE for the next release.

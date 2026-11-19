@@ -1,3 +1,8 @@
+# 1.9.10
+
+- Rank the Composition chart's emotions within the selected date range.
+- Give each known emotion a stable color that matches across the chart, legend, and Common Emotions bars.
+
 # 1.9.5
 
 - Defer day cards until a month is expanded, keeping large histories compact while retaining entry counts and source links.

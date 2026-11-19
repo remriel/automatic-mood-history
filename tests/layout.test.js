@@ -274,7 +274,7 @@ async function inspectLayout(page, label) {
     assert.equal(await page.getByRole('button',{name:'Mood',exact:true}).getAttribute('aria-pressed'),'true','save failure restores the previous visibility');
     await page.evaluate(() => { fixture.plugin.savePluginData=window.originalSave; });
 
-    // The ten leaders come from all history and stay fixed across ranges.
+    // The top ten are recalculated when the chart range changes.
     await page.evaluate(() => {
       fixture.configure({ paneWidth: 320, count: 11 });
       const emotions = [
@@ -290,14 +290,14 @@ async function inspectLayout(page, label) {
     await page.getByRole('button', { name: '14 days', exact: true }).click();
     const compositionRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
     assert.deepStrictEqual(await page.locator('.auto-mood-composition-legend li').allTextContents(),
-      ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'], 'the ten leaders come from the full saved history');
+      ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'], 'the legend contains the ten leaders within the selected dates');
     assert(!(await page.locator('.auto-mood-composition').textContent()).includes('Other emotions'), 'no grouped category is displayed');
     const dayEight = page.locator('.auto-mood-composition-chart rect[data-period="2099-01-08"]');
     assert.equal(await dayEight.count(), 2, 'both top-ten labels appear in the period');
     assert.equal(await dayEight.first().getAttribute('data-emotion'), 'golf');
     assert.equal(Number(await dayEight.first().getAttribute('data-share')), 50, 'share is normalized among displayed labels');
     assert.equal(await page.locator('.auto-mood-composition-chart rect[data-period="2099-01-11"][data-empty="true"]').count(), 1, 'a day with only excluded emotions uses a placeholder');
-    assert((await page.locator('.auto-mood-composition-details').textContent()).includes('2099-01-11: No top-ten emotions recorded.'), 'blank period is described accurately');
+    assert((await page.locator('.auto-mood-composition-details').textContent()).includes('2099-01-11: No displayed emotions recorded.'), 'blank period is described accurately');
     const plot = await page.evaluate(() => {
       const svg = document.querySelector('.auto-mood-composition-chart svg');
       const marks = [...svg.querySelectorAll('rect[data-emotion]')].map(rect => ({ period: rect.dataset.period, share: +rect.dataset.share, x: +rect.getAttribute('x'), y: +rect.getAttribute('y'), width: +rect.getAttribute('width'), height: +rect.getAttribute('height') }));
@@ -328,18 +328,18 @@ async function inspectLayout(page, label) {
     await page.getByLabel('End date', { exact: true }).fill('2099-01-11');
     await page.getByRole('button', { name: 'Apply range', exact: true }).click();
     assert.deepStrictEqual(await page.locator('.auto-mood-composition-legend li').allTextContents(),
-      ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'], 'the same rows remain when the range changes');
+      ['hotel', 'golf', 'india', 'juliet', 'kilo', 'lima'], 'the custom range promotes emotions that were outside the top ten');
     assert.equal(await page.locator('.auto-mood-composition-chart rect[data-period="2099-01-08"]').count(), 2);
+    assert.equal(await page.locator('.auto-mood-composition-chart rect[data-period="2099-01-11"][data-emotion]').count(), 2, 'the formerly gray period now shows both emotions');
     assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), compositionRecordsBefore, 'composition changes do not alter saved records');
     await inspectLayout(page, 'Morning Pages style composition at narrow width');
     await page.evaluate(() => {
-      for (let i = 1; i <= 3; i++) {
-        const date = `2080-01-0${i}`;
+      for (const date of ['2099-01-08', '2099-01-09', '2099-01-10']) {
         fixture.plugin.records[`legacy:${date}`] = { date, dateBasis: 'legacy-note-date', status: 'complete', moodScore: 3, emotions: ['archived-label'], summary: 'Fictional older result.' };
       }
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
     });
-    assert((await page.locator('.auto-mood-composition-legend li').allTextContents()).includes('archived-label'), 'global ranking includes saved legacy history');
+    assert(!(await page.locator('.auto-mood-composition-legend li').allTextContents()).includes('archived-label'), 'the ranking uses plotted records even when legacy history overlaps the range');
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
 
     // The reported confusing labels and seven additional categories must be
@@ -362,14 +362,14 @@ async function inspectLayout(page, label) {
         details: document.querySelector('.auto-mood-composition-details').textContent
       }));
       assert.equal(Object.keys(rendered.legend).length, 10);
-      assert.equal(new Set(Object.values(rendered.legend)).size, 10, `${theme}: ten unique pastel colors`);
+      assert.equal(new Set(Object.values(rendered.legend)).size, 10, `${theme}: ten distinct emotion colors`);
       for (const mark of rendered.marks) {
         assert.equal(mark.fill, rendered.legend[mark.label], `${theme}: legend matches each segment`);
       }
       for (const bar of rendered.common) assert.equal(bar.fill, rendered.legend[bar.label], `${theme}: common emotion matches composition color`);
       assert.equal(rendered.axes, 3, `${theme}: percentage grid has three guides`);
       for (const label of ['anxiety', 'frustration', 'sadness']) assert(rendered.details.includes(label), `${theme}: textual period details include ${label}`);
-      await inspectLayout(page, `${theme} distinct pastel composition`);
+      await inspectLayout(page, `${theme} distinct emotion colors`);
     }
     // A theme may style all SVG rectangles and swatches. Actual rendered
     // colors must still match their labels and remain stable after reranking.
@@ -388,7 +388,7 @@ async function inspectLayout(page, label) {
       return { legend, segments };
     });
     const beforeColors = await compositionColors();
-    assert.equal(beforeColors.legend.joy, 'rgb(233, 201, 119)', 'known emotions receive their assigned pastel colors');
+    assert.equal(beforeColors.legend.joy, 'rgb(243, 206, 83)', 'joy uses its assigned gold');
     assert.notEqual(beforeColors.legend.constructor, 'rgb(0, 0, 0)', 'custom labels do not collide with object prototype names');
     assert(beforeColors.segments.length > 0);
     for (const [emotion, fill] of beforeColors.segments) assert.equal(fill, beforeColors.legend[emotion], `${emotion} segment matches its legend`);
@@ -397,6 +397,7 @@ async function inspectLayout(page, label) {
     await page.getByLabel('End date', { exact: true }).fill('2099-01-10');
     await page.getByRole('button', { name: 'Apply range', exact: true }).click();
     const afterColors = await compositionColors();
+    assert.deepEqual(Object.keys(afterColors.legend), ['constructor', 'sadness'], 'the legend drops emotions outside the new range');
     assert.equal(afterColors.legend.sadness, beforeColors.legend.sadness, 'an emotion keeps its color when its rank changes');
     assert.equal(afterColors.legend.constructor, beforeColors.legend.constructor, 'a custom emotion keeps its color across ranges');
     for (const [emotion, fill] of afterColors.segments) assert.equal(fill, afterColors.legend[emotion], `${emotion} segment matches its legend after reranking`);

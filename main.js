@@ -998,6 +998,19 @@ const HISTORY_KEY_PREFIXES = new Map([
 const GROQ_PROMPT_VERSION = "detected-date-goemotions-v3";
 const TEXT_PIPELINE_VERSION = "markdown-text-v2";
 const GOEMOTIONS_LABELS = Object.freeze(["admiration","amusement","anger","annoyance","approval","caring","confusion","curiosity","desire","disappointment","disapproval","disgust","embarrassment","excitement","fear","gratitude","grief","joy","love","nervousness","optimism","pride","realization","relief","remorse","sadness","surprise","neutral"]);
+// Colors are tied to the emotion, so filtering or reranking cannot change them.
+const EMOTION_COLORS = new Map(Object.entries({
+  admiration: "#d6a9dc", amusement: "#ffc969", anger: "#e6676f", annoyance: "#f48a72",
+  anxiety: "#b79ae3", approval: "#95c4ae", calm: "#8dd0ca", caring: "#eab6c2",
+  confused: "#bbc6e5", confusion: "#a4b4d9", curiosity: "#5cbeb0", desire: "#d479a4",
+  disappointment: "#93a6c0", disapproval: "#ab8f83", disgust: "#a7aa55",
+  embarrassment: "#efaab5", excitement: "#ffa052", fear: "#8d74bd", frustration: "#e6945e",
+  gratitude: "#8bc896", grief: "#657da9", hopeful: "#bad681", joy: "#f3ce53", love: "#e88eb3",
+  nervousness: "#ceb5eb", neutral: "#c3bbb2", optimism: "#b7d46b", pride: "#c17cc8",
+  realization: "#79c6d6", relief: "#a1d7b2", remorse: "#ad91a3", sad: "#9abfe8",
+  sadness: "#69acd3", surprise: "#e4a4ea"
+}));
+const COMPOSITION_EMOTION_LIMIT = 10;
 const DASHBOARD_RANGES = [["7 days", 7], ["14 days", 14], ["30 days", 30], ["60 days", 60], ["90 days", 90], ["180 days", 180], ["1 year", 365], ["All", 0]];
 const DASHBOARD_RANGE_DAYS = DASHBOARD_RANGES.map(([, days]) => days);
 
@@ -2926,13 +2939,6 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const timestampRecords = [...partitions.current, ...savedDays].sort((a, b) => a.date.localeCompare(b.date));
     if (savedDays.length) wrapper.createEl("p", { text: `Showing saved scores for ${savedDays.length} days whose source notes have changed. Analyze changed refreshes these results.` });
     const complete = timestampRecords.filter((record) => record.status === "complete" && !hasNoEmotionalEvidence(record) && Number.isFinite(record.moodScore));
-    // Keep the same composition rows across chart ranges, using all saved
-    // scored history including legacy/archived records for the ranking.
-    const allScored = records.filter(record => record.status === "complete" && !hasNoEmotionalEvidence(record) && Number.isFinite(record.moodScore));
-    const compositionLeaders = this.compositionLeaders(allScored);
-    const compositionColors = this.compositionColors(compositionLeaders);
-    const compositionPalette = new Map(compositionLeaders.map((label, index) => [label, compositionColors[index]]));
-
     const toolbar = wrapper.createDiv({ cls: "auto-mood-toolbar" });
     toolbar.createEl("strong", { text: "AUTOMATIC MOOD HISTORY" });
     const actions = toolbar.createDiv({ cls: "auto-mood-actions" });
@@ -2986,8 +2992,10 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       }
       this.disposeDashboard(emotionHost);
       emotionHost.empty();
-      this.renderEmotionBars(emotionHost, visibleRecords, compositionPalette);
-      this.renderEmotionComposition(emotionHost, visibleRecords, compositionLeaders, range);
+      const ranked = this.rankEmotions(visibleRecords);
+      const palette = new Map(ranked.slice(0, COMPOSITION_EMOTION_LIMIT).map(([label]) => [label, this.emotionColor(label)]));
+      this.renderEmotionBars(emotionHost, ranked.slice(0, 8), palette);
+      this.renderEmotionComposition(emotionHost, visibleRecords, palette, range);
     };
     this.dashboardRangeStates ||= new WeakMap();
     let rangeState = this.dashboardRangeStates.get(element);
@@ -3299,12 +3307,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     }
   }
 
-  renderEmotionBars(parent, records, colors = new Map()) {
-    const counts = new Map();
-    for (const record of records) {
-      for (const emotion of record.emotions || []) counts.set(emotion, (counts.get(emotion) || 0) + 1);
-    }
-    const top = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  renderEmotionBars(parent, top, colors) {
     if (!top.length) return;
     const section = parent.createDiv({ cls: "auto-mood-section" });
     section.createEl("h3", { text: "COMMON EMOTIONS" });
@@ -3315,45 +3318,31 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       row.createDiv({ cls: "auto-mood-bar-label", text: emotion });
       const track = row.createDiv({ cls: "auto-mood-bar-track" });
       const bar = track.createDiv({ cls: "auto-mood-bar-fill" });
-      bar.style.setProperty("background-color", colors.get(emotion) || this.compositionColors([emotion])[0], "important");
+      bar.style.setProperty("background-color", colors.get(emotion), "important");
       bar.style.width = `${Math.max(8, (count / max) * 100)}%`;
       row.createDiv({ cls: "auto-mood-bar-count", text: String(count) });
     }
   }
 
-  compositionLeaders(records) {
+  rankEmotions(records) {
     const totals = new Map();
     for (const record of records) for (const label of new Set(record.emotions || [])) totals.set(label, (totals.get(label) || 0) + 1);
-    return [...totals].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).slice(0, 10).map(([label]) => label);
+    return [...totals].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   }
 
-  compositionColors(labels) {
-    // Ten categorical pastel hues; every visible label gets its own slot.
-    // Anchor common emotions first, then assign remaining labels in a stable
-    // order, resolving collisions without depending on frequency or rank.
-    const palette = ["#96bce8", "#c5a0eb", "#f1a793", "#e9c977", "#a3cfa4", "#87cece", "#e5a6c7", "#e6d8d1", "#d5b990", "#8cd98c"];
-    if (labels.length > palette.length) throw new Error("Composition supports at most ten emotions.");
-    const preferred = new Map([
-      ["sadness", 0], ["anxiety", 1], ["frustration", 2], ["joy", 3],
-      ["grief", 0], ["fear", 1], ["nervousness", 1], ["anger", 2], ["annoyance", 2],
-      ["excitement", 3], ["optimism", 3], ["gratitude", 4], ["relief", 5], ["love", 6]
-    ]);
-    const priority = new Map([["sadness", 0], ["anxiety", 1], ["frustration", 2], ["joy", 3]]);
-    const keyOf = label => label.trim().toLowerCase();
-    const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-    const sorted = [...labels].sort((a, b) => (priority.get(keyOf(a)) ?? 4) - (priority.get(keyOf(b)) ?? 4) || compare(keyOf(a), keyOf(b)) || compare(a, b));
-    const used = new Set(), assigned = new Map();
-    for (const label of sorted) {
-      const key = keyOf(label);
-      let hash = 0; for (const char of key) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
-      let index = preferred.get(key) ?? hash % palette.length;
-      while (used.has(index)) index = (index + 1) % palette.length;
-      used.add(index); assigned.set(label, palette[index]);
-    }
-    return labels.map(label => assigned.get(label));
+  emotionColor(label) {
+    const key = label.trim().toLowerCase();
+    const known = EMOTION_COLORS.get(key);
+    if (known) return known;
+    // Historical and custom labels use a stable color independent of the other labels shown.
+    const hash = parseInt(sha256(key).slice(0, 8), 16);
+    const hue = hash % 360;
+    const saturation = 45 + ((hash >>> 9) % 30);
+    const lightness = 58 + ((hash >>> 17) % 21);
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   }
 
-  renderEmotionComposition(parent, records, leaders = this.compositionLeaders(records), range) {
+  renderEmotionComposition(parent, records, colors, range) {
     if (!records.length && !range) return;
     const section = parent.createDiv({ cls: "auto-mood-section auto-mood-composition" });
     section.createEl("h3", { text: "Composition over time" });
@@ -3362,7 +3351,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const day = 86400000, span = Math.floor((last - first) / day) + 1;
     const step = span <= 90 ? 1 : span <= 365 ? 7 : Math.max(7, Math.ceil(span / 90 / 7) * 7);
     const iso = time => new Date(time).toISOString().slice(0, 10);
-    const labels = leaders, colors = this.compositionColors(labels), grouped = new Map();
+    const labels = [...colors.keys()], grouped = new Map();
     for (let start = first; start <= last; start += step * day) {
       grouped.set(start, { start, end: Math.min(last, start + (step - 1) * day), counts: new Map(), total: 0, records: 0 });
     }
@@ -3372,20 +3361,20 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
       if (!bucket) continue;
       bucket.records++;
       for (const emotion of new Set(record.emotions || [])) {
-        if (!leaders.includes(emotion)) continue;
+        if (!colors.has(emotion)) continue;
         bucket.counts.set(emotion, (bucket.counts.get(emotion) || 0) + 1); bucket.total++;
       }
     }
     const buckets = [...grouped.values()].sort((a, b) => a.start - b.start);
-    section.createEl("p", { cls: "auto-mood-composition-caption", text: `Share of the ten most common emotions in all saved, scored history (including older records) per ${step === 1 ? "day" : `${step}-day period`}. Gray means no top-ten emotions were recorded. Remaining labels are excluded; shares are not intensity.` });
+    section.createEl("p", { cls: "auto-mood-composition-caption", text: `Share of displayed emotion labels per ${step === 1 ? "day" : `${step}-day period`}. Includes up to ${COMPOSITION_EMOTION_LIMIT} of the most frequent emotions in this date range. Gray periods have no displayed emotions.` });
     const legend = section.createEl("ul", { cls: "auto-mood-composition-legend", attr: { "aria-label": "Emotion colors" } });
-    labels.forEach((label, i) => {
+    for (const [label, color] of colors) {
       const item = legend.createEl("li");
       const swatch = item.createEl("span", { cls: "auto-mood-composition-swatch", attr: { "aria-hidden": "true" } });
       // Inline priority prevents broad theme SVG/legend styles hiding colors.
-      swatch.style.setProperty("background-color", colors[i], "important");
+      swatch.style.setProperty("background-color", color, "important");
       item.createEl("span", { text: label });
-    });
+    }
     const chart = section.createDiv({ cls: "auto-mood-composition-chart" });
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("width", "100%"); svg.setAttribute("role", "img");
@@ -3416,19 +3405,19 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         if (!bucket.total) {
           const rect = make("rect", { x: center - columnWidth / 2, y: y(100), width: columnWidth, height: y(0) - y(100), fill: "#9ca3af", "data-period": iso(bucket.start), "data-column": index, "data-empty": "true" });
           rect.style.setProperty("fill", "#9ca3af", "important");
-          make("title", {}, `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`} · ${bucket.records ? "No top-ten emotions recorded" : "No scored records"}`, rect);
+          make("title", {}, `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`} · ${bucket.records ? "No displayed emotions recorded" : "No scored records"}`, rect);
           return;
         }
         let used = 0;
-        labels.forEach((label, color) => {
+        for (const [label, color] of colors) {
           const count = bucket.counts.get(label) || 0;
-          if (!count) return;
+          if (!count) continue;
           const percent = count / bucket.total * 100;
-          const rect = make("rect", { x: center - columnWidth / 2, y: y(used + percent), width: columnWidth, height: y(used) - y(used + percent), fill: colors[color], "data-period": iso(bucket.start), "data-emotion": label, "data-share": percent, "data-column": index });
-          rect.style.setProperty("fill", colors[color], "important");
+          const rect = make("rect", { x: center - columnWidth / 2, y: y(used + percent), width: columnWidth, height: y(used) - y(used + percent), fill: color, "data-period": iso(bucket.start), "data-emotion": label, "data-share": percent, "data-column": index });
+          rect.style.setProperty("fill", color, "important");
           make("title", {}, `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`} · ${label}: ${count} labels (${percent.toFixed(1)}%)`, rect);
           used += percent;
-        });
+        }
       });
     };
     draw(chart.clientWidth || 420);
@@ -3440,7 +3429,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const list = details.createEl("ul", { cls: "auto-mood-composition-details" });
     for (const bucket of buckets) {
       const values = labels.filter(label => bucket.counts.has(label)).map(label => `${label}: ${bucket.counts.get(label)} (${(bucket.counts.get(label) / bucket.total * 100).toFixed(1)}%)`);
-      list.createEl("li", { text: `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`}: ${values.join("; ") || (bucket.records ? "No top-ten emotions recorded" : "No scored records")}.` });
+      list.createEl("li", { text: `${iso(bucket.start)}${bucket.end === bucket.start ? "" : ` to ${iso(bucket.end)}`}: ${values.join("; ") || (bucket.records ? "No displayed emotions recorded" : "No scored records")}.` });
     }
   }
 

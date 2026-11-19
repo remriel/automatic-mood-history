@@ -106,4 +106,14 @@ assert.deepEqual(activeIn(fixedReopened), ["30 days"], "an explicit opening rang
 plugin.settings.defaultRange = null;
 assert.deepEqual(plugin.validateSettings({ defaultRange: 90 }).defaultRange, 90);
 assert.equal(plugin.validateSettings({ defaultRange: 15 }).defaultRange, null);
+// Switching presets and refreshing saved history both recompute the legend.
+const legend = () => byClass("auto-mood-composition-legend")[0].children.map(item => item.textContent);
+plugin.records[dateAt(13)].emotions = ["relief"];
+plugin.refreshRenderers();
+assert.deepEqual(legend(), ["joy"], "a 7-day preset omits emotions outside its range");
+click("14 days");
+assert.deepEqual(legend(), ["joy", "relief"], "a wider preset includes the earlier emotion");
+plugin.records[dateAt(13)].emotions = ["gratitude"];
+plugin.refreshRenderers();
+assert.deepEqual(legend(), ["joy", "gratitude"], "a live redraw reranks the active range");
 console.log("PASS all dashboard ranges, live redraws, temporary detachment, custom form and complete composition periods");
