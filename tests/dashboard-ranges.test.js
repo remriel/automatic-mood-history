@@ -14,6 +14,11 @@ for (const [index, offset] of [400, 364, 180, 179, 89, 59, 29, 13, 7, 6, 0].entr
   plugin.records[date] = { date, status: "complete", dateBasis: "detected-note-date", moodScore: index % 5 + 1,
     energyScore: 3, connectionScore: 4, intensityScore: 2, emotions: ["joy"], summary: "Fictional", analysisSource: "local" };
 }
+// Simulate a synced vault where the latest day's source membership changed.
+const changedDay = plugin.records[dateAt(0)];
+plugin.partitionHistory = records => ({
+  current: records.filter(record => record !== changedDay), previous: [changedDay], legacy: []
+});
 const root = new Element(); root.rootConnected = true; plugin.renderContainers.add(root); plugin.renderDashboard(root);
 const nodes = () => root.walk();
 const byClass = name => nodes().filter(el => el.classList.contains(name));
