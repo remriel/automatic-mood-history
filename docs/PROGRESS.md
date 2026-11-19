@@ -328,3 +328,5 @@ Source audit, 2026-11-17: 100% complete. Compared eligible Markdown paths and re
 
 Implementation and regression checks prepared. Next: verify CI and published downloads.
 Verified release 1.9.8 - 100%. Local suite passed. CI 44390209173 passed all functional, mobile, privacy and layout checks. All three published downloads match tagged Git blobs byte-for-byte. Attestation workflow pending at manual publication. Publication complete.
+
+2026-11-19: 3/4 checks complete (75%). Reproduced source membership drift and stale monthly exports. Rebuilt October and November with original backups. npm test passed and installed bundle hash verified. Next: reload the plugin in Remy and verify the 60-day chart and November 19 daily card in native Obsidian. CLI reload disabled.

@@ -162,3 +162,5 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 1. Confidence is lowest in native mobile behavior. Repeat the affected flow in Obsidian on a physical device.
 2. Publishing does not establish which build a running Obsidian instance has loaded. Check the installed version when diagnosing a recurring symptom.
 3. The audit assumes the official repository matches the plugin in use. If it is a fork or local edit, compare its installed bundle with the release asset.
+
+2026-11-19. Least confidence: native display after reload; verify on-device. Hidden factor: sync can change source membership while saved dates survive. Assumption: users want dated snapshots even after source changes; refresh analysis when a current-source score is required.

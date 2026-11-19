@@ -614,13 +614,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         // after an interrupted commit is idempotent; manual edits are retained.
         const normalized = current.replace(/\r\n/g, "\n");
         if (normalized !== next && normalized !== previous) {
-          if (sha256(normalized) !== previousHash) {
+          const saved = readMonthlyRecords(normalized, month);
+          // A synced, unedited subset can safely gain days absent from its snapshot.
+          const unchangedSubset = saved && Object.entries(saved).every(([key, record]) =>
+            JSON.stringify(records[key]) === JSON.stringify(record)) && buildMonthlyMarkdown(month, saved) === normalized;
+          if (sha256(normalized) !== previousHash && !unchangedSubset) {
             const error = new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
             error.code = "monthly_export_edited";
             error.currentHash = sha256(normalized);
             throw error;
           }
-          const saved = readMonthlyRecords(normalized, month);
           const identities = new Set(Object.values(records).filter(record => record.date.startsWith(month + "-")).map(record => this.historyIdentity(record)));
           if (!saved || Object.values(this.validateRecords(saved)).some(record => !identities.has(this.historyIdentity(record)))) {
             throw new Error("Monthly export contains missing history. Restore history from monthly notes before refreshing.");
@@ -1943,7 +1946,11 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const wrapper = element.createDiv({ cls: "auto-mood-dashboard" });
     const records = Object.values(this.records).sort((a, b) => a.date.localeCompare(b.date));
     const partitions = this.partitionHistory(records);
-    const timestampRecords = partitions.current;
+    // A saved detected-date result remains useful when another source for
+    // that day changes. Show its original score with explicit provenance.
+    const savedDays = partitions.previous.filter(record => record.dateBasis === CURRENT_DATE_BASIS);
+    const timestampRecords = [...partitions.current, ...savedDays].sort((a, b) => a.date.localeCompare(b.date));
+    if (savedDays.length) wrapper.createEl("p", { text: `Showing saved scores for ${savedDays.length} days whose source notes have changed. Analyze changed refreshes these results.` });
     const complete = timestampRecords.filter((record) => record.status === "complete" && !hasNoEmotionalEvidence(record) && Number.isFinite(record.moodScore));
     // Keep the same composition rows across chart ranges, using all saved
     // scored history including legacy/archived records for the ranking.
@@ -2018,8 +2025,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     if (complete.length) this.renderTrendChart(wrapper, complete, updateSummaryCards, rangeState);
     else updateSummaryCards(complete);
     wrapper.appendChild(emotionHost);
-    this.renderHistoryCards(wrapper, [...partitions.current, ...partitions.legacy]);
-    const historical = partitions.previous;
+    this.renderHistoryCards(wrapper, [...timestampRecords, ...partitions.legacy]);
+    const historical = partitions.previous.filter(record => record.dateBasis !== CURRENT_DATE_BASIS);
     if (historical.length) {
       const archive = wrapper.createEl("details", { cls: "auto-mood-historical" });
       archive.createEl("summary", { text: `Previous grouping history (${historical.length})` });
