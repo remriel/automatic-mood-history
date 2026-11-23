@@ -1,3 +1,8 @@
+# 2.0.0
+
+- Give summary labels and values more space, keeping five equal cards across wide desktop panes and reflowing them as space or text size changes.
+- Improve recorded-day cards and the date selector at larger text sizes, with room for complete labels and scores.
+
 # 1.9.13
 
 - Match the recorded-day panel to the supplied design and remove its slider.

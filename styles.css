@@ -130,10 +130,13 @@
 }
 
 .auto-mood-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   color: var(--amh-on-accent);
   border: 2px solid var(--amh-frame);
   box-shadow: 3px 3px 0 var(--amh-shadow);
-  padding: 8px 4px;
+  padding: clamp(10px, 0.75rem, 18px) clamp(12px, 0.875rem, 20px);
   background: var(--amh-surface);
 }
 
@@ -144,16 +147,35 @@
 .auto-mood-card:nth-child(5) { background: #d6baff; }
 
 .auto-mood-card-label {
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   font-weight: 900;
-  letter-spacing: 0;
+  letter-spacing: 0.025em;
+  line-height: 1.5;
 }
 
 .auto-mood-card-value {
-  font-size: 1.4rem;
-  line-height: 1;
+  font-size: 1.55rem;
+  line-height: 1.5;
   font-weight: 950;
-  margin-top: 6px;
+  margin-top: auto;
+}
+
+/* Keep five equal desktop cards, then make room for readable labels as the
+   pane narrows or the user's interface font grows. Fill each row evenly. */
+@container auto-mood (max-width: 60rem) {
+  .auto-mood-cards { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .auto-mood-card { grid-column: span 2; }
+  .auto-mood-card:nth-child(n+4) { grid-column: span 3; }
+}
+
+@container auto-mood (max-width: 38rem) {
+  .auto-mood-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .auto-mood-card, .auto-mood-card:nth-child(n+4) { grid-column: auto; }
+  .auto-mood-card:last-child { grid-column: 1 / -1; }
+}
+
+@container auto-mood (max-width: 22rem) {
+  .auto-mood-cards { grid-template-columns: minmax(0, 1fr); }
 }
 
 .auto-mood-section {
@@ -586,10 +608,6 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 }
 
 @container auto-mood (max-width: 360px) {
-  .auto-mood-card-value {
-    font-size: 1rem;
-  }
-
   .auto-mood-dashboard {
     padding: 8px;
     margin-inline: 0 6px;
@@ -725,7 +743,7 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   display: flex;
   align-items: center;
   gap: 12px;
-  width: min(250px, 100%);
+  width: min(18rem, 100%);
   min-height: 48px;
   padding: 8px 12px;
   border: 2px solid #ffea32;
@@ -735,7 +753,7 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   color-scheme: dark;
 }
 
-.auto-mood-picker-label { flex: 1; color: #f9f8f1; font-weight: 800; }
+.auto-mood-picker-label { flex: 1; color: #f9f8f1; font-weight: 800; line-height: 1.3; }
 .auto-mood-picker-chevron { padding-left: 10px; border-left: 1px solid #777638; }
 
 .auto-mood-explorer-picker select {
@@ -770,13 +788,14 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   color: #f9f8f1;
   font-size: .85rem;
   font-weight: 900;
+  line-height: 1.5;
   letter-spacing: .025em;
   text-transform: uppercase;
 }
 
 .auto-mood-explorer-icon { display: flex; flex: 0 0 auto; color: var(--amh-day-accent, #ffea32); }
 .auto-mood-explorer-icon svg { width: 1.4rem; height: 1.4rem; }
-.auto-mood-readout-score { margin-top: auto; color: #f9f8f1; font-size: clamp(1.65rem, 3.6cqi, 2.65rem); font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.auto-mood-readout-score { margin-top: auto; color: #f9f8f1; font-size: clamp(1.65rem, 3.6cqi, 2.65rem); font-weight: 900; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .auto-mood-readout-date { --amh-day-accent: #181818; border: 2px solid #ffeb52; background: #ffeb52; }
 .auto-mood-readout-date .auto-mood-readout-label, .auto-mood-readout-date .auto-mood-readout-score { color: #181818; }
 .auto-mood-readout-date .auto-mood-readout-score { font-size: clamp(1.05rem, 2.4cqi, 1.9rem); }
@@ -786,23 +805,28 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-readout-value[data-metric="intensityScore"] { --amh-day-accent: #bd69fa; }
 .auto-mood-explorer-empty { grid-column: 1 / -1; margin: 0; }
 
-@container auto-mood (max-width: 790px) {
+@container auto-mood (max-width: 64rem) {
   .auto-mood-day-readout { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-@container auto-mood (max-width: 560px) {
+@container auto-mood (max-width: 50rem) {
   .auto-mood-explorer-header { grid-template-columns: minmax(0, 1fr); }
   .auto-mood-explorer-picker { justify-self: end; max-width: 100%; }
-  .auto-mood-day-readout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@container auto-mood (max-width: 420px) {
+@container auto-mood (max-width: 40rem) {
+  .auto-mood-day-readout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .auto-mood-readout-value:last-child { grid-column: 1 / -1; justify-self: center; width: calc((100% - 14px) / 2); }
+}
+
+@container auto-mood (max-width: 30rem) {
   .auto-mood-explorer { padding: 16px; }
   .auto-mood-explorer-picker { gap: 6px; padding-inline: 8px; }
   .auto-mood-picker-label { font-size: .8rem; }
   .auto-mood-picker-chevron { padding-left: 6px; }
   .auto-mood-explorer-icon svg { width: 1.15rem; height: 1.15rem; }
   .auto-mood-day-readout { grid-template-columns: minmax(0, 1fr); }
+  .auto-mood-readout-value:last-child { grid-column: auto; width: 100%; }
 }
 
 .auto-mood-svg .series-heading { fill: var(--amh-text); font-family: var(--font-interface); font-size: 11px; font-weight: 900; letter-spacing: .08em; }

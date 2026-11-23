@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { chromium, webkit, devices } = require("playwright");
 const { fixtureHTML } = require("./layout-fixture");
+const { assertReadableCards } = require("./card-readability");
 
 async function inspect(page, label, expectCards = false) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -22,14 +23,20 @@ async function inspect(page, label, expectCards = false) {
       const bounds = parent.getBoundingClientRect();
       const style = getComputedStyle(parent);
       const cards = [...grid.children].map(card => card.getBoundingClientRect());
-      const near = (actual, expected) => Math.abs(actual - expected) < 0.1;
-      return cards.length === 5 &&
-        near(cards[0].left, bounds.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)) &&
-        near(cards[4].right, bounds.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)) &&
-        cards.every((card, index) => near(card.width, cards[0].width) &&
-          near(card.top, cards[0].top) && (!index || near(card.left - cards[index - 1].right, 12)));
+      const near = (actual, expected) => Math.abs(actual - expected) < 1;
+      const rows = [];
+      for (const card of cards) {
+        let row = rows.find(existing => near(existing[0].top, card.top));
+        if (!row) rows.push(row = []);
+        row.push(card);
+      }
+      return cards.length === 5 && rows.every(row =>
+        near(row[0].left, bounds.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)) &&
+        near(row[row.length - 1].right, bounds.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)) &&
+        row.every((card, index) => near(card.width, row[0].width) && (!index || near(card.left - row[index - 1].right, 12))));
     });
-    assert.ok(cardsAligned, `${label}: five equal cards align to the dashboard padding with 12px gaps`);
+    assert.ok(cardsAligned, `${label}: cards fill each row with equal widths and 12px gaps`);
+    await assertReadableCards(page, label);
   }
   const smallTargets = await page.locator(".auto-mood-actions button,.auto-mood-series-toggle,.auto-mood-range-controls button,.auto-mood-explorer-picker select,.auto-mood-day-date a,.auto-mood-settings button,.auto-mood-settings input").evaluateAll(elements =>
     elements.filter(el => el.getBoundingClientRect().width && el.getBoundingClientRect().height < 44).map(el => el.textContent || el.getAttribute("aria-label")));

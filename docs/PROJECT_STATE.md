@@ -1,3 +1,17 @@
+# Current work — summary-card readability (2026-11-23)
+
+Owner: the primary Codex agent; do not use subagents. The user wants polished cards with no cut-off summary text and explicitly requested major release **2.0.0**. Desktop is the priority; mobile is secondary. The 1.9.13 stable release and current `main` are the starting point.
+
+The dashboard is an Obsidian plugin using `src/main.js`, the generated `main.js`, and `styles.css`. The 1.9.13 summary cards forced five columns at every width with only 4px horizontal padding. The 2.0.0 candidate keeps five equal, full-width cards on a wide desktop, adds breathing room, and reflows to balanced three-, two-, or one-column rows using font-relative container thresholds. Recorded-day cards and the date picker also reflow when text grows. The established colorful style, saved data, and scoring remain unchanged. `tests/card-readability.js` measures actual text fragments within card padding and detects words broken across lines; `tests/card-layout.test.js` covers desktop and enlarged text, and `tests/mobile-layout.test.js` checks responsive rows on Chromium and WebKit.
+
+The release workflow runs full tests on a `main` push that changes `manifest.json`, then publishes the tag matching the manifest. Do not push a separate tag while that workflow is creating it. Release requires matching metadata and a release-notes file, followed by workflow and asset verification. Native Obsidian/theme behavior is not yet verified.
+
+## RESUME HERE
+
+The 2.0.0 candidate has passed functional, desktop browser, Android and iPhone browser, mobile runtime, and privacy checks locally. Publish through the release workflow, then verify CI and release assets. Native Obsidian/theme behavior remains unverified. See `docs/PROGRESS.md` for the ordered checklist.
+
+---
+
 # 1.9.10 composition chart
 
 The dashboard ranks up to ten emotion labels from the scored records in the active preset or custom date range. Archived records outside the trend do not contribute to the ranking. A day contributes once per label. Ties use alphabetical order, and each period is normalized by its displayed label count. Gray periods and the text details distinguish the absence of scored records from the absence of displayed labels.
