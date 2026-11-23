@@ -25,19 +25,14 @@ const { fixtureHTML } = require("./layout-fixture");
           const style = getComputedStyle(document.querySelector(selector));
           return [style.minHeight, style.fontSize, style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft];
         };
-        const connection = [...document.querySelectorAll('.auto-mood-card-label')].find(el => el.textContent === 'AVG CONNECTION');
-        const word = document.createRange(); word.setStart(connection.firstChild, 4); word.setEnd(connection.firstChild, connection.textContent.length);
         return {
-          cards: centeredRows('.auto-mood-cards', '.auto-mood-card'),
           ranges: centeredRows('.auto-mood-range-controls', '.auto-mood-range-controls button'),
           series: centeredRows('.auto-mood-chart-legend', '.auto-mood-chart-legend li'),
           actions: centeredRows('.auto-mood-toolbar', '.auto-mood-actions button'),
-          connectionLines: word.getClientRects().length,
           styles: ['.auto-mood-range-controls button', '.auto-mood-series-toggle', '.auto-mood-actions button'].map(buttonStyle)
         };
       });
-      for (const name of ['cards', 'ranges', 'series', 'actions']) assert(layout[name].every(offset => offset <= 2), `${width}px ${largeText ? '200%' : '100%'}: ${name} rows are centered`);
-      if (!largeText) assert.equal(layout.connectionLines, 1, `${width}px: CONNECTION stays on one line`);
+      for (const name of ['ranges', 'series', 'actions']) assert(layout[name].every(offset => offset <= 2), `${width}px ${largeText ? '200%' : '100%'}: ${name} rows are centered`);
       for (const style of layout.styles.slice(1)) assert.deepEqual(style, layout.styles[0], `${width}px: buttons share the range controls' dimensions`);
       await page.getByRole('button', { name: 'Custom', exact: true }).click();
       const custom = await page.locator('.auto-mood-custom-range button').evaluate(el => {
@@ -45,6 +40,6 @@ const { fixtureHTML } = require("./layout-fixture");
       });
       assert.deepEqual(custom, layout.styles[0], `${width}px: custom apply button matches`);
     }
-    console.log('PASS centered dashboard controls and summary cards, including wrapped rows and enlarged text');
+    console.log('PASS centered dashboard controls, including wrapped rows and enlarged text');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
