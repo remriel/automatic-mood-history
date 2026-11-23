@@ -174,3 +174,9 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 2026-11-19. Least confidence: native display after reload; verify on-device. Hidden factor: sync can change source membership while saved dates survive. Assumption: users want dated snapshots even after source changes; refresh analysis when a current-source score is required.
 
 1.9.9. Least certain: broader provider wording; retain strict scored validation. Hidden issue: storage conflicts can mask a successful provider result. Assumption: explicit no-evidence narratives should yield insufficient status; keep separate from scored days.
+
+## 1.9.11 metric grid
+
+1. Least confidence: text fit in native Obsidian with custom fonts or zoom. Check a narrow native pane first.
+2. Easy to miss: five fixed tracks leave less space for labels on phones. Check the longest label at your usual zoom.
+3. Main assumption: all five columns should remain in one row on mobile. If mobile readability takes priority, use fewer tracks at a narrow breakpoint.
