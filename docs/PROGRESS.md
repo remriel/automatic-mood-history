@@ -1,16 +1,16 @@
 # Current objective — polished, readable summary cards
 
-**Progress: 80%** — the 2.0.0 candidate and all local checks are complete; publication and final verification remain.
+**Progress: 100%** — [2.0.0 is published and verified](https://github.com/remriel/automatic-mood-history/releases/tag/2.0.0).
 
 - [x] Locate the current project, release, card styling, and relevant browser tests.
 - [x] Improve card spacing and responsive layout, prioritizing desktop.
 - [x] Verify text containment and appearance at multiple desktop pane sizes and text scales.
 - [x] Complete functional, desktop, Android, iPhone, and privacy checks; prepare 2.0.0 metadata.
-- [ ] Publish through the existing release workflow and verify the three release assets.
+- [x] Publish through the existing release workflow and verify the three release assets.
 
-Current state: 1.9.13 is the latest published release; the user explicitly requested 2.0.0. The candidate reflows cramped summary and recorded-day cards while retaining a five-card desktop row. Local `npm test`, `npm run test:mobile`, `npm run test:layout`, `npm run test:mobile-layout`, and `npm run audit:release` pass. Native Obsidian has not been tested. No blockers.
+Current state: 2.0.0 reflows cramped summary and recorded-day cards while retaining a five-card desktop row. Local `npm test`, `npm run test:mobile`, `npm run test:layout`, `npm run test:mobile-layout`, and `npm run audit:release` pass. PR #34 merged as `0226191`; release workflow 45238402106 and main CI 45238401839 passed. All three downloaded assets match the release commit and GitHub digests; their attestations verified. PR CI 45237610903 was still installing dependencies at the time of verification. Native Obsidian has not been tested. No release blockers remain.
 
-Next: commit and push a release PR, merge after checks pass, monitor the release workflow, and verify the three downloaded assets against the tag and GitHub digests.
+Next: update/reload the plugin in Obsidian, then check the cards in the user's desktop theme, usual pane width, and zoom. If clipping remains, inspect the theme and actual font metrics.
 
 ---
 

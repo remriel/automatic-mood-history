@@ -1,4 +1,4 @@
-# Current work — summary-card readability (2026-11-23)
+# Current state — 2.0.0 summary-card readability (2026-11-23)
 
 Owner: the primary Codex agent; do not use subagents. The user wants polished cards with no cut-off summary text and explicitly requested major release **2.0.0**. Desktop is the priority; mobile is secondary. The 1.9.13 stable release and current `main` are the starting point.
 
@@ -8,7 +8,7 @@ The release workflow runs full tests on a `main` push that changes `manifest.jso
 
 ## RESUME HERE
 
-The 2.0.0 candidate has passed functional, desktop browser, Android and iPhone browser, mobile runtime, and privacy checks locally. Publish through the release workflow, then verify CI and release assets. Native Obsidian/theme behavior remains unverified. See `docs/PROGRESS.md` for the ordered checklist.
+[2.0.0 is published](https://github.com/remriel/automatic-mood-history/releases/tag/2.0.0) from merge commit `0226191e1ae624d2b454ce6c4ce6b03876f19102`. GitHub Release run 45238402106 and main CI run 45238401839 passed functional, mobile runtime, privacy, desktop browser, and mobile browser checks. The three downloaded files match both GitHub's SHA-256 digests and the release commit; all three attestation verifications returned success. The redundant PR CI run 45237610903 was still installing browser dependencies at verification time. Native Obsidian and the user's theme remain untested. No release work remains; the user can update the installed plugin and check their normal desktop pane and zoom.
 
 ---
 
