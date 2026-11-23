@@ -482,3 +482,5 @@ RESUME HERE: Stable 1.9.12 is published at https://github.com/remriel/automatic-
 ## RESUME HERE - 1.9.13 recorded-day reference
 
 The supplied reference calls for a yellow date card, charcoal metric cards with colored stripes and icons, a yellow outlined date selector, and an olive square-edged panel. The user explicitly removed the slider. The native select and chart share the existing selected-record redraw path. The picker shows a fixed prompt while the selected date appears in the first card. Finish verification and publication.
+
+RESUME HERE: Stable 1.9.13 is published from commit 77b34c5ed08129df38d21a8c391273ebe11a8d9c. The reference design uses a yellow date card and no slider. Date selection stays synchronized between the native dropdown and chart. Local desktop, Android and iPhone browser tests and the release workflow passed. All three assets matched their GitHub digests and tagged source. The shared AI Brain vault was unavailable.

@@ -372,10 +372,10 @@ Desktop Chromium, mobile Chromium and WebKit, functional, runtime and release-au
 
 ## 1.9.13 recorded-day reference
 
-Progress: 80%.
+Progress: 100%.
 
 - [x] Match the reference and remove the slider.
 - [x] Verify responsive layouts and date selection.
-- [ ] Publish and verify the release.
+- [x] Publish and verify the release.
 
-Functional, desktop and mobile layout, mobile runtime and release audit passed. Synthetic previews were checked with icon shapes from the installed Obsidian bundle. Next: publish and verify the assets.
+Functional, desktop and mobile layout, mobile runtime and release audit passed. Synthetic previews were checked with icon shapes from the installed Obsidian bundle. Release 1.9.13 and workflow 45231239621 succeeded. All three assets match their GitHub digests and the tagged files. No further publication steps remain.
