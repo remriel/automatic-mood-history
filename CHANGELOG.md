@@ -1,3 +1,7 @@
+# 1.9.13
+
+- Match the recorded-day panel to the supplied design and remove its slider.
+
 # 1.9.12
 
 - Redesign Explore a Recorded Day with a compact date picker, color-coded score cards, and a responsive grid.

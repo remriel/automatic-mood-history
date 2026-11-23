@@ -35,7 +35,7 @@ function fixtureHTML() {
       addButton(callback){const el=this.control.createEl('button');const api={setButtonText(t){el.textContent=t;return api;},setCta(){return api;},onClick(fn){el.addEventListener('click',fn);return api;}};callback(api);return this;}
     }
     const module={exports:{}};class FixtureFile{}
-    const require=(name)=>{if(name==='obsidian')return {Component:class{},Notice:class{},Plugin:class{},PluginSettingTab:class{},Setting:FixtureSetting,TFile:FixtureFile,TFolder:class{},requestUrl:async()=>{throw new Error('Network disabled in layout fixture');}};throw new Error(name);};
+    const require=(name)=>{if(name==='obsidian')return {Component:class{},Notice:class{},Plugin:class{},PluginSettingTab:class{},Setting:FixtureSetting,TFile:FixtureFile,TFolder:class{},setIcon:(element,name)=>{const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.dataset.icon=name;element.appendChild(icon);},requestUrl:async()=>{throw new Error('Network disabled in layout fixture');}};throw new Error(name);};
     ${bundle}
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
     const secrets=new Map();plugin.app={secretStorage:{getSecret:id=>secrets.get(id)||null,setSecret:(id,value)=>secrets.set(id,value)}};

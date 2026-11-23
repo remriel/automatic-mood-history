@@ -478,3 +478,7 @@ RESUME HERE: Stable 1.9.11 is published from 3b1843f9455a6c2c4c88da1108b44fa9a8c
 The recorded-day panel lives inside renderTrendChart. Its native date dropdown uses the existing selected index and redraw path shared with the chart and slider. Options rebuild only when the visible record set changes. The readout has five CSS Grid cards, then reflows to three, two and one column by pane width. Icons use the Obsidian icon API. The reference image was absent, so the written specification guided the design.
 
 RESUME HERE: Stable 1.9.12 is published at https://github.com/remriel/automatic-mood-history/releases/tag/1.9.12 from 23a61f704ccd0e6d21638dd645a45a514e57f96f. Release workflow and asset checks passed. The browser fixture did not render native Obsidian icons. The shared AI Brain vault was unavailable at the configured paths.
+
+## RESUME HERE - 1.9.13 recorded-day reference
+
+The supplied reference calls for a yellow date card, charcoal metric cards with colored stripes and icons, a yellow outlined date selector, and an olive square-edged panel. The user explicitly removed the slider. The native select and chart share the existing selected-record redraw path. The picker shows a fixed prompt while the selected date appears in the first card. Finish verification and publication.

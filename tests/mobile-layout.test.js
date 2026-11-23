@@ -31,7 +31,7 @@ async function inspect(page, label, expectCards = false) {
     });
     assert.ok(cardsAligned, `${label}: five equal cards align to the dashboard padding with 12px gaps`);
   }
-  const smallTargets = await page.locator(".auto-mood-actions button,.auto-mood-series-toggle,.auto-mood-range-controls button,.auto-mood-day-slider,.auto-mood-day-date a,.auto-mood-settings button,.auto-mood-settings input").evaluateAll(elements =>
+  const smallTargets = await page.locator(".auto-mood-actions button,.auto-mood-series-toggle,.auto-mood-range-controls button,.auto-mood-explorer-picker select,.auto-mood-day-date a,.auto-mood-settings button,.auto-mood-settings input").evaluateAll(elements =>
     elements.filter(el => el.getBoundingClientRect().width && el.getBoundingClientRect().height < 44).map(el => el.textContent || el.getAttribute("aria-label")));
   assert.deepEqual(smallTargets, [], `${label}: controls and entry links have 44px touch targets`);
 }
@@ -81,10 +81,11 @@ async function run() {
       }
       await page.getByRole("button", { name: "30 days", exact: true }).tap();
       assert.equal(await page.getByRole("button", { name: "30 days", exact: true }).getAttribute("aria-pressed"), "true");
-      const slider = page.getByRole("slider", { name: "Explore a recorded day" });
-      const latest = await slider.getAttribute("aria-valuetext");
-      await slider.tap({ position: { x: 5, y: 22 } });
-      assert.notEqual(await slider.getAttribute("aria-valuetext"), latest, "touch selects another recorded day");
+      const picker = page.getByRole("combobox", { name: "Recorded date" });
+      const latest = await page.locator(".auto-mood-readout-date .auto-mood-readout-score").innerText();
+      await picker.tap();
+      await picker.selectOption({ index: 0 });
+      assert.notEqual(await page.locator(".auto-mood-readout-date .auto-mood-readout-score").innerText(), latest, "the date picker selects another recorded day");
       await page.getByRole("button", { name: "All", exact: true }).tap();
       for (const label of ["Mood", "Energy", "Connection", "Intensity"]) {
         const button = page.getByRole("button", { name: label, exact: true });

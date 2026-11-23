@@ -684,101 +684,106 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 }
 @media (pointer: coarse) { .auto-mood-range-controls button { min-height: 44px; } }
 .auto-mood-range-controls button[aria-pressed="true"] { background: var(--amh-yellow); color: var(--amh-on-accent); box-shadow: 3px 3px 0 var(--amh-shadow); }
-.auto-mood-range-controls button:focus-visible, .auto-mood-day-slider:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
+.auto-mood-range-controls button:focus-visible { outline: 3px solid var(--amh-series-mood); outline-offset: 3px; }
 .auto-mood-svg .series-lane { fill: var(--amh-surface-alt); opacity: .55; }
 .auto-mood-svg .selection-guide { stroke: var(--amh-text); stroke-width: 1.5; stroke-dasharray: 2 4; opacity: .55; pointer-events: none; }
 .auto-mood-svg .selected-point { pointer-events: none; }
 .auto-mood-explorer {
   margin-top: 14px;
   padding: 24px;
-  border: 2px solid #73794c;
-  border-radius: 10px;
-  color: #fcfbe9;
-  background-color: #353b21;
-  background-image:
-    linear-gradient(#dce7a310 1px, transparent 1px),
-    linear-gradient(90deg, #dce7a310 1px, transparent 1px);
-  background-size: 20px 20px;
+  border: 2px solid #8b8b82;
+  color: #f9f8f1;
+  background: linear-gradient(120deg, #26331a, #202915);
 }
 
 .auto-mood-explorer-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
-  margin-bottom: 16px;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.auto-mood-explorer-heading {
+  padding-left: 16px;
+  border-left: 10px solid #ffea32;
 }
 
 .auto-mood-explorer-header h4 {
   margin: 0;
-  font-size: 1.15rem;
+  color: #f9f8f1;
+  font-size: clamp(1.2rem, 3cqi, 2rem);
   font-weight: 900;
-  letter-spacing: .045em;
-  text-transform: uppercase;
-}
-
-.auto-mood-explorer-header p { margin: 4px 0 0; color: #e0e4c6; font-size: .85rem; }
-.auto-mood-explorer-picker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-inline: 10px 4px;
-  border: 1px solid #92986b;
-  border-radius: 8px;
-  background: #23271b;
-  color: #f3d769;
-  color-scheme: dark;
-}
-
-.auto-mood-explorer-picker select {
-  appearance: auto;
-  width: 100%;
-  min-height: 44px;
-  padding: 5px 4px;
-  background: #23271b;
-  color: #fcfbe9;
-  border: 0;
-  font: inherit;
-  font-weight: 700;
-}
-
-.auto-mood-explorer-picker select:focus-visible,
-.auto-mood-explorer .auto-mood-day-slider:focus-visible { outline: 2px solid #f3d769; outline-offset: 2px; }
-
-.auto-mood-day-slider { display: block; width: 100%; min-height: 44px; margin: 8px 0 0; accent-color: #f3d769; }
-.auto-mood-day-readout { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 14px; }
-.auto-mood-readout-date, .auto-mood-readout-value {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid #575b4a;
-  border-inline-start: 4px solid var(--amh-day-accent);
-  border-radius: 8px;
-  background: #232421;
-}
-
-.auto-mood-readout-label {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 4px;
-  color: #e0e4d4;
-  font-size: .72rem;
-  font-weight: 850;
+  line-height: 1.12;
   letter-spacing: .025em;
   text-transform: uppercase;
 }
 
-.auto-mood-explorer-icon { display: flex; flex: 0 0 auto; color: var(--amh-day-accent, #f3d769); }
-.auto-mood-explorer-icon svg { width: 1em; height: 1em; }
-.auto-mood-readout-score { margin-top: auto; font-size: 1.45rem; font-weight: 900; line-height: 1.15; font-variant-numeric: tabular-nums; }
-.auto-mood-readout-date { --amh-day-accent: #f3d769; }
-.auto-mood-readout-date .auto-mood-readout-score { font-size: 1.05rem; }
-.auto-mood-readout-value[data-metric="moodScore"] { --amh-day-accent: #ff81b6; }
-.auto-mood-readout-value[data-metric="energyScore"] { --amh-day-accent: #6be2ef; }
-.auto-mood-readout-value[data-metric="connectionScore"] { --amh-day-accent: #b9ed78; }
-.auto-mood-readout-value[data-metric="intensityScore"] { --amh-day-accent: #cea9fc; }
+.auto-mood-explorer-header p { margin: 7px 0 0; color: #f9f8f1; font-size: .95rem; }
+.auto-mood-explorer-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(250px, 100%);
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 2px solid #ffea32;
+  border-radius: 8px;
+  background: #1c2514;
+  color: #ffea32;
+  color-scheme: dark;
+}
+
+.auto-mood-picker-label { flex: 1; color: #f9f8f1; font-weight: 800; }
+.auto-mood-picker-chevron { padding-left: 10px; border-left: 1px solid #777638; }
+
+.auto-mood-explorer-picker select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.auto-mood-explorer-picker:focus-within { outline: 3px solid #f9f8f1; outline-offset: 2px; }
+
+.auto-mood-day-readout { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 14px; }
+.auto-mood-readout-date, .auto-mood-readout-value {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 104px;
+  padding: 14px;
+  border: 2px solid #858581;
+  border-inline-start: 10px solid var(--amh-day-accent);
+  border-radius: 8px;
+  background: #1d1d1d;
+}
+
+.auto-mood-readout-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: #f9f8f1;
+  font-size: .85rem;
+  font-weight: 900;
+  letter-spacing: .025em;
+  text-transform: uppercase;
+}
+
+.auto-mood-explorer-icon { display: flex; flex: 0 0 auto; color: var(--amh-day-accent, #ffea32); }
+.auto-mood-explorer-icon svg { width: 1.4rem; height: 1.4rem; }
+.auto-mood-readout-score { margin-top: auto; color: #f9f8f1; font-size: clamp(1.65rem, 3.6cqi, 2.65rem); font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.auto-mood-readout-date { --amh-day-accent: #181818; border: 2px solid #ffeb52; background: #ffeb52; }
+.auto-mood-readout-date .auto-mood-readout-label, .auto-mood-readout-date .auto-mood-readout-score { color: #181818; }
+.auto-mood-readout-date .auto-mood-readout-score { font-size: clamp(1.05rem, 2.4cqi, 1.9rem); }
+.auto-mood-readout-value[data-metric="moodScore"] { --amh-day-accent: #ff62af; }
+.auto-mood-readout-value[data-metric="energyScore"] { --amh-day-accent: #2cdbeb; }
+.auto-mood-readout-value[data-metric="connectionScore"] { --amh-day-accent: #a2f415; }
+.auto-mood-readout-value[data-metric="intensityScore"] { --amh-day-accent: #bd69fa; }
 .auto-mood-explorer-empty { grid-column: 1 / -1; margin: 0; }
 
 @container auto-mood (max-width: 790px) {
@@ -791,7 +796,12 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   .auto-mood-day-readout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@container auto-mood (max-width: 340px) {
+@container auto-mood (max-width: 420px) {
+  .auto-mood-explorer { padding: 16px; }
+  .auto-mood-explorer-picker { gap: 6px; padding-inline: 8px; }
+  .auto-mood-picker-label { font-size: .8rem; }
+  .auto-mood-picker-chevron { padding-left: 6px; }
+  .auto-mood-explorer-icon svg { width: 1.15rem; height: 1.15rem; }
   .auto-mood-day-readout { grid-template-columns: minmax(0, 1fr); }
 }
 

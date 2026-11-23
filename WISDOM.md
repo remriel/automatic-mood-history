@@ -186,3 +186,9 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 1. Least confidence: fidelity to the missing reference image. Compare the panel with the source image when available.
 2. Easy to miss: the picker is scoped to the active chart range. To see an older date, widen the range.
 3. Main assumption: the existing keyboard slider should remain alongside the dropdown. If the reference omits it, review whether the extra control is still wanted.
+
+## 1.9.13 recorded-day reference
+
+1. Least confidence is native Obsidian rendering across themes and devices. Verify the panel in the installed application.
+2. The date selector includes only dates in the current trend window. Widen the window to select older dates.
+3. The design assumes the reference is the authority for the yellow date card and selector prompt. Compare it in the intended pane size.

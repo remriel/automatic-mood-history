@@ -369,3 +369,13 @@ Progress: 100%.
 - [x] Merge, publish and verify release downloads.
 
 Desktop Chromium, mobile Chromium and WebKit, functional, runtime and release-audit checks passed. Inspected synthetic desktop and mobile previews. PR #33 and main CI passed. Release workflow 45229283081 published on its second attempt after browser setup stalled on the first. All three assets match their published SHA-256 digests and tagged files. Next: no publication work remains.
+
+## 1.9.13 recorded-day reference
+
+Progress: 80%.
+
+- [x] Match the reference and remove the slider.
+- [x] Verify responsive layouts and date selection.
+- [ ] Publish and verify the release.
+
+Functional, desktop and mobile layout, mobile runtime and release audit passed. Synthetic previews were checked with icon shapes from the installed Obsidian bundle. Next: publish and verify the assets.

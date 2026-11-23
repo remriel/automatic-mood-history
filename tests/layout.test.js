@@ -90,9 +90,9 @@ async function inspectLayout(page, label) {
       if ((intensityPath.match(/M/g) || []).length !== 2) throw new Error('A missing score breaks the intensity line');
       if (![...document.querySelectorAll('.auto-mood-chart-legend li')].some(li => li.textContent === 'Intensity')) throw new Error('Intensity legend is visible');
       if (!svg.getAttribute('aria-label').includes('intensity')) throw new Error('Accessible chart description includes intensity');
-      const slider = document.querySelector('.auto-mood-day-slider');
-      slider.value = '2';
-      slider.dispatchEvent(new Event('input', { bubbles: true }));
+      const picker = document.querySelector('.auto-mood-explorer-picker select');
+      picker.value = '2';
+      picker.dispatchEvent(new Event('change', { bubbles: true }));
       if (!document.querySelector('.auto-mood-readout-value[data-metric="intensityScore"]').textContent.includes('—')) throw new Error('Missing selected score is shown in the readout');
       if (svg.querySelectorAll('.selected-point').length !== 3) throw new Error('Missing score has no selected point');
     });
@@ -165,7 +165,7 @@ async function inspectLayout(page, label) {
       if (windowDates[label]) assert.deepStrictEqual(await chartDates(), windowDates[label], `${label} includes its boundary and excludes the previous day`);
       assert.deepStrictEqual(await cardValues(), windowCards[label], `${label} summary uses the same records as the chart`);
       assert.equal(await page.locator('.auto-mood-bar-count').first().textContent(), windowCards[label][0], `${label} emotions use the same recorded days`);
-      assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).getAttribute('aria-valuetext'), '2099-04-01');
+      assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-04-01');
     }
     await page.getByRole('button', { name: 'Custom', exact: true }).click();
     await page.getByLabel('Start date', { exact: true }).fill('2099-03-25');
@@ -192,7 +192,7 @@ async function inspectLayout(page, label) {
     assert.equal(await page.locator('.auto-mood-range-emotions .auto-mood-bar-row').count(), 0, 'empty range clears emotions');
     assert.equal(await page.locator('.auto-mood-composition-chart rect[data-empty="true"]').count(), 2, 'empty range shows both gray periods');
     assert.equal(await page.locator('.auto-mood-svg .data-point').count(), 0);
-    assert.equal(await page.getByRole('slider', { name: 'Explore a recorded day' }).isDisabled(), true);
+    assert.equal(await page.getByRole('combobox', { name: 'Recorded date' }).isDisabled(), true);
     await page.getByRole('button', { name: 'All', exact: true }).click();
     assert.deepStrictEqual(await cardValues(), windowCards.All, 'preset restores chart and summaries after an empty custom range');
     assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), rangeRecordsBefore, 'changing range does not alter records');
@@ -224,12 +224,13 @@ async function inspectLayout(page, label) {
     assert.equal(await page.locator('.auto-mood-card').filter({ hasText: 'AVG INTENSITY' }).locator('.auto-mood-card-value').innerText(), '3.5', 'intensity card averages scored records');
     const positions = await page.locator('.auto-mood-svg circle[data-series="moodScore"]').evaluateAll(nodes => nodes.map(node => Number(node.getAttribute('cx'))));
     assert(Math.abs((positions[2] - positions[1]) / (positions[1] - positions[0]) - 9) < .01, 'calendar gaps use proportional spacing');
-    const slider = page.getByRole('slider', { name: 'Explore a recorded day' });
-    await slider.focus();
-    await page.keyboard.press('Home');
-    assert.equal(await slider.getAttribute('aria-valuetext'), '2099-01-01');
     const datePicker = page.getByRole('combobox', { name: 'Recorded date' });
-    for (const [paneWidth, columns] of [[1050, 5], [700, 3], [390, 2], [300, 1]]) {
+    assert.equal(await page.locator('.auto-mood-explorer-icon svg').count(), 7, 'the picker and five cards have their icons');
+    assert.equal(await page.locator('.auto-mood-picker-label').innerText(), 'Choose a day');
+    await datePicker.focus();
+    await page.keyboard.press('Home');
+    assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-01-01', 'keyboard selection updates the date');
+    for (const [paneWidth, columns] of [[1050, 5], [700, 3], [500, 2], [390, 1], [300, 1]]) {
       await page.evaluate(width => { document.getElementById('pane').style.width = width + 'px'; }, paneWidth);
       const geometry = await page.locator('.auto-mood-day-readout').evaluate(grid => {
         const cards = [...grid.children].map(card => card.getBoundingClientRect());
@@ -243,10 +244,9 @@ async function inspectLayout(page, label) {
       assert.deepEqual(geometry, { count: 5, columns, equal: true, gap: '14px' }, `recorded-day grid at ${paneWidth}px`);
     }
     await page.evaluate(() => { document.getElementById('pane').style.width = '1100px'; });
-    assert.equal(await datePicker.inputValue(), '0', 'slider updates the date picker');
+    assert.equal(await datePicker.inputValue(), '0');
     assert.equal(await page.locator('.auto-mood-readout-value[data-metric="moodScore"] .auto-mood-readout-score').innerText(), '1/5');
     await datePicker.selectOption({ label: '2099-01-11' });
-    assert.equal(await slider.getAttribute('aria-valuetext'), '2099-01-11', 'date picker updates the slider');
     assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-01-11');
     await datePicker.selectOption({ label: '2099-01-01' });
     assert.equal(await page.locator('.auto-mood-svg .selected-score').first().textContent(), '1/5', 'each plot labels the selected score');
@@ -254,15 +254,16 @@ async function inspectLayout(page, label) {
     assert.equal(Number(selectedX), positions[0], 'selected point follows the keyboard-selected day');
     await page.getByRole('button', { name: '90 days', exact: true }).click();
     assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 3, 'window includes its 90-day boundary and excludes older records');
-    assert.equal(await slider.getAttribute('aria-valuetext'), '2099-04-01');
+    assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-04-01');
     await page.getByRole('button', { name: '30 days', exact: true }).click();
     assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 1);
-    assert(await slider.isDisabled(), 'one-day window has a disabled selector');
     assert(await datePicker.isDisabled(), 'one-day window has a disabled date picker');
     await page.getByRole('button', { name: 'All', exact: true }).click();
     assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 4);
     await page.locator('.auto-mood-svg').click({ position: { x: 32, y: 80 } });
-    assert.equal(await slider.getAttribute('aria-valuetext'), '2099-01-01', 'chart selection picks the nearest recorded day');
+    assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-01-01', 'chart selection picks the nearest recorded day');
+    assert.equal(await datePicker.inputValue(), '0', 'chart selection updates the picker');
+    assert.equal(await page.locator('.auto-mood-explorer input[type="range"]').count(), 0, 'the explorer has no slider');
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
     const recordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
     for (const [label, property] of [['Mood','moodScore'],['Energy','energyScore'],['Connection','connectionScore'],['Intensity','intensityScore']]) {
