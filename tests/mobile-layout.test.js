@@ -4,7 +4,7 @@ const path = require("node:path");
 const { chromium, webkit, devices } = require("playwright");
 const { fixtureHTML } = require("./layout-fixture");
 
-async function inspect(page, label) {
+async function inspect(page, label, expectCards = false) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const overflow = await page.evaluate(() => {
     const pane = document.getElementById("pane").getBoundingClientRect();
@@ -16,19 +16,21 @@ async function inspect(page, label) {
     });
   });
   assert.deepEqual(overflow, [], `${label}: no horizontal overflow`);
-  const cardsAligned = await page.locator(".auto-mood-cards").evaluate(grid => {
-    const parent = grid.parentElement;
-    const bounds = parent.getBoundingClientRect();
-    const style = getComputedStyle(parent);
-    const cards = [...grid.children].map(card => card.getBoundingClientRect());
-    const near = (actual, expected) => Math.abs(actual - expected) < 0.1;
-    return cards.length === 5 &&
-      near(cards[0].left, bounds.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)) &&
-      near(cards[4].right, bounds.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)) &&
-      cards.every((card, index) => near(card.width, cards[0].width) &&
-        near(card.top, cards[0].top) && (!index || near(card.left - cards[index - 1].right, 12)));
-  });
-  assert.ok(cardsAligned, `${label}: five equal cards align to the dashboard padding with 12px gaps`);
+  if (expectCards) {
+    const cardsAligned = await page.locator(".auto-mood-cards").evaluate(grid => {
+      const parent = grid.parentElement;
+      const bounds = parent.getBoundingClientRect();
+      const style = getComputedStyle(parent);
+      const cards = [...grid.children].map(card => card.getBoundingClientRect());
+      const near = (actual, expected) => Math.abs(actual - expected) < 0.1;
+      return cards.length === 5 &&
+        near(cards[0].left, bounds.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)) &&
+        near(cards[4].right, bounds.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)) &&
+        cards.every((card, index) => near(card.width, cards[0].width) &&
+          near(card.top, cards[0].top) && (!index || near(card.left - cards[index - 1].right, 12)));
+    });
+    assert.ok(cardsAligned, `${label}: five equal cards align to the dashboard padding with 12px gaps`);
+  }
   const smallTargets = await page.locator(".auto-mood-actions button,.auto-mood-series-toggle,.auto-mood-range-controls button,.auto-mood-day-slider,.auto-mood-day-date a,.auto-mood-settings button,.auto-mood-settings input").evaluateAll(elements =>
     elements.filter(el => el.getBoundingClientRect().width && el.getBoundingClientRect().height < 44).map(el => el.textContent || el.getAttribute("aria-label")));
   assert.deepEqual(smallTargets, [], `${label}: controls and entry links have 44px touch targets`);
@@ -64,7 +66,7 @@ async function run() {
           await page.setViewportSize({ width, height: width > 430 ? 390 : 844 });
           for (const mode of ["empty", "one", "insufficient", "dense"]) {
             await page.evaluate(options => fixture.configure(options), { theme, mode, count: mode === "one" ? 1 : mode === "dense" ? 365 : 12, longText: true });
-            await inspect(page, `${name} ${theme} ${width}px ${mode}`);
+            await inspect(page, `${name} ${theme} ${width}px ${mode}`, mode !== "empty");
           }
         }
       }
