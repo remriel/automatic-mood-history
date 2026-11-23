@@ -835,8 +835,13 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 .auto-mood-explorer-emotions-empty { margin: 0; font-size: .85rem; line-height: 1.5; }
 
 /* Preserve whole labels where the compact five-card row is at its narrowest. */
-@container auto-mood (min-width: 64rem) and (max-width: 70rem) {
+@container auto-mood (min-width: 64rem) and (max-width: 84rem) {
   .auto-mood-readout-label .auto-mood-explorer-icon { display: none; }
+}
+
+@container auto-mood (min-width: 64rem) and (max-width: 70rem) {
+  .auto-mood-readout-date, .auto-mood-readout-value { padding-inline: 7px; }
+  .auto-mood-readout-label { letter-spacing: 0; }
 }
 
 @container auto-mood (max-width: 64rem) {

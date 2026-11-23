@@ -204,3 +204,4 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 1. Least confident: whether a 30% visual reduction will feel right in the user's native theme and preferred pane size. Compare at their normal desktop zoom after release.
 2. Biggest consideration: an emotion list must follow the selected individual day rather than the top emotions for the whole range, and empty ranges must clear stale content.
 3. Key assumption: the desired emotions are the labels already stored with each scored day. Use those labels without rerunning analysis or inferring missing ones.
+4. Linux CI exposed a label break that did not occur with the local Windows font. Leave extra room around the widest labels and verify the compact layout on both platforms before release.
