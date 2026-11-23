@@ -10,7 +10,7 @@ const { assertReadableCards } = require("./card-readability");
     await page.setContent(fixtureHTML());
     for (const theme of ["light", "dark"]) {
       for (const [paneWidth, largeText, columns] of [
-        [1440, false, 5], [1200, false, 5], [1050, false, 5], [1024, false, 5],
+        [1440, false, 5], [1365, false, 5], [1200, false, 5], [1050, false, 5], [1024, false, 5],
         [800, false, 3], [450, false, 2], [320, false, 1],
         [1440, true, 3], [1000, true, 2], [600, true, 1]
       ]) {
@@ -40,6 +40,13 @@ const { assertReadableCards } = require("./card-readability");
           assert(compact.widthRatio > .68 && compact.widthRatio < .72, `${label}: recorded-day cards are about 30% narrower`);
           assert(compact.height < 105, `${label}: recorded-day cards are substantially shorter`);
         }
+      }
+    }
+    for (const font of ["Verdana, sans-serif", "Arial, sans-serif", "Georgia, serif"]) {
+      await page.evaluate(value => document.documentElement.style.setProperty("--font-interface", value), font);
+      for (const paneWidth of [1042, 1200, 1365, 1440]) {
+        await page.evaluate(options => fixture.configure(options), { paneWidth, count: 32 });
+        await assertReadableCards(page, `${font} ${paneWidth}px`);
       }
     }
     console.log("PASS readable summary and recorded-day cards across desktop, narrow panes, and enlarged text");

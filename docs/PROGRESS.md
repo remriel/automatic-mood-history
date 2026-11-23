@@ -1,16 +1,16 @@
 # Current objective — emotions and smaller recorded-day cards
 
-**Progress: 80%** — the 2.1.0 candidate and all local checks are complete; publication and final verification remain.
+**Progress: 75%** — GitHub found a Linux font-dependent wrapped label; the candidate needs a small responsive fix and another release run.
 
 - [x] Inspect the explorer, selection behavior, existing emotion data, and release state.
 - [x] Show the selected day's recorded emotions, including an empty state and range changes.
 - [x] Reduce recorded-day card dimensions by about 30% without clipping labels.
-- [x] Verify selection, saved data, desktop and mobile layouts, and release privacy locally.
+- [ ] Verify the Linux label fix on GitHub, alongside the already-passing local suites.
 - [ ] Publish 2.1.0 and verify the downloadable release assets.
 
-Current state: the follow-up branch starts at the verified 2.0.0 release documentation commit. `npm test`, `npm run test:mobile`, `npm run test:layout`, `npm run test:mobile-layout`, and `npm run audit:release` pass. The user's desktop, readability, and compactness priorities are reflected in the candidate. No blockers.
+Current state: all local suites passed. PR #35 merged as `4222b34`, but release run 45240946837 and main CI 45240947411 failed because Linux broke `Connection` across lines at a 1200px pane. Version 2.1.0 was not tagged or published. A wider icon-hiding threshold is being verified. No external blocker.
 
-Next: commit and push the reviewed candidate, merge the release PR, monitor the independent GitHub checks, and compare downloaded assets with the release commit and published digests.
+Next: test and merge the Linux fix, push the matching numeric 2.1.0 tag at the fixed commit to trigger the release workflow, then verify the published assets and sync the outcome.
 
 ---
 

@@ -6,7 +6,7 @@ Owner: the primary Codex agent; no subagents. After 2.0.0 was published, the use
 
 ## RESUME HERE
 
-All local functional, desktop browser, Android and iPhone browser, mobile runtime, and privacy checks pass. Review and commit the 2.1.0 candidate, then publish and verify it through the existing release workflow. See `docs/PROGRESS.md` for current steps. Native Obsidian remains untested.
+All local functional, desktop browser, Android and iPhone browser, mobile runtime, and privacy checks passed. PR #35 merged as `4222b347a57e775a993d009fc7de3238459a404e`, but GitHub CI 45240947411 and release 45240946837 caught `Connection` wrapping in the 1200px desktop layout on Linux; no 2.1.0 tag or release was created. The fix extends the compact-label icon-hiding threshold to cover that width. Verify the fix on Linux CI, merge it, then push a numeric 2.1.0 tag at the fixed commit to rerun the existing release workflow (a CSS-only main push will not trigger that workflow). Verify the downloaded assets. Native Obsidian remains untested.
 
 ---
 
