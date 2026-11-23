@@ -123,16 +123,13 @@
 }
 
 .auto-mood-cards {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
   margin-bottom: 14px;
 }
 
 .auto-mood-card {
-  flex: 0 1 102px;
-  max-width: 100%;
   color: var(--amh-on-accent);
   border: 2px solid var(--amh-frame);
   box-shadow: 3px 3px 0 var(--amh-shadow);
@@ -583,16 +580,16 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
     width: auto;
   }
 
-  .auto-mood-card {
-    flex-basis: 92px;
-  }
-
   .auto-mood-bar-row {
     grid-template-columns: minmax(0, 100px) minmax(0, 1fr) minmax(24px, auto);
   }
 }
 
 @container auto-mood (max-width: 360px) {
+  .auto-mood-card-value {
+    font-size: 1rem;
+  }
+
   .auto-mood-dashboard {
     padding: 8px;
     margin-inline: 0 6px;

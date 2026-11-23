@@ -1,3 +1,7 @@
+# 1.9.11
+
+- The five dashboard metric cards now fill the available width in equal columns with 12px gaps, aligned to the dashboard padding.
+
 # 1.9.10
 
 - Rank the Composition chart's emotions within the selected date range.

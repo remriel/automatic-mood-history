@@ -350,3 +350,11 @@ Verified release 1.9.8 - 100%. Local suite passed. CI 44390209173 passed all fun
 1.9.9: functional regressions and privacy audit passed. Live fallback recovery verified. Publish and verify release assets.
 
 1.9.9 complete (100%). CI and release succeeded. Verified all three downloads against the tag and the installed plugin reported zero fallbacks. README condensed and two synthetic-data plugin screenshots visually checked.
+
+## 1.9.11 metric grid
+
+- [x] Implement full-width grid and add geometry assertions.
+- [x] Prepare patch release metadata.
+- [ ] Run tests, merge the release PR, and verify published assets.
+
+Progress: 50%. Next: run verification, merge, then check the release and asset hashes.
