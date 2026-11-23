@@ -1,3 +1,15 @@
+# Current work — selected-day emotions and compact cards (2026-11-23)
+
+Owner: the primary Codex agent; no subagents. After 2.0.0 was published, the user requested that Explore a Recorded Day show the emotions for the selected day and that its cards be 30% smaller. Desktop is the priority; preserve readable, unclipped text and responsive behavior. The follow-up is targeted as 2.1.0 so the published 2.0.0 tag and assets remain immutable.
+
+`src/main.js` builds the explorer and its `updateReadout` from the selected scored record. The 2.1.0 candidate renders that record's saved emotions in a wrapping section below the five metric cards, with stable chart-matching color swatches, a missing-emotions message, and no stale section in an empty range. The labels are inserted as text and do not change stored data. On a 1440px synthetic desktop pane, cards measured 171×94px versus 245×130px in 2.0.0, approximately 30% narrower and 27% shorter. Narrower panes reflow, with icons hidden only at the tightest five-column widths to protect whole labels. `tests/layout.test.js` covers date and chart selection, missing emotions, empty ranges, range-wide top-ten independence, and unchanged records; `tests/card-layout.test.js` and `tests/card-readability.js` check dimensions and text bounds.
+
+## RESUME HERE
+
+All local functional, desktop browser, Android and iPhone browser, mobile runtime, and privacy checks pass. Review and commit the 2.1.0 candidate, then publish and verify it through the existing release workflow. See `docs/PROGRESS.md` for current steps. Native Obsidian remains untested.
+
+---
+
 # Current state — 2.0.0 summary-card readability (2026-11-23)
 
 Owner: the primary Codex agent; do not use subagents. The user wants polished cards with no cut-off summary text and explicitly requested major release **2.0.0**. Desktop is the priority; mobile is secondary. The 1.9.13 stable release and current `main` are the starting point.

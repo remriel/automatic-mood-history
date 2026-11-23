@@ -767,15 +767,22 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 
 .auto-mood-explorer-picker:focus-within { outline: 3px solid #f9f8f1; outline-offset: 2px; }
 
-.auto-mood-day-readout { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 14px; }
+.auto-mood-day-readout {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 10px;
+  width: 70%;
+  margin-inline: auto;
+}
 .auto-mood-readout-date, .auto-mood-readout-value {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 104px;
-  padding: 14px;
+  gap: 8px;
+  min-height: 73px;
+  padding: 10px;
   border: 2px solid #858581;
-  border-inline-start: 10px solid var(--amh-day-accent);
+  border-inline-start: 7px solid var(--amh-day-accent);
   border-radius: 8px;
   background: #1d1d1d;
 }
@@ -786,7 +793,7 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
   justify-content: space-between;
   gap: 6px;
   color: #f9f8f1;
-  font-size: .85rem;
+  font-size: .75rem;
   font-weight: 900;
   line-height: 1.5;
   letter-spacing: .025em;
@@ -795,15 +802,42 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 
 .auto-mood-explorer-icon { display: flex; flex: 0 0 auto; color: var(--amh-day-accent, #ffea32); }
 .auto-mood-explorer-icon svg { width: 1.4rem; height: 1.4rem; }
-.auto-mood-readout-score { margin-top: auto; color: #f9f8f1; font-size: clamp(1.65rem, 3.6cqi, 2.65rem); font-weight: 900; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.auto-mood-readout-label .auto-mood-explorer-icon svg { width: 1rem; height: 1rem; }
+.auto-mood-readout-score { margin-top: auto; color: #f9f8f1; font-size: clamp(1.25rem, 2.52cqi, 1.85rem); font-weight: 900; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .auto-mood-readout-date { --amh-day-accent: #181818; border: 2px solid #ffeb52; background: #ffeb52; }
 .auto-mood-readout-date .auto-mood-readout-label, .auto-mood-readout-date .auto-mood-readout-score { color: #181818; }
-.auto-mood-readout-date .auto-mood-readout-score { font-size: clamp(1.05rem, 2.4cqi, 1.9rem); }
+.auto-mood-readout-date .auto-mood-readout-score { font-size: clamp(.9rem, 1.68cqi, 1.33rem); }
 .auto-mood-readout-value[data-metric="moodScore"] { --amh-day-accent: #ff62af; }
 .auto-mood-readout-value[data-metric="energyScore"] { --amh-day-accent: #2cdbeb; }
 .auto-mood-readout-value[data-metric="connectionScore"] { --amh-day-accent: #a2f415; }
 .auto-mood-readout-value[data-metric="intensityScore"] { --amh-day-accent: #bd69fa; }
 .auto-mood-explorer-empty { grid-column: 1 / -1; margin: 0; }
+
+.auto-mood-explorer-emotions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  width: 70%;
+  margin: 14px auto 0;
+  padding: 10px 12px;
+  border: 1px solid #858581;
+  border-inline-start: 7px solid #ffea32;
+  border-radius: 8px;
+  background: #1d1d1d;
+  color: #f9f8f1;
+}
+.auto-mood-explorer-emotions[hidden] { display: none; }
+.auto-mood-explorer-emotions-heading { color: #f9f8f1; font-size: .75rem; font-weight: 900; letter-spacing: .025em; line-height: 1.5; text-transform: uppercase; }
+.auto-mood-explorer-emotions-list { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; max-width: 100%; margin: 0; padding: 0; list-style: none; }
+.auto-mood-explorer-emotion { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 3px 8px; border: 1px solid #777; border-radius: 4px; background: #30302b; color: #f9f8f1; font-size: .85rem; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.auto-mood-explorer-emotion-swatch { flex: 0 0 .7em; width: .7em; height: .7em; border-radius: 50%; }
+.auto-mood-explorer-emotions-empty { margin: 0; font-size: .85rem; line-height: 1.5; }
+
+/* Preserve whole labels where the compact five-card row is at its narrowest. */
+@container auto-mood (min-width: 64rem) and (max-width: 70rem) {
+  .auto-mood-readout-label .auto-mood-explorer-icon { display: none; }
+}
 
 @container auto-mood (max-width: 64rem) {
   .auto-mood-day-readout { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -812,11 +846,12 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
 @container auto-mood (max-width: 50rem) {
   .auto-mood-explorer-header { grid-template-columns: minmax(0, 1fr); }
   .auto-mood-explorer-picker { justify-self: end; max-width: 100%; }
+  .auto-mood-day-readout, .auto-mood-explorer-emotions { width: 100%; }
 }
 
 @container auto-mood (max-width: 40rem) {
   .auto-mood-day-readout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .auto-mood-readout-value:last-child { grid-column: 1 / -1; justify-self: center; width: calc((100% - 14px) / 2); }
+  .auto-mood-readout-value:last-child { grid-column: 1 / -1; justify-self: center; width: calc((100% - 10px) / 2); }
 }
 
 @container auto-mood (max-width: 30rem) {
