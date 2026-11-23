@@ -192,3 +192,10 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 1. Least confidence is native Obsidian rendering across themes and devices. Verify the panel in the installed application.
 2. The date selector includes only dates in the current trend window. Widen the window to select older dates.
 3. The design assumes the reference is the authority for the yellow date card and selector prompt. Compare it in the intended pane size.
+# 2026-11-23 — summary-card task in progress
+
+1. Least confident: the exact font metrics and theme overrides in the user's native Obsidian setup. Verify in representative browser layouts and, if available, native Obsidian.
+2. Biggest consideration: five columns across every narrow pane can technically avoid horizontal overflow while still making labels cramped or cut off. Check the actual text bounds, not just page overflow.
+3. Key assumption: five equal cards are desirable on a wide desktop, but readability takes precedence when space is constrained. Revisit the breakpoints if actual use suggests a different balance.
+
+---
