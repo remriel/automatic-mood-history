@@ -466,3 +466,7 @@ RESUME HERE 2026-11-19. Detected-date snapshots with changed source membership a
 RESUME HERE 1.9.9. Categorical no-evidence narratives precede scored-field validation. Edited monthly exports preserve the file and allow immediate JSON commits. Live verification confirmed nine successful recoveries.
 
 RESUME HERE: Stable 1.9.9 published. README screenshots were captured inside Obsidian using the installed plugin renderer with fictional records.
+
+## RESUME HERE - 1.9.11 metric grid
+
+The dashboard uses five equal CSS Grid columns with 12px gaps at every pane width. Cards stretch to the dashboard content edges. At widths up to 360px, values use a smaller font to fit the narrower tracks. The mobile fixture verifies card geometry in Chromium and WebKit.

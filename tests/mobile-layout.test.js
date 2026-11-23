@@ -16,6 +16,19 @@ async function inspect(page, label) {
     });
   });
   assert.deepEqual(overflow, [], `${label}: no horizontal overflow`);
+  const cardsAligned = await page.locator(".auto-mood-cards").evaluate(grid => {
+    const parent = grid.parentElement;
+    const bounds = parent.getBoundingClientRect();
+    const style = getComputedStyle(parent);
+    const cards = [...grid.children].map(card => card.getBoundingClientRect());
+    const near = (actual, expected) => Math.abs(actual - expected) < 0.1;
+    return cards.length === 5 &&
+      near(cards[0].left, bounds.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)) &&
+      near(cards[4].right, bounds.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)) &&
+      cards.every((card, index) => near(card.width, cards[0].width) &&
+        near(card.top, cards[0].top) && (!index || near(card.left - cards[index - 1].right, 12)));
+  });
+  assert.ok(cardsAligned, `${label}: five equal cards align to the dashboard padding with 12px gaps`);
   const smallTargets = await page.locator(".auto-mood-actions button,.auto-mood-series-toggle,.auto-mood-range-controls button,.auto-mood-day-slider,.auto-mood-day-date a,.auto-mood-settings button,.auto-mood-settings input").evaluateAll(elements =>
     elements.filter(el => el.getBoundingClientRect().width && el.getBoundingClientRect().height < 44).map(el => el.textContent || el.getAttribute("aria-label")));
   assert.deepEqual(smallTargets, [], `${label}: controls and entry links have 44px touch targets`);
