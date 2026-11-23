@@ -470,3 +470,5 @@ RESUME HERE: Stable 1.9.9 published. README screenshots were captured inside Obs
 ## RESUME HERE - 1.9.11 metric grid
 
 The dashboard uses five equal CSS Grid columns with 12px gaps at every pane width. Cards stretch to the dashboard content edges. At widths up to 360px, values use a smaller font to fit the narrower tracks. The mobile fixture verifies card geometry in Chromium and WebKit.
+
+RESUME HERE: Stable 1.9.11 is published from 3b1843f9455a6c2c4c88da1108b44fa9a8cd132d. Release CI and all three asset checks passed. Labels can wrap in narrow panes. Native Obsidian was outside the verified coverage. The shared AI Brain vault was unavailable at the configured paths.

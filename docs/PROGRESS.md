@@ -355,6 +355,6 @@ Verified release 1.9.8 - 100%. Local suite passed. CI 44390209173 passed all fun
 
 - [x] Implement full-width grid and add geometry assertions.
 - [x] Prepare patch release metadata.
-- [ ] Run tests, merge the release PR, and verify published assets.
+- [x] Run tests, merge the release PR, and verify published assets.
 
-Progress: 50%. Next: run verification, merge, then check the release and asset hashes.
+Progress: 100%. GitHub release 1.9.11 passed workflow 45227548472. The three release downloads match their published SHA-256 digests and tagged files. Desktop and mobile layout checks passed. Next: no publication work remains.
