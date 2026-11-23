@@ -1,4 +1,4 @@
-# Current work — selected-day emotions and compact cards (2026-11-23)
+# Current state — 2.1.0 selected-day emotions and compact cards (2026-11-23)
 
 Owner: the primary Codex agent; no subagents. After 2.0.0 was published, the user requested that Explore a Recorded Day show the emotions for the selected day and that its cards be 30% smaller. Desktop is the priority; preserve readable, unclipped text and responsive behavior. The follow-up is targeted as 2.1.0 so the published 2.0.0 tag and assets remain immutable.
 
@@ -6,7 +6,7 @@ Owner: the primary Codex agent; no subagents. After 2.0.0 was published, the use
 
 ## RESUME HERE
 
-All local functional, desktop browser, Android and iPhone browser, mobile runtime, and privacy checks passed. PR #35 merged as `4222b347a57e775a993d009fc7de3238459a404e`, but GitHub CI 45240947411 and release 45240946837 caught `Connection` wrapping in the 1200px desktop layout on Linux; no 2.1.0 tag or release was created. The fix extends the compact-label icon-hiding threshold to cover that width. Verify the fix on Linux CI, merge it, then push a numeric 2.1.0 tag at the fixed commit to rerun the existing release workflow (a CSS-only main push will not trigger that workflow). Verify the downloaded assets. Native Obsidian remains untested.
+[2.1.0 is published](https://github.com/remriel/automatic-mood-history/releases/tag/2.1.0) at `6569a6fc65acca7a77914d9bbfb6f61a2d286dc4`. GitHub CI 45240947411 and the first release attempt caught `Connection` wrapping in a Linux font; PR #36 fixed the responsive spacing. Its full Linux CI 45241827926 passed, and the merged commit has the identical tree; main CI 45242250891 also passed. At the user's request for speed, the redundant tag-triggered release workflow 45242313274 was canceled before publication and the tested commit's three files were published directly. Downloads match the tag's Git blobs and GitHub SHA-256 digests. Native Obsidian remains untested. No release work remains; update and inspect in the user's desktop theme.
 
 ---
 

@@ -1,16 +1,16 @@
 # Current objective — emotions and smaller recorded-day cards
 
-**Progress: 75%** — GitHub found a Linux font-dependent wrapped label; the candidate needs a small responsive fix and another release run.
+**Progress: 100%** — [2.1.0 is published and verified](https://github.com/remriel/automatic-mood-history/releases/tag/2.1.0).
 
 - [x] Inspect the explorer, selection behavior, existing emotion data, and release state.
 - [x] Show the selected day's recorded emotions, including an empty state and range changes.
 - [x] Reduce recorded-day card dimensions by about 30% without clipping labels.
-- [ ] Verify the Linux label fix on GitHub, alongside the already-passing local suites.
-- [ ] Publish 2.1.0 and verify the downloadable release assets.
+- [x] Verify the Linux label fix on GitHub, alongside the already-passing local suites.
+- [x] Publish 2.1.0 and verify the downloadable release assets.
 
-Current state: all local suites passed. PR #35 merged as `4222b34`, but release run 45240946837 and main CI 45240947411 failed because Linux broke `Connection` across lines at a 1200px pane. Version 2.1.0 was not tagged or published. A wider icon-hiding threshold is being verified. No external blocker.
+Current state: local functional, mobile runtime, desktop and mobile browser, and privacy checks passed. The Linux label fix passed PR CI 45241827926 and main CI 45242250891. Release 2.1.0 was published directly from the identical tested tree after the user requested speed; redundant tag-triggered release run 45242313274 was canceled. The three downloads match GitHub's digests and tag commit `6569a6f`. Native Obsidian has not been tested. No release blockers remain.
 
-Next: test and merge the Linux fix, push the matching numeric 2.1.0 tag at the fixed commit to trigger the release workflow, then verify the published assets and sync the outcome.
+Next: update/reload the plugin in Obsidian, then check the selected-day emotions and smaller cards in the user's normal desktop pane and theme.
 
 ---
 

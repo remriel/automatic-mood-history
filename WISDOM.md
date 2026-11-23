@@ -199,9 +199,9 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 2. Biggest consideration: publishing a release does not necessarily update an installed copy. Update through BRAT or copy the three release files, then reload Obsidian.
 3. Key assumption: the cramped plugin layout caused the reported clipping. If the text still clips after updating, inspect the actual theme and font overrides in the native app and adjust accordingly.
 
-## 2.1.0 follow-up in progress
+## 2.1.0 selected-day release
 
-1. Least confident: whether a 30% visual reduction will feel right in the user's native theme and preferred pane size. Compare at their normal desktop zoom after release.
-2. Biggest consideration: an emotion list must follow the selected individual day rather than the top emotions for the whole range, and empty ranges must clear stale content.
-3. Key assumption: the desired emotions are the labels already stored with each scored day. Use those labels without rerunning analysis or inferring missing ones.
+1. Least confident: whether the smaller cards look right in the user's native theme and preferred pane size. Compare at their normal desktop zoom after updating.
+2. Biggest consideration: the panel shows emotions already saved for the selected day; choosing a date does not rerun analysis. Days without saved emotions show an explicit empty message.
+3. Key assumption: the requested 30% reduction refers to a wide desktop pane; narrower panes and larger text may reflow to keep labels readable. Adjust if the user wants different sizing.
 4. Linux CI exposed a label break that did not occur with the local Windows font. Leave extra room around the widest labels and verify the compact layout on both platforms before release.
