@@ -228,7 +228,27 @@ async function inspectLayout(page, label) {
     await slider.focus();
     await page.keyboard.press('Home');
     assert.equal(await slider.getAttribute('aria-valuetext'), '2099-01-01');
-    assert((await page.locator('.auto-mood-day-readout').innerText()).includes('Mood 1/5'), 'keyboard selection exposes values');
+    const datePicker = page.getByRole('combobox', { name: 'Recorded date' });
+    for (const [paneWidth, columns] of [[1050, 5], [700, 3], [390, 2], [300, 1]]) {
+      await page.evaluate(width => { document.getElementById('pane').style.width = width + 'px'; }, paneWidth);
+      const geometry = await page.locator('.auto-mood-day-readout').evaluate(grid => {
+        const cards = [...grid.children].map(card => card.getBoundingClientRect());
+        return {
+          count: cards.length,
+          columns: cards.filter(card => card.top === cards[0].top).length,
+          equal: cards.every(card => Math.abs(card.width - cards[0].width) < 1 && Math.abs(card.height - cards[0].height) < 1),
+          gap: getComputedStyle(grid).gap
+        };
+      });
+      assert.deepEqual(geometry, { count: 5, columns, equal: true, gap: '14px' }, `recorded-day grid at ${paneWidth}px`);
+    }
+    await page.evaluate(() => { document.getElementById('pane').style.width = '1100px'; });
+    assert.equal(await datePicker.inputValue(), '0', 'slider updates the date picker');
+    assert.equal(await page.locator('.auto-mood-readout-value[data-metric="moodScore"] .auto-mood-readout-score').innerText(), '1/5');
+    await datePicker.selectOption({ label: '2099-01-11' });
+    assert.equal(await slider.getAttribute('aria-valuetext'), '2099-01-11', 'date picker updates the slider');
+    assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-01-11');
+    await datePicker.selectOption({ label: '2099-01-01' });
     assert.equal(await page.locator('.auto-mood-svg .selected-score').first().textContent(), '1/5', 'each plot labels the selected score');
     const selectedX = await page.locator('.auto-mood-svg .selected-point').first().getAttribute('cx');
     assert.equal(Number(selectedX), positions[0], 'selected point follows the keyboard-selected day');
@@ -238,6 +258,7 @@ async function inspectLayout(page, label) {
     await page.getByRole('button', { name: '30 days', exact: true }).click();
     assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 1);
     assert(await slider.isDisabled(), 'one-day window has a disabled selector');
+    assert(await datePicker.isDisabled(), 'one-day window has a disabled date picker');
     await page.getByRole('button', { name: 'All', exact: true }).click();
     assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 4);
     await page.locator('.auto-mood-svg').click({ position: { x: 32, y: 80 } });

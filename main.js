@@ -978,7 +978,8 @@ const {
   TFile,
   TFolder,
   moment,
-  requestUrl
+  requestUrl,
+  setIcon
 } = require("obsidian");
 
 const { morningPagesSentiment, MORNING_PAGES_ANALYZER_VERSION } = morningPagesFallback;
@@ -3177,27 +3178,58 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     chart.appendChild(svg);
     this.installChartSeriesControls(svg, legend, series);
     const explorer = section.createDiv({ cls: "auto-mood-explorer" });
-    const explorerLabel = explorer.createEl("label", { text: "Explore a recorded day", attr: { for: `amh-day-${Math.random().toString(36).slice(2)}` } });
-    const slider = explorer.createEl("input", { cls: "auto-mood-day-slider", attr: { type: "range", id: explorerLabel.getAttribute("for"), min: "0", step: "1" } });
+    const header = explorer.createDiv({ cls: "auto-mood-explorer-header" });
+    const heading = header.createDiv();
+    heading.createEl("h4", { text: "Explore a recorded day" });
+    heading.createEl("p", { text: "Choose a recorded date to see its scores." });
+    const addIcon = (parent, name) => {
+      const icon = parent.createEl("span", { cls: "auto-mood-explorer-icon", attr: { "aria-hidden": "true" } });
+      setIcon?.(icon, name);
+    };
+    const picker = header.createDiv({ cls: "auto-mood-explorer-picker" });
+    addIcon(picker, "calendar-days");
+    const dateSelect = picker.createEl("select", { attr: { "aria-label": "Recorded date" } });
     const readout = explorer.createDiv({ cls: "auto-mood-day-readout", attr: { "aria-live": "polite", "aria-atomic": "true" } });
+    const slider = explorer.createEl("input", { cls: "auto-mood-day-slider", attr: { type: "range", "aria-label": "Explore a recorded day", min: "0", step: "1" } });
+    const metricIcons = { moodScore: "smile", energyScore: "zap", connectionScore: "heart-handshake", intensityScore: "activity" };
+    let pickerRecords;
+    const syncPickerOptions = () => {
+      if (pickerRecords === shown) return;
+      pickerRecords = shown;
+      dateSelect.empty();
+      shown.forEach((record, index) => dateSelect.createEl("option", { text: record.date, attr: { value: String(index) } }));
+      if (!shown.length) dateSelect.createEl("option", { text: "No recorded dates", attr: { value: "" } });
+      dateSelect.disabled = shown.length < 2;
+    };
     const updateReadout = () => {
       const record = shown[selected];
       slider.max = String(shown.length - 1);
       slider.value = String(selected);
       slider.disabled = shown.length === 1;
       slider.setAttribute("aria-valuetext", record.date);
+      dateSelect.value = String(selected);
       readout.empty();
-      readout.createEl("strong", { cls: "auto-mood-readout-date", text: record.date });
+      const addCard = (label, value, icon, property) => {
+        const card = readout.createDiv({ cls: property ? "auto-mood-readout-value" : "auto-mood-readout-date" });
+        if (property) card.dataset.metric = property;
+        const cardHeader = card.createDiv({ cls: "auto-mood-readout-label" });
+        cardHeader.createEl("span", { text: label });
+        addIcon(cardHeader, icon);
+        card.createEl("strong", { cls: "auto-mood-readout-score", text: value });
+      };
+      addCard("Date", record.date, "calendar-days");
       for (const [label, property] of series) {
         const value = Number.isFinite(record[property]) ? `${record[property]}/5` : "—";
-        readout.createEl("span", { cls: "auto-mood-readout-value", text: `${label} ${value}`, attr: { "data-metric": property } });
+        addCard(label, value, metricIcons[property], property);
       }
     };
     slider.addEventListener("input", () => { selected = Number(slider.value); redraw(); });
+    dateSelect.addEventListener("change", () => { selected = Number(dateSelect.value); redraw(); });
     let previousWidth = 0;
     const draw = (availableWidth) => {
       const width = Math.max(1, Math.floor(availableWidth));
       previousWidth = width;
+      syncPickerOptions();
       if (!shown.length) {
         svg.replaceChildren();
         svg.setAttribute("height", "0");
@@ -3205,11 +3237,12 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         slider.disabled = true;
         slider.max = "0"; slider.value = "0";
         slider.removeAttribute("aria-valuetext");
-        readout.setText("No scored days in this range.");
+        readout.empty();
+        readout.createEl("p", { cls: "auto-mood-explorer-empty", text: "No scored days in this range." });
         rangeText.setText(`${rangeState.custom?.start || startDate.value} to ${rangeState.custom?.end || endDate.value} · 0 recorded days.`);
         return;
       }
-      rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded scores, not estimates for unrecorded days. A missing score breaks its line. Values at right reflect the selected day.`);
+      rangeText.setText(`${shown[0].date} to ${shown[shown.length - 1].date} · ${shown.length} recorded ${shown.length === 1 ? "day" : "days"} · scores 1–5. Lines connect recorded scores, not estimates for unrecorded days. A missing score breaks its line. The explorer below shows the selected day.`);
       const times = shown.map(record => Date.parse(`${record.date}T00:00:00Z`));
       updateReadout();
       const hidden = new Set(this.settings.hiddenChartSeries || []);

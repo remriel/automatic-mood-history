@@ -180,3 +180,9 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 1. Least confidence: text fit in native Obsidian with custom fonts or zoom. Check a narrow native pane first.
 2. Easy to miss: five fixed tracks leave less space for labels on phones. Check the longest label at your usual zoom.
 3. Main assumption: all five columns should remain in one row on mobile. If mobile readability takes priority, use fewer tracks at a narrow breakpoint.
+
+## 1.9.12 recorded-day explorer
+
+1. Least confidence: fidelity to the missing reference image. Compare the panel with the source image when available.
+2. Easy to miss: the picker is scoped to the active chart range. To see an older date, widen the range.
+3. Main assumption: the existing keyboard slider should remain alongside the dropdown. If the reference omits it, review whether the extra control is still wanted.

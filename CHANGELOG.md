@@ -1,3 +1,7 @@
+# 1.9.12
+
+- Redesign Explore a Recorded Day with a compact date picker, color-coded score cards, and a responsive grid.
+
 # 1.9.11
 
 - The five dashboard metric cards now fill the available width in equal columns with 12px gaps, aligned to the dashboard padding.

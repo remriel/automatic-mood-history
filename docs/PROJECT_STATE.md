@@ -472,3 +472,7 @@ RESUME HERE: Stable 1.9.9 published. README screenshots were captured inside Obs
 The dashboard uses five equal CSS Grid columns with 12px gaps at every pane width. Cards stretch to the dashboard content edges. At widths up to 360px, values use a smaller font to fit the narrower tracks. The mobile fixture verifies card geometry in Chromium and WebKit.
 
 RESUME HERE: Stable 1.9.11 is published from 3b1843f9455a6c2c4c88da1108b44fa9a8cd132d. Release CI and all three asset checks passed. Labels can wrap in narrow panes. Native Obsidian was outside the verified coverage. The shared AI Brain vault was unavailable at the configured paths.
+
+## RESUME HERE - 1.9.12 recorded-day explorer
+
+The recorded-day panel lives inside renderTrendChart. Its native date dropdown uses the existing selected index and redraw path shared with the chart and slider. Options rebuild only when the visible record set changes. The readout has five CSS Grid cards, then reflows to three, two and one column by pane width. Icons use the Obsidian icon API. The reference image was absent, so the written specification guided the design.
