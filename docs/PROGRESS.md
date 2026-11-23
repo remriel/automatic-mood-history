@@ -358,3 +358,12 @@ Verified release 1.9.8 - 100%. Local suite passed. CI 44390209173 passed all fun
 - [x] Run tests, merge the release PR, and verify published assets.
 
 Progress: 100%. GitHub release 1.9.11 passed workflow 45227548472. The three release downloads match their published SHA-256 digests and tagged files. Desktop and mobile layout checks passed. Next: no publication work remains.
+
+## 1.9.12 recorded-day explorer
+
+Progress: 70%.
+
+- [x] Build the olive grid panel, date picker and five metric cards.
+- [x] Keep the slider and chart selection synchronized with the dropdown.
+- [ ] Finish local layout checks and GitHub PR verification.
+- [ ] Merge, publish and verify release downloads.
