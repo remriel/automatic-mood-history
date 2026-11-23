@@ -361,9 +361,11 @@ Progress: 100%. GitHub release 1.9.11 passed workflow 45227548472. The three rel
 
 ## 1.9.12 recorded-day explorer
 
-Progress: 70%.
+Progress: 100%.
 
 - [x] Build the olive grid panel, date picker and five metric cards.
 - [x] Keep the slider and chart selection synchronized with the dropdown.
-- [ ] Finish local layout checks and GitHub PR verification.
-- [ ] Merge, publish and verify release downloads.
+- [x] Finish local layout checks and GitHub PR verification.
+- [x] Merge, publish and verify release downloads.
+
+Desktop Chromium, mobile Chromium and WebKit, functional, runtime and release-audit checks passed. Inspected synthetic desktop and mobile previews. PR #33 and main CI passed. Release workflow 45229283081 published on its second attempt after browser setup stalled on the first. All three assets match their published SHA-256 digests and tagged files. Next: no publication work remains.
