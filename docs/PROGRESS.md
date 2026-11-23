@@ -1,3 +1,19 @@
+# Current objective — emotions and smaller recorded-day cards
+
+**Progress: 80%** — the 2.1.0 candidate and all local checks are complete; publication and final verification remain.
+
+- [x] Inspect the explorer, selection behavior, existing emotion data, and release state.
+- [x] Show the selected day's recorded emotions, including an empty state and range changes.
+- [x] Reduce recorded-day card dimensions by about 30% without clipping labels.
+- [x] Verify selection, saved data, desktop and mobile layouts, and release privacy locally.
+- [ ] Publish 2.1.0 and verify the downloadable release assets.
+
+Current state: the follow-up branch starts at the verified 2.0.0 release documentation commit. `npm test`, `npm run test:mobile`, `npm run test:layout`, `npm run test:mobile-layout`, and `npm run audit:release` pass. The user's desktop, readability, and compactness priorities are reflected in the candidate. No blockers.
+
+Next: commit and push the reviewed candidate, merge the release PR, monitor the independent GitHub checks, and compare downloaded assets with the release commit and published digests.
+
+---
+
 # Current objective — polished, readable summary cards
 
 **Progress: 100%** — [2.0.0 is published and verified](https://github.com/remriel/automatic-mood-history/releases/tag/2.0.0).

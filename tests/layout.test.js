@@ -193,6 +193,7 @@ async function inspectLayout(page, label) {
     assert.equal(await page.locator('.auto-mood-composition-chart rect[data-empty="true"]').count(), 2, 'empty range shows both gray periods');
     assert.equal(await page.locator('.auto-mood-svg .data-point').count(), 0);
     assert.equal(await page.getByRole('combobox', { name: 'Recorded date' }).isDisabled(), true);
+    assert.equal(await page.locator('.auto-mood-explorer-emotions').isHidden(), true, 'empty ranges hide the previous day\'s emotions');
     await page.getByRole('button', { name: 'All', exact: true }).click();
     assert.deepStrictEqual(await cardValues(), windowCards.All, 'preset restores chart and summaries after an empty custom range');
     assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), rangeRecordsBefore, 'changing range does not alter records');
@@ -217,7 +218,8 @@ async function inspectLayout(page, label) {
       fixture.configure({ paneWidth: 640, count: 4 });
       const values = Object.values(fixture.plugin.records);
       const dates = ['2099-01-01', '2099-01-02', '2099-01-11', '2099-04-01'];
-      fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'detected-note-date', status: 'complete' }]));
+      const emotions = [['calm', 'relief'], [], ['sadness', 'anxiety', 'lonely'], ['hopeful', 'joy']];
+      fixture.plugin.records = Object.fromEntries(values.map((record, i) => [dates[i], { ...record, date: dates[i], dateBasis: 'detected-note-date', status: 'complete', emotions: emotions[i] }]));
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
       [...document.querySelectorAll('.auto-mood-range-controls button')].find(button => button.textContent === 'All').click();
     });
@@ -225,11 +227,15 @@ async function inspectLayout(page, label) {
     const positions = await page.locator('.auto-mood-svg circle[data-series="moodScore"]').evaluateAll(nodes => nodes.map(node => Number(node.getAttribute('cx'))));
     assert(Math.abs((positions[2] - positions[1]) / (positions[1] - positions[0]) - 9) < .01, 'calendar gaps use proportional spacing');
     const datePicker = page.getByRole('combobox', { name: 'Recorded date' });
+    const recordedEmotions = () => page.locator('.auto-mood-explorer-emotion > span:last-child').allTextContents();
+    const savedRecords = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
+    assert.deepStrictEqual(await recordedEmotions(), ['hopeful', 'joy'], 'the latest selected day shows its own emotions');
     assert.equal(await page.locator('.auto-mood-explorer-icon svg').count(), 7, 'the picker and five cards have their icons');
     assert.equal(await page.locator('.auto-mood-picker-label').innerText(), 'Choose a day');
     await datePicker.focus();
     await page.keyboard.press('Home');
     assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-01-01', 'keyboard selection updates the date');
+    assert.deepStrictEqual(await recordedEmotions(), ['calm', 'relief'], 'keyboard selection updates the day\'s emotions');
     for (const [paneWidth, columns] of [[1050, 5], [700, 3], [500, 2], [390, 1], [300, 1]]) {
       await page.evaluate(width => { document.getElementById('pane').style.width = width + 'px'; }, paneWidth);
       const geometry = await page.locator('.auto-mood-day-readout').evaluate(grid => {
@@ -241,13 +247,17 @@ async function inspectLayout(page, label) {
           gap: getComputedStyle(grid).gap
         };
       });
-      assert.deepEqual(geometry, { count: 5, columns, equal: true, gap: '14px' }, `recorded-day grid at ${paneWidth}px`);
+      assert.deepEqual(geometry, { count: 5, columns, equal: true, gap: '10px' }, `recorded-day grid at ${paneWidth}px`);
     }
     await page.evaluate(() => { document.getElementById('pane').style.width = '1100px'; });
     assert.equal(await datePicker.inputValue(), '0');
     assert.equal(await page.locator('.auto-mood-readout-value[data-metric="moodScore"] .auto-mood-readout-score').innerText(), '1/5');
     await datePicker.selectOption({ label: '2099-01-11' });
     assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-01-11');
+    assert.deepStrictEqual(await recordedEmotions(), ['sadness', 'anxiety', 'lonely'], 'date picker shows every saved emotion for that day');
+    await datePicker.selectOption({ label: '2099-01-02' });
+    assert.equal(await page.locator('.auto-mood-explorer-emotions-empty').innerText(), 'No emotions recorded for this day.');
+    assert.deepStrictEqual(await recordedEmotions(), [], 'a day without emotions does not retain the prior selection');
     await datePicker.selectOption({ label: '2099-01-01' });
     assert.equal(await page.locator('.auto-mood-svg .selected-score').first().textContent(), '1/5', 'each plot labels the selected score');
     const selectedX = await page.locator('.auto-mood-svg .selected-point').first().getAttribute('cx');
@@ -262,6 +272,8 @@ async function inspectLayout(page, label) {
     assert.equal(await page.locator('.auto-mood-svg circle[data-series="moodScore"]').count(), 4);
     await page.locator('.auto-mood-svg').click({ position: { x: 32, y: 80 } });
     assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-01-01', 'chart selection picks the nearest recorded day');
+    assert.deepStrictEqual(await recordedEmotions(), ['calm', 'relief'], 'chart selection updates the day\'s emotions');
+    assert.equal(await page.evaluate(() => JSON.stringify(fixture.plugin.records)), savedRecords, 'selecting days and ranges does not alter saved records');
     assert.equal(await datePicker.inputValue(), '0', 'chart selection updates the picker');
     assert.equal(await page.locator('.auto-mood-explorer input[type="range"]').count(), 0, 'the explorer has no slider');
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
@@ -313,6 +325,8 @@ async function inspectLayout(page, label) {
     const compositionRecordsBefore = await page.evaluate(() => JSON.stringify(fixture.plugin.records));
     assert.deepStrictEqual(await page.locator('.auto-mood-composition-legend li').allTextContents(),
       ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'], 'the legend contains the ten leaders within the selected dates');
+    assert.deepStrictEqual(await page.locator('.auto-mood-explorer-emotion > span:last-child').allTextContents(),
+      ['kilo', 'lima'], 'selected-day emotions are shown even when they are outside the range-wide top ten');
     assert(!(await page.locator('.auto-mood-composition').textContent()).includes('Other emotions'), 'no grouped category is displayed');
     const dayEight = page.locator('.auto-mood-composition-chart rect[data-period="2099-01-08"]');
     assert.equal(await dayEight.count(), 2, 'both top-ten labels appear in the period');

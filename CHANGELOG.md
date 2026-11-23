@@ -1,3 +1,8 @@
+# 2.1.0
+
+- Show the emotions saved for the selected day in Explore a Recorded Day, updating with the date picker and chart selection.
+- Make recorded-day cards approximately 30% smaller on wide desktop panes while keeping labels readable and layouts responsive.
+
 # 2.0.0
 
 - Give summary labels and values more space, keeping five equal cards across wide desktop panes and reflowing them as space or text size changes.

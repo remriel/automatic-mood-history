@@ -198,3 +198,9 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 1. Least confident: how the user's particular Obsidian theme, font, and zoom render the cards; browser fixtures passed, but native Obsidian was not tested. Check the installed plugin at the usual desktop settings.
 2. Biggest consideration: publishing a release does not necessarily update an installed copy. Update through BRAT or copy the three release files, then reload Obsidian.
 3. Key assumption: the cramped plugin layout caused the reported clipping. If the text still clips after updating, inspect the actual theme and font overrides in the native app and adjust accordingly.
+
+## 2.1.0 follow-up in progress
+
+1. Least confident: whether a 30% visual reduction will feel right in the user's native theme and preferred pane size. Compare at their normal desktop zoom after release.
+2. Biggest consideration: an emotion list must follow the selected individual day rather than the top emotions for the whole range, and empty ranges must clear stale content.
+3. Key assumption: the desired emotions are the labels already stored with each scored day. Use those labels without rerunning analysis or inferring missing ones.

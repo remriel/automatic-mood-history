@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 async function assertReadableCards(page, label) {
   const problems = await page.evaluate(() => {
     const failures = [];
-    const cards = document.querySelectorAll(".auto-mood-card, .auto-mood-readout-date, .auto-mood-readout-value");
+    const cards = document.querySelectorAll(".auto-mood-card, .auto-mood-readout-date, .auto-mood-readout-value, .auto-mood-explorer-emotion");
     for (const card of cards) {
       const bounds = card.getBoundingClientRect();
       const style = getComputedStyle(card);

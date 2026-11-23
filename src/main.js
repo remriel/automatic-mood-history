@@ -2223,7 +2223,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     const header = explorer.createDiv({ cls: "auto-mood-explorer-header" });
     const heading = header.createDiv({ cls: "auto-mood-explorer-heading" });
     heading.createEl("h4", { text: "Explore a recorded day" });
-    heading.createEl("p", { text: "Select a day to view its recorded scores." });
+    heading.createEl("p", { text: "Select a day to view its recorded scores and emotions." });
     const addIcon = (parent, name) => {
       const icon = parent.createEl("span", { cls: "auto-mood-explorer-icon", attr: { "aria-hidden": "true" } });
       setIcon?.(icon, name);
@@ -2235,6 +2235,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
     addIcon(picker, "chevron-down").classList.add("auto-mood-picker-chevron");
     const dateSelect = picker.createEl("select", { attr: { "aria-label": "Recorded date" } });
     const readout = explorer.createDiv({ cls: "auto-mood-day-readout", attr: { "aria-live": "polite", "aria-atomic": "true" } });
+    const dayEmotions = explorer.createDiv({ cls: "auto-mood-explorer-emotions", attr: { "aria-live": "polite", "aria-atomic": "true" } });
     const metricIcons = { moodScore: "smile", energyScore: "zap", connectionScore: "users", intensityScore: "signal" };
     let pickerRecords;
     const syncPickerOptions = () => {
@@ -2263,6 +2264,21 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         const value = Number.isFinite(record[property]) ? `${record[property]}/5` : "—";
         addCard(label, value, metricIcons[property], property);
       }
+      dayEmotions.hidden = false;
+      dayEmotions.empty();
+      dayEmotions.createEl("strong", { cls: "auto-mood-explorer-emotions-heading", text: "Emotions" });
+      const emotions = Array.isArray(record.emotions) ? record.emotions.filter(value => typeof value === "string" && value.trim()) : [];
+      if (!emotions.length) {
+        dayEmotions.createEl("p", { cls: "auto-mood-explorer-emotions-empty", text: "No emotions recorded for this day." });
+      } else {
+        const list = dayEmotions.createEl("ul", { cls: "auto-mood-explorer-emotions-list", attr: { "aria-label": "Emotions on selected day" } });
+        for (const emotion of emotions) {
+          const item = list.createEl("li", { cls: "auto-mood-explorer-emotion" });
+          const swatch = item.createEl("span", { cls: "auto-mood-explorer-emotion-swatch", attr: { "aria-hidden": "true" } });
+          swatch.style.setProperty("background-color", this.emotionColor(emotion), "important");
+          item.createEl("span", { text: emotion });
+        }
+      }
     };
     dateSelect.addEventListener("change", () => { selected = Number(dateSelect.value); redraw(); });
     let previousWidth = 0;
@@ -2276,6 +2292,8 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         svg.style.height = "0px";
         readout.empty();
         readout.createEl("p", { cls: "auto-mood-explorer-empty", text: "No scored days in this range." });
+        dayEmotions.empty();
+        dayEmotions.hidden = true;
         rangeText.setText(`${rangeState.custom?.start || startDate.value} to ${rangeState.custom?.end || endDate.value} · 0 recorded days.`);
         return;
       }
@@ -2301,7 +2319,7 @@ const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[
         target.appendChild(node);
         return node;
       };
-      make("title", {}, "Mood, energy, connection, and intensity trend. Select a recorded day to see its scores below.");
+      make("title", {}, "Mood, energy, connection, and intensity trend. Select a recorded day to see its scores and emotions below.");
       const span = times[times.length - 1] - times[0];
       const x = (index) => left + (span ? (times[index] - times[0]) * plotWidth / span : plotWidth / 2);
       active.forEach((_, row) => {

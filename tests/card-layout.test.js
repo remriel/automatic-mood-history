@@ -10,7 +10,7 @@ const { assertReadableCards } = require("./card-readability");
     await page.setContent(fixtureHTML());
     for (const theme of ["light", "dark"]) {
       for (const [paneWidth, largeText, columns] of [
-        [1440, false, 5], [1200, false, 5], [1024, false, 5],
+        [1440, false, 5], [1200, false, 5], [1050, false, 5], [1024, false, 5],
         [800, false, 3], [450, false, 2], [320, false, 1],
         [1440, true, 3], [1000, true, 2], [600, true, 1]
       ]) {
@@ -27,6 +27,18 @@ const { assertReadableCards } = require("./card-readability");
         if (columns === 5) {
           const grid = await page.locator(".auto-mood-cards").boundingBox();
           assert(Math.abs(firstRow[0].left - grid.x) < 1 && Math.abs(firstRow[4].right - (grid.x + grid.width)) < 1, `${label}: desktop cards fill the row`);
+        }
+        if (paneWidth === 1440 && !largeText) {
+          const compact = await page.locator(".auto-mood-day-readout").evaluate(grid => {
+            const parent = grid.parentElement;
+            const style = getComputedStyle(parent);
+            const contentWidth = parent.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            const card = grid.firstElementChild.getBoundingClientRect();
+            const oldCardWidth = (contentWidth - 4 * 14) / 5;
+            return { widthRatio: card.width / oldCardWidth, height: card.height };
+          });
+          assert(compact.widthRatio > .68 && compact.widthRatio < .72, `${label}: recorded-day cards are about 30% narrower`);
+          assert(compact.height < 105, `${label}: recorded-day cards are substantially shorter`);
         }
       }
     }
