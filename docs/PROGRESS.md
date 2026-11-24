@@ -1,3 +1,15 @@
+# Current objective — reduce explorer padding and polish UI (2.1.1)
+
+**Progress: 90%** — Local `2.1.1` build, functional, mobile, layout, mobile-layout, and privacy checks pass; ready to merge to `main` and publish via GitHub Release workflow.
+
+- [x] Inspect the "Explore a recorded day" panel in desktop and narrow panes.
+- [x] Reduce outer/inner explorer padding, header bottom spacing, and card/emotion vertical gaps while preserving `width: 70%` desktop cards, `10px` grid gap, and `44px` mobile touch targets.
+- [x] Polish explorer heading scale, accent bar alignment, subtitle contrast, and date picker hover state.
+- [x] Pass `npm test`, `npm run test:mobile`, `npm run audit:release`, `npm run test:layout`, and `npm run test:mobile-layout`.
+- [ ] Merge to `main` and verify the `2.1.1` GitHub Release workflow and assets.
+
+---
+
 # Current objective — emotions and smaller recorded-day cards
 
 **Progress: 100%** — [2.1.0 is published and verified](https://github.com/remriel/automatic-mood-history/releases/tag/2.1.0).
