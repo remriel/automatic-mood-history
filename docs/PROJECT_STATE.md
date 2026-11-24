@@ -1,3 +1,15 @@
+# Current state — 2.1.1 explorer padding reduction and UI polish (2026-11-24)
+
+Owner: the primary agent; no subagents. After `2.1.0` was published, the user requested reducing padding in "Explore a recorded day", polishing the UI, and publishing a release.
+
+`styles.css` tightens `.auto-mood-explorer` outer padding (`24px` → `14px 16px`, `16px` → `12px` under `30rem`), header bottom margin (`28px` → `14px`) and gap (`20px` → `14px`), readout card padding (`10px` → `8px 10px`, `min-height: 73px` → `60px`, `gap: 8px` → `4px`), and emotions bar spacing (`margin: 14px auto 0` → `10px auto 0`, `padding: 10px 12px` → `8px 10px`). It also scales `.auto-mood-explorer-header h4` to `clamp(1.05rem, 2.2cqi, 1.45rem)`, aligns the left accent bar to `7px`, softens subtitle color to `#e8e7dc`, and adds a subtle hover state on `.auto-mood-explorer-picker` while keeping `min-height: 48px` (so the inner `<select>` keeps a `44px` touch target inside its `2px` border) and `gap: 10px` on `.auto-mood-day-readout`.
+
+## RESUME HERE
+
+`2.1.1` is verified locally (`npm test`, `npm run test:mobile`, `npm run audit:release`, `npm run test:layout`, `npm run test:mobile-layout`). Next: merge to `main` so `.github/workflows/release.yml` publishes tag `2.1.1`.
+
+---
+
 # Current state — 2.1.0 selected-day emotions and compact cards (2026-11-23)
 
 Owner: the primary Codex agent; no subagents. After 2.0.0 was published, the user requested that Explore a Recorded Day show the emotions for the selected day and that its cards be 30% smaller. Desktop is the priority; preserve readable, unclipped text and responsive behavior. The follow-up is targeted as 2.1.0 so the published 2.0.0 tag and assets remain immutable.
