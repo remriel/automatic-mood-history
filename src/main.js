@@ -2781,6 +2781,15 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .addButton((button) => button.setButtonText("Retry fallbacks").onClick(() => {
         void this.plugin.recoverFallbacksWithGroq();
       }));
+    const support = containerEl.createEl("footer", { cls: "auto-mood-settings-support" });
+    support.createEl("p", {
+      text: "If this plugin adds value for you and you would like to help support continued development, please use the button below:"
+    });
+    support.createEl("a", {
+      cls: "auto-mood-settings-coffee",
+      text: "Buy Me a Coffee",
+      attr: { href: "https://buymeacoffee.com/remriel", target: "_blank", rel: "noopener noreferrer" }
+    });
   }
 }
 

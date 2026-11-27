@@ -1,3 +1,7 @@
+# Automatic Mood History 2.1.3 support footer
+
+Progress 70%. The footer, test, bundle metadata and release notes are ready. Next run the checks, open and merge the release PR, then verify the release and its three assets.
+
 # Current objective — publish the monthly export fix as 2.1.2
 
 **Progress: 100%** — Automatic Mood History 2.1.2 is published and verified.

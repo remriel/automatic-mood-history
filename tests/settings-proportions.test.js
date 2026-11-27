@@ -9,6 +9,10 @@ const { fixtureHTML } = require("./layout-fixture");
     await page.setContent(fixtureHTML());
     for (const width of [280, 390, 640, 900, 1200]) for (const largeText of [false, true]) {
       await page.evaluate(({ width, largeText }) => fixture.configure({ settingsView: true, paneWidth: width, largeText }), { width, largeText });
+      const coffee = page.getByRole("link", { name: "Buy Me a Coffee" });
+      assert.equal(await page.locator("#settings > footer:last-child a").count(), 1);
+      assert.equal(await coffee.getAttribute("href"), "https://buymeacoffee.com/remriel");
+      assert(await coffee.evaluate(link => getComputedStyle(link).backgroundImage.startsWith('url("data:image/png;base64,')));
       const rows = await page.evaluate(() => [...document.querySelectorAll("#settings .setting-item")].map(row => {
         const info = row.querySelector(".setting-item-info");
         const control = row.querySelector(".setting-item-control");

@@ -1,3 +1,7 @@
+# 2.1.3
+
+- Add a support message and a Buy Me a Coffee button at the bottom of Settings.
+
 # 2.1.2
 
 - Explain that monthly export writes already analyzed history, show progress and export results, and continue past edited months while preserving those files.
