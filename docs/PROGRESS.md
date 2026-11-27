@@ -1,18 +1,18 @@
 # Current objective — publish the monthly export fix as 2.1.2
 
-**Progress: 80%** — PR #38 has green CI and a clean review. Release metadata and notes now target 2.1.2.
+**Progress: 100%** — Automatic Mood History 2.1.2 is published and verified.
 
-- [x] Diagnose why monthly history can lag saved records and why Export months gives unclear feedback.
-- [x] Preserve edited monthly notes while allowing unaffected months to export.
-- [x] Improve export progress, outcome and no-history messages.
-- [x] Pass PR CI on commit 1ec5b5a.
-- [x] Prepare 2.1.2 manifest, versions and release notes.
-- [ ] Confirm CI for the release metadata update, merge PR #38 and verify the GitHub Release workflow.
-- [ ] Verify published assets against GitHub digests and tagged source.
+- [x] Diagnose the gap between saved history and monthly Markdown and clarify what Export months does.
+- [x] Preserve edited monthly notes while continuing through unaffected months.
+- [x] Add export progress, outcome and no-history feedback.
+- [x] Pass PR CI on candidate 5c7a2c8 and main CI on merge 461904f.
+- [x] Merge PR #38 as 461904f42ad81c371d50df4fdc6aab7dad699f63.
+- [x] Publish [Automatic Mood History 2.1.2](https://github.com/remriel/automatic-mood-history/releases/tag/2.1.2) with successful release workflow 45920020760.
+- [x] Verify the three downloaded assets against Git tag blobs, GitHub SHA-256 digests and provenance attestations.
 
-Current implementation is in src/main.js and generated main.js; regression coverage is in tests/compact-history.test.js. Native Obsidian settings interaction has not been smoke-tested.
+PR CI 45919875247, main CI 45920020704, and release workflow 45920020760 all passed functional, mobile, release audit and layout checks. main.js, manifest.json and styles.css match the corresponding tag blobs and published digests. Each provenance attestation verifies against .github/workflows/release.yml, refs/heads/main and the merge commit. The GitHub workflow emitted a Node.js 20 deprecation annotation while succeeding. Native Obsidian interaction has not been checked.
 
-Exact next steps: check PR CI after the version update; merge PR #38; wait for the release workflow; verify tag, release notes and three downloadable assets; update this handoff.
+No publication work remains. The published release is available through the repository's usual update path.
 
 ---
 

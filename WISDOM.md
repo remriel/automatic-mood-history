@@ -209,3 +209,12 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 1. The cause of an individual file mismatch needs a comparison with a known generated copy.
 2. Saved records can be newer than exported Markdown. Check both before rerunning analysis.
 3. Automatic analysis is opt-in and may use the configured provider. Confirm provider preferences before enabling it.
+
+## 2.1.2 release verification, November 26
+1. Release workflow assets can be checked directly against the Git tag blobs and GitHub-provided SHA-256 digests. Verify provenance against the exact source ref, merge commit and release workflow.
+2. GitHub CI emits Node.js 20 deprecation annotations for existing actions even though the workflows pass.
+
+## Publication follow-up, November 26
+1. Least confidence: Native Obsidian settings rendering and notice behavior were not smoke-tested. Verify these in the installed app if the user reports that the revised explanation still feels unclear.
+2. Biggest missing consideration: Export months writes saved analyzed records; future records still depend on running analysis, either manually or through the opt-in automatic setting.
+3. Main assumption: Publishing the open fix as the next patch release (2.1.2) was intended. If the user meant republishing 2.1.1 without the fix, that would have produced a different result.

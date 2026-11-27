@@ -1,12 +1,14 @@
-# Current state — Automatic Mood History 2.1.2 release
+# Current state — Automatic Mood History 2.1.2 published
 
-Owner: Codex, no subagents. The user requested publishing the fix for monthly history exports.
+Owner: Codex. User requested publication of the monthly export fix. No subagents were used.
 
-PR #38 changes src/main.js and generated main.js so monthly export preserves edited monthly files, continues through unaffected months, and reports a clear result. The settings description explains that export only writes existing analyzed records. tests/compact-history.test.js verifies preserving an edited February while exporting March. PR CI passed for implementation commit 1ec5b5a1ea9a95b81e5023ca018fac39821d7496; the automated review reported no findings. The branch uses patch version 2.1.2 with matching manifest, versions entry, changelog and release notes. Release automation runs on main when manifest.json changes and publishes the three plugin assets.
+PR #38 is merged as 461904f42ad81c371d50df4fdc6aab7dad699f63; the stable [2.1.2 release](https://github.com/remriel/automatic-mood-history/releases/tag/2.1.2) is live. Version metadata, changelog and release notes match. Main CI 45920020704 and Release workflow 45920020760 passed. PR CI 45919875247 also passed on release candidate 5c7a2c8.
 
-Native Obsidian settings interaction is unverified. The user's personal vault was not modified. The patch should not alter records or initiate analysis.
+src/main.js and generated main.js let monthly exports continue past edited files, preserve those files, and report completed months. The settings description clarifies that Export months writes already analyzed history. The regression in tests/compact-history.test.js checks that an edited February remains while March exports. Plugin history is not reanalyzed during export.
 
-RESUME HERE: Recheck PR #38 after version metadata changes. Merge it, then follow the manifest-triggered release workflow through tag and asset verification. Update progress and this state with final evidence.
+All three published assets (main.js, manifest.json, styles.css) match their Git tag blobs and GitHub SHA-256 digests. All three signed provenance attestations verified for .github/workflows/release.yml, refs/heads/main and this merge commit. The GitHub workflows passed their full checks, with a Node.js 20 deprecation annotation. Native Obsidian settings interaction remains unverified.
+
+RESUME HERE: Publication and artifact verification are complete. No release work remains. Native Obsidian UI feedback has not been smoke-tested.
 
 ---
 
