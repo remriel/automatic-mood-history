@@ -26,7 +26,12 @@ With **Monthly notes** selected, each saved analysis updates its month. A comple
 
 ## Choose an API provider
 
-In **Settings → Automatic Mood History**, choose **API provider**. Save the matching API key (Obsidian 1.11.4+), confirm the model ID available to your account, and enable analysis for that provider. On the dashboard, **Check** followed by the provider name sends a fictional sample. **Analyze changed** sends eligible journal text.
+In **Settings → Automatic Mood History**, choose **API provider** and the matching key method:
+
+- On desktop, set that provider's environment variable from the table before launching Obsidian. The environment key takes precedence over a saved key.
+- On Obsidian 1.11.4 or later, enter the key in the masked provider key field and select **Save key**. Obsidian keeps keys in its secret storage. Configure a key on each device where you use cloud analysis.
+
+Saving a key does not send notes or enable cloud analysis. Confirm that the model ID is available to your API account, then enable analysis for the selected provider. Switching providers turns analysis off until you enable it again. On the dashboard, **Check** followed by the provider name sends a fictional sample. **Analyze changed** sends eligible journal text.
 
 | Provider | Default model | Desktop environment key |
 | --- | --- | --- |

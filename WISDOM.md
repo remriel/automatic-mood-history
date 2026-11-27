@@ -1,3 +1,9 @@
+# 2026-11-27 — Automatic Mood History README update
+
+1. **Least confident:** The README says keys should be configured on each device. I matched that to Obsidian secret storage and per-device environment setup. I would recheck if Obsidian sync semantics change.
+2. **Biggest thing to notice:** Saving a provider key alone does not enable analysis or transmit journal text. I made the separate opt-in explicit in the setup flow.
+3. **Main assumption:** The user wanted public GitHub documentation updated, so I will push this focused README change to `main` after reviewing the diff.
+
 # Automatic Mood History 2.3.0 published provider selection
 
 1. **Least confident:** Model access varies by API account. I would run the built-in fictional connection check with the intended account before a journal scan.

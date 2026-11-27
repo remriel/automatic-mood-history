@@ -1,3 +1,13 @@
+# README setup guidance
+
+[█████████░] 90% toward a verified documentation update.
+
+- [x] Clarify desktop environment keys, secret storage, per-device setup and analysis opt-in.
+- [x] Review wording against the provider table and privacy policy.
+- [ ] Commit, push and verify the README on GitHub.
+
+Text-only change. No test suite was run.
+
 # Provider selection, 2.3.0
 
 [██████████] 100% toward a verified, publishable build.

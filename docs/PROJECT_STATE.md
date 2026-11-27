@@ -1,3 +1,9 @@
+# README setup guidance, Automatic Mood History 2.3.0
+
+The user requested a README update after the provider release. The README already listed the five supported services and their defaults. This edit clarifies how desktop environment keys and Obsidian secret storage work, device-level setup, and the fact that saving a key does not enable cloud analysis. The provider table remains the single quick reference for the supported environment variable names. No application behavior changed.
+
+RESUME HERE. Review the README diff, confirm the setup wording matches `PRIVACY.md` and the provider registry, then commit and push the documentation update to `main`. No tests are needed for this text-only change.
+
 # Provider selection, 2.3.0
 
 Codex owns the implementation. The requested common alternatives are OpenAI, Anthropic Claude, Google Gemini and DeepSeek alongside Groq. The registry and request/response adapters live in `src/providers.js`. Claude uses Messages with a reduced wire schema. DeepSeek starts in JSON object mode. The original scoring constraints are in the prompt and enforced locally. The build inlines the same registry into the mobile bundle and the Markdown renderer.
