@@ -40,11 +40,11 @@ function fixtureHTML() {
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
     const secrets=new Map();plugin.app={secretStorage:{getSecret:id=>secrets.get(id)||null,setSecret:(id,value)=>secrets.set(id,value)}};
     plugin.settings={outputFolder:'Mood History',entryOutput:'daily',folderScope:'include',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
-    const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};plugin.ensureSupportFiles=async()=>{};
+    const calls={analyze:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};plugin.ensureSupportFiles=async()=>{};
     let statusText='SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';
     plugin.groqStatus=()=>({kind:plugin.settings.enableGroq?'ready':'local',text:plugin.activeScan?'Analyzing fictional fixture records':plugin.checkingGroq?'Checking with fictional fixture text':statusText});
     const action=async(name)=>{calls[name]+=1;if(name==='check')plugin.checkingGroq=true;else plugin.activeScan=true;plugin.refreshRenderers();await new Promise(r=>setTimeout(r,120));plugin.checkingGroq=false;plugin.activeScan=false;plugin.refreshRenderers();};
-    plugin.analyzeAll=()=>action('analyze');plugin.retryAllWithGroq=()=>action('retry');plugin.checkGroqConnection=()=>action('check');plugin.recoverFallbacksWithGroq=()=>action('recover');
+    plugin.analyzeAll=()=>action('analyze');plugin.checkGroqConnection=()=>action('check');plugin.recoverFallbacksWithGroq=()=>action('recover');
     const tab=new AutomaticMoodHistorySettingTab({},plugin);tab.containerEl=document.getElementById('settings');
     function configure(options={}) {
       plugin.dashboardRangeStates?.delete(dashboard);
@@ -53,7 +53,7 @@ function fixtureHTML() {
       const count=options.mode==='empty'?0:options.count??32;plugin.records={};
       for(let i=0;i<count;i++) {
         const date=new Date(Date.UTC(2099,0,i+1)).toISOString().slice(0,10);const insufficient=options.mode==='insufficient'||i%11===10;const legacy=i%7===6;
-        plugin.records[date]={date,dateBasis:legacy?'legacy-note-date':'detected-note-date',status:insufficient?'insufficient':'complete',moodScore:insufficient?null:1+i%5,energyScore:1+(i+2)%5,connectionScore:1+(i+3)%5,intensityScore:1+(i+1)%5,emotions:['curious','hopeful',...(options.longText?['VeryLongUnbrokenEmotionName'.repeat(10)]:[])],summary:insufficient?'There was not enough readable text to infer a score.':'A fictional day with thoughtful reflection, small achievements, and supportive conversations.'+(options.longText?' '+('WrappedEvidence'.repeat(45)):''),analysisSource:insufficient?'none':i%3===0?'groq':'local-fallback',entryPath:'Mood History/Entries/'+date+' (Automatic Mood History).md',providerIssue:i%3?{message:'Fictional provider issue'}:undefined};
+        plugin.records[date]={date,scoreScale:10,dateBasis:legacy?'legacy-note-date':'detected-note-date',status:insufficient?'insufficient':'complete',moodScore:insufficient?null:1+i%5,energyScore:1+(i+2)%5,connectionScore:1+(i+3)%5,intensityScore:1+(i+1)%5,emotions:['curious','hopeful',...(options.longText?['VeryLongUnbrokenEmotionName'.repeat(10)]:[])],summary:insufficient?'There was not enough readable text to infer a score.':'A fictional day with thoughtful reflection, small achievements, and supportive conversations.'+(options.longText?' '+('WrappedEvidence'.repeat(45)):''),analysisSource:insufficient?'none':i%3===0?'groq':'local-fallback',entryPath:'Mood History/Entries/'+date+' (Automatic Mood History).md',providerIssue:i%3?{message:'Fictional provider issue'}:undefined};
       }
       dashboard.hidden=Boolean(options.settingsView);tab.containerEl.hidden=!options.settingsView;plugin.renderDashboard(dashboard);if(options.settingsView)tab.display();
     }

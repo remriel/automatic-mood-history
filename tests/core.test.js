@@ -5,8 +5,8 @@ const negative = core.localSentiment(
   "The synthetic sample describes feeling drained, worried, isolated, and frustrated after a difficult week.",
   "Sample stress test"
 );
-assert(negative.moodScore <= 2);
-assert(negative.connectionScore <= 2);
+assert(negative.moodScore < 5);
+assert(negative.connectionScore < 5);
 assert(negative.emotions.includes("frustrated") || negative.emotions.includes("anxious"));
 assert.strictEqual(negative.confidence, "low");
 
@@ -14,8 +14,8 @@ const positive = core.localSentiment(
   "The fictional sample describes a calm day with close friends and renewed hope.",
   "Sample positive reflection"
 );
-assert(positive.moodScore >= 4);
-assert(positive.connectionScore >= 4);
+assert(positive.moodScore > 6);
+assert(positive.connectionScore > 6);
 
 assert.strictEqual(core.textForAnalysis("---\ntype: daily\n---\n![[image.png]]\n"), "");
 assert.strictEqual(
@@ -34,7 +34,7 @@ const validated = core.validateAnalysis({
   confidence: "medium",
   confidenceReason: "test"
 });
-assert.strictEqual(validated.moodScore, 5);
+assert.strictEqual(validated.moodScore, 10);
 assert.strictEqual(validated.energyScore, 1);
 assert.deepStrictEqual(validated.emotions, ["angry"]);
 
@@ -86,5 +86,12 @@ assert(noEvidenceMarkdown.includes('status: "insufficient"'));
 assert(noEvidenceMarkdown.includes("mood: null"));
 assert(!noEvidenceMarkdown.includes("**Mood:** 3/5"));
 assert(noEvidenceMarkdown.includes("No content was provided for analysis"));
+
+const legacyScores = { moodScore: 1, energyScore: 3, connectionScore: 5, intensityScore: null };
+const display = core.displayScores(legacyScores);
+assert.deepEqual(display, { moodScore: 1, energyScore: 6, connectionScore: 10, intensityScore: null, scoreScale: 10 });
+assert.strictEqual(legacyScores.energyScore, 3, "display conversion leaves stored scores intact");
+assert.strictEqual(core.displayScores(display), display, "native 10-point results are not converted");
+assert(core.buildEntryMarkdown({ ...display, status: "complete" }).includes("**Connection:** 10/10"));
 
 console.log("automatic-mood-history core tests passed");

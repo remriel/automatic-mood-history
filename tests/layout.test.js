@@ -70,7 +70,7 @@ async function inspectLayout(page, label) {
     await page.evaluate(() => {
       const records = Object.values(fixture.plugin.records).filter(r => r.dateBasis === 'detected-note-date' && r.status === 'complete').sort((a, b) => a.date.localeCompare(b.date));
       records[0].intensityScore = null;
-      records[1].intensityScore = 5;
+      records[1].intensityScore = 10;
       records[2].intensityScore = null;
       fixture.plugin.renderDashboard(document.getElementById('dashboard'));
       [...document.querySelectorAll('.auto-mood-range-controls button')].find(button => button.textContent === 'All').click();
@@ -78,9 +78,9 @@ async function inspectLayout(page, label) {
       const marks = [...svg.querySelectorAll('circle[data-series="intensityScore"]')];
       if (marks.length !== records.length - 2) throw new Error('Missing intensity is omitted rather than plotted as zero');
       const mark = marks[0];
-      if (!mark.querySelector('title').textContent.includes(records[1].date + ': Intensity 5/5')) throw new Error('Intensity tooltip uses saved score and date');
+      if (!mark.querySelector('title').textContent.includes(records[1].date + ': Intensity 10/10')) throw new Error('Intensity tooltip uses saved score and date');
       const top = Number(svg.querySelectorAll('.grid[data-grid="intensityScore"]')[4].getAttribute('y1'));
-      if (Number(mark.getAttribute('cy')) !== top) throw new Error('Intensity five aligns with the five gridline');
+      if (Number(mark.getAttribute('cy')) !== top) throw new Error('Intensity ten aligns with the top gridline');
       if (svg.querySelectorAll('.series-heading').length !== 4) throw new Error('Each metric has a separate labeled chart');
       if (!document.querySelector('.auto-mood-cards').textContent.includes('AVG INTENSITY')) throw new Error('Intensity average is present');
       const traces = [...svg.querySelectorAll('.series')];
@@ -251,7 +251,7 @@ async function inspectLayout(page, label) {
     }
     await page.evaluate(() => { document.getElementById('pane').style.width = '1100px'; });
     assert.equal(await datePicker.inputValue(), '0');
-    assert.equal(await page.locator('.auto-mood-readout-value[data-metric="moodScore"] .auto-mood-readout-score').innerText(), '1/5');
+    assert.equal(await page.locator('.auto-mood-readout-value[data-metric="moodScore"] .auto-mood-readout-score').innerText(), '1/10');
     await datePicker.selectOption({ label: '2099-01-11' });
     assert.equal(await page.locator('.auto-mood-readout-date .auto-mood-readout-score').innerText(), '2099-01-11');
     assert.deepStrictEqual(await recordedEmotions(), ['sadness', 'anxiety', 'lonely'], 'date picker shows every saved emotion for that day');
@@ -259,7 +259,7 @@ async function inspectLayout(page, label) {
     assert.equal(await page.locator('.auto-mood-explorer-emotions-empty').innerText(), 'No emotions recorded for this day.');
     assert.deepStrictEqual(await recordedEmotions(), [], 'a day without emotions does not retain the prior selection');
     await datePicker.selectOption({ label: '2099-01-01' });
-    assert.equal(await page.locator('.auto-mood-svg .selected-score').first().textContent(), '1/5', 'each plot labels the selected score');
+    assert.equal(await page.locator('.auto-mood-svg .selected-score').first().textContent(), '1/10', 'each plot labels the selected score');
     const selectedX = await page.locator('.auto-mood-svg .selected-point').first().getAttribute('cx');
     assert.equal(Number(selectedX), positions[0], 'selected point follows the keyboard-selected day');
     await page.getByRole('button', { name: '90 days', exact: true }).click();
@@ -443,7 +443,8 @@ async function inspectLayout(page, label) {
     assert.equal(await page.locator('.auto-mood-average-toggle, .auto-mood-average-info, .moving-average-path, .moving-average-point, [data-average-for]').count(), 0);
     await page.evaluate(() => fixture.configure({ paneWidth: 320 }));
 
-    for (const [name, counter] of [["Analyze changed", "analyze"], ["Retry all with Groq", "retry"], ["Check Groq", "check"], ["Retry fallback entries", "recover"]]) {
+    assert.equal(await page.getByRole("button", { name: "Retry all with Groq", exact: true }).count(), 0);
+    for (const [name, counter] of [["Analyze changed", "analyze"], ["Check Groq", "check"], ["Retry fallback entries", "recover"]]) {
       await page.getByRole("button", { name, exact: true }).click();
       await inspectLayout(page, `${name} busy state`);
       await page.waitForFunction(() => !fixture.plugin.activeScan && !fixture.plugin.checkingGroq);

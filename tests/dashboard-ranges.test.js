@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { displayScores } = require("../src/sentiment-core");
 const { Mood, Element } = require("./dashboard-dom-fixture");
 
 const plugin = new Mood();
@@ -16,6 +17,7 @@ for (const [index, offset] of [400, 364, 180, 179, 89, 59, 29, 13, 7, 6, 0].entr
 }
 // Simulate a synced vault where the latest day's source membership changed.
 const changedDay = plugin.records[dateAt(0)];
+Object.assign(changedDay, { scoreScale: 10, moodScore: 9 });
 plugin.partitionHistory = records => ({
   current: records.filter(record => record !== changedDay), previous: [changedDay], legacy: []
 });
@@ -36,7 +38,7 @@ for (const [label, span] of [["7 days", 7], ["14 days", 14], ["30 days", 30], ["
   const visible = Object.values(plugin.records).filter(record => !span || record.date >= dateAt(span - 1));
   assert.deepEqual(active(), [label], `${label} is selected`);
   assert.equal(Number(cards()[0]), visible.length, `${label} updates the scored-days card`);
-  assert.equal(Number(cards()[1]), Number((visible.reduce((sum, record) => sum + record.moodScore, 0) / visible.length).toFixed(1)), `${label} updates averages`);
+  assert.equal(Number(cards()[1]), Number((visible.reduce((sum, record) => sum + displayScores(record).moodScore, 0) / visible.length).toFixed(1)), `${label} updates averages`);
   assert.equal(chart().length, visible.length, `${label} updates the trend chart`);
   assert(marks().some(rect => rect.getAttribute("data-emotion") === "joy"), `${label} updates composition`);
   if (span && span <= 90) {

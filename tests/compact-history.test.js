@@ -10,8 +10,12 @@ async function run() {
   p.records[date] = original;
   p.records[`legacy:${date}`] = { ...original, dateBasis: "legacy-note-date", summary: "Fictional legacy result." };
   const before = clone(p.records);
-  await p.exportMonthlyHistory();
   const path = "Mood History/Months/2031-02.md";
+  disk.files.set(path, buildMonthlyMarkdown("2031-02", before, { originalScale: true }));
+  files.set(path, new TFile(path));
+  assert(disk.files.get(path).includes("**Mood:** 4/5"));
+  await p.exportMonthlyHistory();
+  assert(disk.files.get(path).includes("**Mood:** 8/10"), "an unedited old export can be refreshed without changing its recovery values");
   assert.equal(p.providerCalls, 0, "export never requests analysis");
   assert.deepEqual(p.records, before, "export preserves every record and identity");
   assert(![...disk.files.keys()].some(path => path.includes("/Entries/")));
@@ -24,6 +28,8 @@ async function run() {
   assert.equal([...disk.files.keys()].filter(path => path.includes("/Months/")).length, 1);
   assert.equal(await p.analyzeDate(date), true);
   assert.equal(disk.files.get(path), buildMonthlyMarkdown("2031-02", p.records));
+  assert.equal(p.records[date].scoreScale, 10);
+  assert.equal(p.validateRecords({ [date]: { ...p.records[date], moodScore: 9 } })[date].moodScore, 9);
   assert(![...disk.files.keys()].some(path => path.includes("/Entries/")));
 
   // A synced monthly export can survive the loss of the plugin's data.json.

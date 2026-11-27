@@ -62,6 +62,8 @@ async function run() {
     return success({ ...valid, emotions: ["hopeful", "hopeful"] });
   };
   const abstention = { ...valid, valence: "neutral", summary: "No assessable emotional evidence." };
+  assert.equal(plugin.parseGroqAnalysis(success({ ...valid, moodScore: 10 }).json).moodScore, 10);
+  assert.throws(() => plugin.parseGroqAnalysis(success({ ...valid, moodScore: 11 }).json), /invalid score/);
   const unscored = plugin.parseGroqAnalysis(success(abstention).json);
   assert.equal(unscored.status, "insufficient");
   assert.equal(unscored.moodScore, null);

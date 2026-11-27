@@ -48,6 +48,8 @@ const licenseComment = "/* VADER Sentiment JS third-party Apache-2.0 license (fu
   apache.replace(/\*\//g, "* /") + "\n*/\n";
 const morningPagesLicense = "/* Morning Pages Analytics MIT license\n" + fs.readFileSync(morningPagesLicensePath, "utf8").replace(/\*\//g, "* /") + "\n*/\n";
 const morningPagesModule = "const morningPagesAnalysis = (() => {\nconst module = { exports: {} };\n" + fs.readFileSync(morningPagesPath, "utf8") + "\nreturn module.exports;\n})();\n";
-const fallbackModule = "const morningPagesFallback = (() => {\nconst module = { exports: {} };\nconst require = () => morningPagesAnalysis;\n" + fs.readFileSync(fallbackPath, "utf8") + "\nreturn module.exports;\n})();\n";
+const fallback = fs.readFileSync(fallbackPath, "utf8")
+  .replace(/^const \{ moodToValence \} = require\("\.\/sentiment-core"\);\r?\n/m, "");
+const fallbackModule = "const morningPagesFallback = (() => {\nconst module = { exports: {} };\nconst require = () => morningPagesAnalysis;\n" + fallback + "\nreturn module.exports;\n})();\n";
 fs.writeFileSync(outputPath, banner + licenseComment + morningPagesLicense + vaderModule + core + "\n" + morningPagesModule + fallbackModule + source, "utf8");
 console.log(`Built ${path.relative(root, outputPath)} (${fs.statSync(outputPath).size} bytes)`);

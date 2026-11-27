@@ -1,3 +1,9 @@
+# 2.2.0
+
+- Score mood, energy, connection, and intensity from 1 to 10. Show earlier scores on the same scale without rerunning analysis or changing the stored values.
+- Move full Groq reanalysis to the command palette. Require a key before starting it.
+- Clarify what to do when the analysis scope has no eligible notes. Preserve saved scores while legacy Groq retries wait.
+
 # 2.1.4
 
 - Default note analysis to explicitly included folders, with a separate opt-in mode for vault-wide scanning and exclusions.

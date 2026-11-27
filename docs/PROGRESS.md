@@ -1,3 +1,14 @@
+# Automatic Mood History 2.2.0
+
+[███████░░░] 70% toward verified publication.
+
+- [x] Remove full retry buttons. Fix keyless and deferred Groq paths and clarify empty scope.
+- [x] Implement ten-point scoring, compatible display conversion, and export/recovery handling.
+- [x] Pass local functional, mobile runtime, browser layout and release-audit checks.
+- [ ] Pass PR checks, merge to main, then verify the published release files and attestations.
+
+No known implementation blocker. Next steps are PR CI, merge, release workflow, and asset verification, in that order.
+
 # Automatic Mood History 2.1.4
 
 [██████████] 100% toward verified publication.

@@ -247,7 +247,7 @@
   opacity: 0.7;
 }
 
-.auto-mood-svg .grid[data-score="3"] {
+.auto-mood-svg .grid[data-score="5"] {
   opacity: 1;
 }
 
@@ -404,11 +404,11 @@
   font-weight: 700;
 }
 
-.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="1"] { background: #ff4d6d; }
-.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="2"] { background: #ff8c42; }
-.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="3"] { background: #f4d35e; }
-.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="4"] { background: #62d2a2; }
-.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score="5"] { background: #23b5d3; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score-band="1"] { background: #ff4d6d; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score-band="2"] { background: #ff8c42; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score-band="3"] { background: #f4d35e; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score-band="4"] { background: #62d2a2; }
+.auto-mood-dashboard .auto-mood-day-metric dd.auto-mood-score[data-score-band="5"] { background: #23b5d3; }
 
 .auto-mood-dashboard a.internal-link {
   color: var(--link-color);

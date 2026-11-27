@@ -1,3 +1,13 @@
+# Automatic Mood History 2.2.0 scoring and retry controls
+
+Owner is Codex. The user requested removal of the dashboard full-retry button, a pass over related issues, a 1–10 scale, and GitHub publication. No subagents were used.
+
+New records use scoreScale: 10 in plugin JSON. src/main.js validates that range and passes normalized scores into the dashboard, while src/sentiment-core.js preserves old records and reads export ownership against both historical and current renderings. The older 1–5 scores map to 1, 3, 6, 8, 10 at display time. Existing daily Markdown and pending journals retain their original scale. Monthly exports display normalized scores and store original records in the JSON recovery block. Groq prompts and Morning Pages fallback generate ten-point results directly. Use the current plugin version on every device sharing data because older versions validate scores against 1–5.
+
+The full retry command remains addressable by its existing ID. Its dashboard and Settings buttons are gone. Missing credentials block full reanalysis and sample checks. Deferred legacy retries keep the old result. The Settings intro and empty-scan guidance now reflect opt-in folders.
+
+RESUME HERE. Verify PR CI, merge, then confirm the Release workflow and compare the downloads with the tag and attestations. Native Obsidian and live Groq have not been tested in this change.
+
 # Automatic Mood History 2.1.4 analysis scope
 
 Owner is Codex. The goal is to publish separate Include specific folders (default) and Scan all except excluded folders modes on GitHub. No subagents were used.
