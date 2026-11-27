@@ -67,7 +67,7 @@ const DEFAULT_SETTINGS = {
   outputFolder: "Mood History",
   entryOutput: "monthly",
   numericDateOrder: "skip",
-  folderScope: "include",
+  folderScope: "all",
   includeFolders: [],
   excludeFolders: [],
   autoAnalyze: false,
@@ -304,7 +304,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (typeof saved[key] === "number" && Number.isFinite(saved[key])) settings[key] = Math.max(minimum, Math.min(maximum, Math.round(saved[key])));
     }
     if (typeof saved.model === "string" && /^[a-zA-Z0-9][a-zA-Z0-9/_.-]{0,199}$/.test(saved.model.trim())) settings.model = saved.model.trim();
-    if (saved.folderScope === "all") settings.folderScope = "all";
+    // Validate any stored rules before falling back to the vault-wide default.
+    // Explicit modes from earlier installs always take precedence.
+    settings.folderScope = saved.folderScope === "all" ? "all" : "include";
     let legacyExclusionsChecked = false;
     try {
       settings.excludeFolders = checkedFolderList(saved.excludeFolders);
@@ -314,18 +316,22 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         // An old exclusion within an included tree cannot be represented by a single include rule.
         // Set aside that tree until the user can review their scope.
         const includes = settings.includeFolders;
+        if (!includes.length) settings.folderScope = DEFAULT_SETTINGS.folderScope;
         settings.includeFolders = includes.filter(folder => !settings.excludeFolders.some(excluded => {
           if (folder === "/" || excluded === "/") return folder === excluded;
           return folder === excluded || folderContainsPath(folder, excluded) || folderContainsPath(excluded, folder);
         }));
-        this.folderScopeNeedsReview = settings.includeFolders.length !== includes.length ||
-          (!includes.length && (settings.autoAnalyze || settings.analyzeOnStartup || settings.excludeFolders.length > 0));
+        this.folderScopeNeedsReview = settings.includeFolders.length !== includes.length;
       }
     } catch (error) {
       // Keep invalid raw rules visible and block analysis until explicitly fixed.
       this.settingsValidationError = `${error.message} Fix folder settings before analyzing.`;
       settings.includeFolders = Array.isArray(saved.includeFolders) ? saved.includeFolders.filter(value => typeof value === "string") : typeof saved.includeFolders === "string" ? saved.includeFolders.split(/\r?\n/) : [];
       settings.excludeFolders = Array.isArray(saved.excludeFolders) ? saved.excludeFolders.filter(value => typeof value === "string") : typeof saved.excludeFolders === "string" ? saved.excludeFolders.split(/\r?\n/) : [];
+      if (!legacyExclusionsChecked && saved.folderScope !== "include") {
+        settings.folderScope = "include";
+        settings.includeFolders = [];
+      }
       if (saved.folderScope === undefined && (!legacyExclusionsChecked || settings.excludeFolders.some(value => value.trim()))) settings.includeFolders = [];
     }
     try {
@@ -2677,7 +2683,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.classList.add("auto-mood-settings");
     containerEl.createEl("h2", { text: "Automatic Mood History" });
     containerEl.createEl("p", {
-      text: "Markdown notes use detected filename dates, or their creation date when undated. Choose which folders to analyze. By default, only folders you list are included. Local analysis works offline on desktop, Android and iPhone. Groq analysis is optional."
+      text: "Markdown notes use detected filename dates, or their creation date when undated. Choose which folders to analyze. New setups scan all eligible notes except in excluded folders. Local analysis works offline on desktop, Android and iPhone. Groq analysis is optional."
     });
     new Setting(containerEl)
       .setName("Default dashboard range")

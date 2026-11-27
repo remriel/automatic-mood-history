@@ -131,6 +131,9 @@ async function run() {
       assert.equal(await page.evaluate(() => fixture.calls.analyze), 1, "key setup never initiates analysis");
       await page.getByRole("switch", { name: "Enable Groq analysis", exact: true }).tap();
       assert.equal(await page.evaluate(() => fixture.plugin.settings.enableGroq), false);
+      assert.equal(await page.getByRole("combobox", { name: "Analysis scope" }).inputValue(), "all");
+      await page.getByRole("textbox", { name: "Exclude folders", exact: true }).fill("Private");
+      await page.getByRole("combobox", { name: "Analysis scope" }).selectOption("include");
       await page.getByRole("textbox", { name: "Include folders", exact: true }).fill("Journal\nDaily Notes");
       await page.evaluate(() => fixture.configure({ settingsView: true, largeText: true, longText: true }));
       await inspect(page, `${name}: settings at 200% text`);

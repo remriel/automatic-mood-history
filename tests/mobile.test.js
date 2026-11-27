@@ -89,9 +89,8 @@ async function run() {
   await p.onload(); await f.ready();
   assert.equal(p.settings.enableGroq, false);
   assert.equal(p.settings.autoAnalyze, false);
-  assert.equal(p.settings.folderScope, "include");
-  assert.equal((await p.analyzeAll({ silent: true })).fallback, 0, "fresh mobile installs have no analysis scope");
-  assert.equal(await p.updateFolderFilter("includeFolders", "Journal"), true);
+  assert.equal(p.settings.folderScope, "all");
+  assert.equal(Object.keys(p.records).length, 0, "the new scope default does not turn on startup analysis");
   const result = await p.analyzeAll({ silent: true });
   assert.equal(result.fallback, 1, "Morning Pages fallback works offline without Node");
   const record = Object.values(p.records)[0];

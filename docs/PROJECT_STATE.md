@@ -1,3 +1,11 @@
+# Automatic Mood History 2.2.1 default analysis scope
+
+Owner is Codex. After 2.2.0 published, the user requested Scan all except excluded folders as the default, including for automatic runs. No subagents were used.
+
+src/main.js uses the same source filter for manual and automatic analysis. Fresh installs use scan-all. Upgrades keep their explicit scope and both lists. Older settings without an explicit mode use scan-all only when they contain no include rules and both lists validate. Corrupt exclusions fail closed. Automatic analysis, startup analysis, and Groq opt-in settings keep their existing behavior.
+
+RESUME HERE. Run candidate CI, merge, then verify Release and all three assets. No other changes are pending.
+
 # Automatic Mood History 2.2.0 scoring and retry controls
 
 Owner is Codex. The user requested removal of the dashboard full-retry button, a pass over related issues, a 1–10 scale, and GitHub publication. No subagents were used.
@@ -6,7 +14,7 @@ New records use scoreScale: 10 in plugin JSON. src/main.js validates that range 
 
 The full retry command remains addressable by its existing ID. Its dashboard and Settings buttons are gone. Missing credentials block full reanalysis and sample checks. Deferred legacy retries keep the old result. The Settings intro and empty-scan guidance now reflect opt-in folders.
 
-RESUME HERE. Verify PR CI, merge, then confirm the Release workflow and compare the downloads with the tag and attestations. Native Obsidian and live Groq have not been tested in this change.
+2.2.0 published from ce936b97c831942bd6e6e45507795ef997475875 via PR #41 and Release workflow 46061064472. All three downloads match the tag, GitHub checksums, and signed provenance. Native Obsidian and live Groq were not exercised.
 
 # Automatic Mood History 2.1.4 analysis scope
 

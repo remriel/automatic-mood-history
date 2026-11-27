@@ -1,3 +1,9 @@
+# 2026-11-27 — Automatic Mood History 2.2.0
+
+1. **Least confident:** How consistently Groq distinguishes adjacent scores on real writing. I’d compare repeated scores on a small set of representative samples.
+2. **Biggest thing to watch:** Older entries still have five levels of detail, even on the new chart. Use newly analyzed entries when comparing fine differences.
+3. **Most consequential assumption:** Existing assessments should carry forward. If you want finer scores for past entries, I’d reanalyze a selected date range deliberately.
+
 # 2026-11-27 — Automatic Mood History 2.1.4
 
 1. **Least confident:** How visible the scope selector is in custom Obsidian themes. I’d check the dropdown and active editor on desktop and mobile in native Obsidian.
