@@ -1,3 +1,7 @@
+# 2.2.2
+
+- Catch up stale monthly notes from saved history on analysis. Recognize older generated exports by their own recovery data and preserve personal edits before refreshing a month.
+
 # 2.2.1
 
 - Default new setups to Scan all except excluded folders for manual and automatic analysis. Preserve saved scope, automatic analysis, and Groq preferences on upgrade.

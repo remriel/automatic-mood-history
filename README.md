@@ -20,6 +20,10 @@ On mobile, you can also install through [BRAT](https://github.com/TfTHacker/obsi
 
 ![Earlier daily entry showing the analysis method, four scores, an emotion, and a summary](assets/plugin-daily-entry.png)
 
+## Monthly notes
+
+With **Monthly notes** selected, each saved analysis updates its month. A completed scan also checks every month against saved history, even if the analysis found no changed notes. If a generated monthly note contains edits, the plugin saves and verifies an exact copy in **Preserved monthly notes** before refreshing the regular month. An unrelated file, an unreadable recovery block, or an export with newer or missing history stays in place for review.
+
 ## Optional Groq analysis
 
 Offline analysis uses Morning Pages word lists. Enabling Groq sends cleaned text from eligible notes to Groq. On Obsidian 1.11.4 or later, save a key in the plugin settings, enable Groq, and select **Check Groq**. Desktop also supports `GROQ_API_KEY`. Use **Retry fallback entries** to revisit locally scored days. For a deliberate full rescan, run **Automatic Mood History: Reanalyze all notes with Groq** from the command palette.

@@ -1,3 +1,7 @@
+# Monthly export catch-up, 2.2.2
+
+[███████░░░] 70%. Reproduced the stale snapshot problem and verified the synthetic catch-up, recovery, and preservation cases. Next run the full suite, publish the fix, and verify the affected vault.
+
 # Automatic Mood History 2.2.1
 
 [██████████] 100% toward verified publication.

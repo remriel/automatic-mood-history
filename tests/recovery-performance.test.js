@@ -36,15 +36,15 @@ async function run() {
   assert.deepEqual(Object.keys(p.runtime.pendingDates), []);
   assert.equal(p.records[date].summary, latest[date].summary);
   assert.equal(p.records[second].summary, latest[second].summary);
-  assert.equal(disk.files.get(editedPath), edited, "a human edit is preserved");
+  assert.equal(disk.files.get(editedPath), buildMonthlyMarkdown(month, p.records));
+  assert([...disk.files.entries()].some(([name, content]) => name.includes("/Preserved monthly notes/") && content === edited));
   assert.equal(disk.files.get(plainPath), buildMonthlyMarkdown("2031-03", p.records));
-  assert(p.groqStatus().text.includes("edited monthly export"));
-  assert(disk.json.runtime.monthlyExportConflicts[editedPath]);
+  assert.equal(disk.json.runtime.monthlyExportConflicts?.[editedPath], undefined);
 
   disk.files.delete(editedPath); files.delete(editedPath);
   await p.exportMonthlyHistory();
   assert.equal(disk.files.get(editedPath), buildMonthlyMarkdown(month, p.records));
-  assert.equal(p.runtime.monthlyExportConflicts[editedPath], undefined);
+  assert.equal(p.runtime.monthlyExportConflicts?.[editedPath], undefined);
 
   const cached = fixture();
   cached.p.settings.autoAnalyze = true;

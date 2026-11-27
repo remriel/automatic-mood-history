@@ -1,3 +1,9 @@
+# Monthly export catch-up, 2.2.2
+
+Owner is Codex. The live journal had more recent analysis than the monthly Markdown. The writer classified stale generated snapshots as personal edits because newer live records differed. The previous conflict branch committed the result without updating the note, and unchanged scans skipped the writer. The fix compares generated files with their own recovery data, reconciles months from saved records, and verifies an exact backup for edited generated files. Newer or missing recovered identities block replacement.
+
+RESUME HERE. Verify the release, install it in the affected vault, and check the canonical monthly files against saved history. No provider call is needed.
+
 # Automatic Mood History 2.2.1 default analysis scope
 
 Owner is Codex. The user requested Scan all except excluded folders as the default for manual and automatic runs, with the change made after 2.2.0 published. No subagents were used.

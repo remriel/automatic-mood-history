@@ -252,6 +252,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         if (this.unloaded) return;
         await this.recoverPendingWrites();
         if (this.unloaded) return;
+        if (this.entryOutput === "monthly" && Object.keys(this.runtime.monthlyExportConflicts || {}).length) {
+          await this.exportMonthlyHistory({ reconcile: true, conflictsOnly: true });
+        }
         await this.syncExemptEntryNotes();
         if (this.unloaded) return;
         await this.savePluginData();
@@ -656,34 +659,58 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     assertCurrent();
     const path = this.monthlyPath(month);
     const next = buildMonthlyMarkdown(month, records);
-    const previous = buildMonthlyMarkdown(month, this.records);
-    const previousHash = this.runtime.monthlyExportHashes?.[path];
+    const vault = this.app.vault;
     await this.ensureFolder(`${this.outputFolder}/Months`);
     assertCurrent();
-    const file = this.app.vault.getAbstractFileByPath(path);
+    const file = vault.getAbstractFileByPath(path);
     if (file instanceof TFile) {
-      await this.app.vault.process(file, current => {
-        assertCurrent();
-        // Compare the entire document, not just an ownership marker. Replay
-        // after an interrupted commit is idempotent; manual edits are retained.
-        const normalized = current.replace(/\r\n/g, "\n");
-        if (normalized !== next && normalized !== previous && normalized !== buildMonthlyMarkdown(month, this.records, { originalScale: true })) {
-          const saved = readMonthlyRecords(normalized, month);
-          // A synced, unedited subset can safely gain days absent from its snapshot.
-          const unchangedSubset = saved && Object.entries(saved).every(([key, record]) =>
-            JSON.stringify(records[key]) === JSON.stringify(record)) &&
-            (buildMonthlyMarkdown(month, saved) === normalized || buildMonthlyMarkdown(month, saved, { originalScale: true }) === normalized);
-          if (sha256(normalized) !== previousHash && !unchangedSubset) {
-            const error = new Error("Monthly export was edited. Move it aside before refreshing; your changes were preserved.");
-            error.code = "monthly_export_edited";
-            error.currentHash = sha256(normalized);
-            throw error;
-          }
-          const identities = new Set(Object.values(records).filter(record => record.date.startsWith(month + "-")).map(record => this.historyIdentity(record)));
-          if (!saved || Object.values(this.validateRecords(saved)).some(record => !identities.has(this.historyIdentity(record)))) {
-            throw new Error("Monthly export contains missing history. Restore history from monthly notes before refreshing.");
-          }
+      const original = await vault.cachedRead(file);
+      assertCurrent();
+      const normalized = original.replace(/\r\n/g, "\n");
+      if (normalized === next) {
+        delete this.runtime.monthlyExportConflicts?.[path];
+        return;
+      }
+      const saved = readMonthlyRecords(normalized, month);
+      const conflict = () => {
+        const error = new Error("Monthly note needs review. The original was preserved.");
+        error.code = "monthly_export_edited";
+        error.currentHash = sha256(normalized);
+        return error;
+      };
+      if (!saved) throw conflict();
+      const byIdentity = new Map(Object.values(records).filter(record => record.date.startsWith(month + "-"))
+        .map(record => [this.historyIdentity(record), record]));
+      for (const [key, record] of Object.entries(saved)) {
+        if (!isObject(record) || !validDate(record.date) || record.date !== dateFromKey(key) ||
+            !record.date.startsWith(month + "-") || !["complete", "insufficient"].includes(record.status)) throw conflict();
+        const live = byIdentity.get(this.historyIdentity(record));
+        if (!live) {
+          const error = conflict();
+          error.message = "Monthly export contains missing history. Restore history from monthly notes before refreshing.";
+          throw error;
         }
+        const savedTime = Date.parse(record.analyzedAt);
+        if (Number.isFinite(savedTime) && !(Date.parse(live.analyzedAt) >= savedTime)) throw conflict();
+      }
+      // Compare with the embedded snapshot, which describes the file when it was generated.
+      // The live records can legitimately have newer scores, source paths, or cache metadata.
+      if (normalized !== buildMonthlyMarkdown(month, saved) &&
+          normalized !== buildMonthlyMarkdown(month, saved, { originalScale: true })) {
+        const folder = `${this.outputFolder}/Preserved monthly notes`;
+        const backupPath = `${folder}/${month} (${sha256(original)}).md`;
+        await this.ensureFolder(folder);
+        assertCurrent();
+        let backup = vault.getAbstractFileByPath(backupPath);
+        if (!backup) backup = await vault.create(backupPath, original);
+        if (!(backup instanceof TFile) || await vault.cachedRead(backup) !== original)
+          throw new Error("Could not verify the preserved monthly note. The original was kept.");
+        new Notice(`Automatic Mood History: saved the previous ${month} note in Preserved monthly notes.`);
+      }
+      assertCurrent();
+      await vault.process(file, current => {
+        assertCurrent();
+        if (current !== original && current !== next) throw new Error("Monthly note changed during refresh. Retry the export.");
         return next;
       });
     } else {
@@ -694,30 +721,43 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     delete this.runtime.monthlyExportConflicts?.[path];
   }
 
-  async exportMonthlyHistory() {
+  async exportMonthlyHistory({ reconcile = false, conflictsOnly = false } = {}) {
     const assertCurrent = this.analysisGuard();
     const task = (this.analysisQueue || Promise.resolve()).then(async () => {
       assertCurrent();
       if (this.entryOutput !== "monthly") throw new Error("Select monthly Markdown output first.");
-      if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before exporting history.");
+      if (Object.keys(this.runtime.pendingWrites || {}).length) {
+        if (reconcile) return;
+        throw new Error("Finish pending result recovery before exporting history.");
+      }
       let completed = 0;
       const edited = [];
-      for (const month of [...new Set(Object.values(this.records).map(record => record.date.slice(0, 7)))].sort()) {
+      const months = new Map();
+      for (const [key, record] of Object.entries(this.records)) {
+        const month = record.date.slice(0, 7);
+        if (!months.has(month)) months.set(month, {});
+        months.get(month)[key] = record;
+      }
+      for (const month of [...months.keys()].sort()) {
+        const path = this.monthlyPath(month);
+        if (conflictsOnly && !this.runtime.monthlyExportConflicts?.[path] && this.app.vault.getAbstractFileByPath(path)) continue;
         try {
-          await this.writeMonthlyNote(month, this.records, assertCurrent);
+          await this.writeMonthlyNote(month, months.get(month), assertCurrent);
           completed++;
         } catch (error) {
           if (error.code !== "monthly_export_edited") throw error;
           const path = this.monthlyPath(month);
           (this.runtime.monthlyExportConflicts ||= {})[path] = error.currentHash;
-          edited.push(month);
+          edited.push(month + " (" + error.message + ")");
         }
       }
+      if (reconcile && !completed && !edited.length) return;
       await this.savePluginData();
-      await this.ensureSupportFiles();
+      if (!reconcile) await this.ensureSupportFiles();
       this.refreshRenderers();
+      if (reconcile) return;
       const result = completed ? `Months up to date in ${this.settings.outputFolder}/Months: ${completed}.` : "No months exported.";
-      if (edited.length) throw new Error(`${result} Preserved edited files: ${edited.join(", ")}. Move those files aside and export again to regenerate them.`);
+      if (edited.length) throw new Error(`${result} Monthly notes needing review: ${edited.join(", ")}.`);
       return completed ? result : "No saved history yet. Run Analyze changed notes now first.";
     });
     this.analysisQueue = task.catch(() => {});
@@ -1652,6 +1692,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     try {
       assertCurrent();
+      if (this.entryOutput === "monthly") await this.exportMonthlyHistory({ reconcile: true });
+      assertCurrent();
       await this.ensureSupportFiles();
       assertCurrent();
       await this.savePluginData();
@@ -1730,7 +1772,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   groqStatus() {
     if (this.settingsValidationError || this.settingsSaveFailed || this.storageReadFailed) return { kind: "warning", text: this.settingsValidationError || "Analysis paused: restore plugin storage and save settings or reload." };
     const conflictCount = Object.keys(this.runtime.monthlyExportConflicts || {}).length;
-    if (conflictCount) return { kind: "warning", text: `${conflictCount} edited monthly export${conflictCount === 1 ? "" : "s"} preserved. Saved scores are available in plugin history; move the edited monthly note aside, then use Export months to refresh it.` };
+    if (conflictCount) return { kind: "warning", text: `${conflictCount} monthly export(s) need review. Check for newer or unreadable recovery data before refreshing from saved history.` };
     const pendingCount = Object.keys(this.runtime.pendingDates || {}).length;
     if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups await recovery. Available Morning Pages fallback scores are shown. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
     if (!this.settings.enableGroq) return { kind: "local", text: "MORNING PAGES FALLBACK · Groq is disabled. Analysis stays on this device." };
