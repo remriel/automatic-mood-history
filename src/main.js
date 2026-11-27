@@ -253,7 +253,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         await this.recoverPendingWrites();
         if (this.unloaded) return;
         if (this.entryOutput === "monthly" && Object.keys(this.runtime.monthlyExportConflicts || {}).length) {
-          await this.exportMonthlyHistory({ reconcile: true, conflictsOnly: true });
+          await this.exportMonthlyHistory({ reconcile: true });
         }
         await this.syncExemptEntryNotes();
         if (this.unloaded) return;
@@ -721,7 +721,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     delete this.runtime.monthlyExportConflicts?.[path];
   }
 
-  async exportMonthlyHistory({ reconcile = false, conflictsOnly = false } = {}) {
+  async exportMonthlyHistory({ reconcile = false } = {}) {
     const assertCurrent = this.analysisGuard();
     const task = (this.analysisQueue || Promise.resolve()).then(async () => {
       assertCurrent();
@@ -739,8 +739,6 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         months.get(month)[key] = record;
       }
       for (const month of [...months.keys()].sort()) {
-        const path = this.monthlyPath(month);
-        if (conflictsOnly && !this.runtime.monthlyExportConflicts?.[path] && this.app.vault.getAbstractFileByPath(path)) continue;
         try {
           await this.writeMonthlyNote(month, months.get(month), assertCurrent);
           completed++;
@@ -751,11 +749,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
           edited.push(month + " (" + error.message + ")");
         }
       }
-      if (reconcile && !completed && !edited.length) return;
-      await this.savePluginData();
-      if (!reconcile) await this.ensureSupportFiles();
-      this.refreshRenderers();
       if (reconcile) return;
+      await this.savePluginData();
+      await this.ensureSupportFiles();
+      this.refreshRenderers();
       const result = completed ? `Months up to date in ${this.settings.outputFolder}/Months: ${completed}.` : "No months exported.";
       if (edited.length) throw new Error(`${result} Monthly notes needing review: ${edited.join(", ")}.`);
       return completed ? result : "No saved history yet. Run Analyze changed notes now first.";
