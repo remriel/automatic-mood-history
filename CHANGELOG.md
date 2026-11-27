@@ -1,3 +1,7 @@
+# 2.2.1
+
+- Default new setups to Scan all except excluded folders for manual and automatic analysis. Preserve saved scope, automatic analysis, and Groq preferences on upgrade.
+
 # 2.2.0
 
 - Score mood, energy, connection, and intensity from 1 to 10. Show earlier scores on the same scale without rerunning analysis or changing the stored values.

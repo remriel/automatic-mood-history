@@ -1,13 +1,16 @@
-# Automatic Mood History 2.2.0
+# Automatic Mood History 2.2.1
 
 [███████░░░] 70% toward verified publication.
 
-- [x] Remove full retry buttons. Fix keyless and deferred Groq paths and clarify empty scope.
-- [x] Implement ten-point scoring, compatible display conversion, and export/recovery handling.
-- [x] Pass local functional, mobile runtime, browser layout and release-audit checks.
-- [ ] Pass PR checks, merge to main, then verify the published release files and attestations.
+- [x] Publish and verify 2.2.0 first.
+- [x] Change the scope default and cover stored preferences, malformed lists, and fresh mobile installs.
+- [ ] Pass candidate CI, merge, publish, and verify all release assets.
 
-No known implementation blocker. Next steps are PR CI, merge, release workflow, and asset verification, in that order.
+Next steps are candidate CI, merge, Release workflow, and file verification. Native Obsidian and live Groq remain untested.
+
+# Automatic Mood History 2.2.0
+
+[██████████] 100%. Published after PR #41 passed CI 46060866646. Main CI 46061064459 and Release 46061064472 passed. All three downloads match their Git tag blobs, GitHub SHA-256 digests, and signed provenance.
 
 # Automatic Mood History 2.1.4
 
