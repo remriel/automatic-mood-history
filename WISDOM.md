@@ -1,3 +1,9 @@
+# 2026-11-27 — Automatic Mood History 2.2.2
+
+1. I’m least confident about simultaneous edits from two synced devices. I’d test that race in a disposable vault.
+2. When automatic analysis is off, a manual scan now catches monthly notes up even when there are no new scores.
+3. I treated the regular monthly note as the generated report and kept personal edits in exact copies. If edits need to stay inline, I’d add a dedicated annotations section.
+
 # 2026-11-27 — Automatic Mood History 2.2.1
 
 1. I’m least confident about how consistently Groq distinguishes adjacent scores on real writing. I’d compare repeated scores on a small set of representative samples.

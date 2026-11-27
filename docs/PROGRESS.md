@@ -1,6 +1,14 @@
 # Monthly export catch-up, 2.2.2
 
-[███████░░░] 70%. Reproduced the stale snapshot problem and verified the synthetic catch-up, recovery, and preservation cases. Next run the full suite, publish the fix, and verify the affected vault.
+[██████████] 100% verified and published.
+
+- [x] Reproduce stale exported days despite current plugin history.
+- [x] Reconcile exports on scan and repair previously flagged months on startup.
+- [x] Exercise unchanged scans, historical formatting, edited notes, newer exports, missing identities, and interrupted writes.
+- [x] Publish 2.2.2 through PR #43 and verify tag, download hashes, and signed provenance.
+- [x] Verify in native Obsidian that all monthly notes match saved history, original edits have exact backups, and the result cache is unchanged.
+
+No remaining release or live repair steps.
 
 # Automatic Mood History 2.2.1
 

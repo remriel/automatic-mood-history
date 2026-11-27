@@ -2,7 +2,7 @@
 
 Owner is Codex. The live journal had more recent analysis than the monthly Markdown. The writer classified stale generated snapshots as personal edits because newer live records differed. The previous conflict branch committed the result without updating the note, and unchanged scans skipped the writer. The fix compares generated files with their own recovery data, reconciles months from saved records, and verifies an exact backup for edited generated files. Newer or missing recovered identities block replacement.
 
-RESUME HERE. Verify the release, install it in the affected vault, and check the canonical monthly files against saved history. No provider call is needed.
+RESUME HERE. Published 2.2.2 from merge d09ad6bb7bfd32ca036f2c56410370917b461adc through PR #43. PR CI 46062983042 and Release 46063177140 passed. The release downloads match the tag, published digests, and signed provenance. Installed the build in the affected vault and verified native startup recovery. Every monthly file matched the saved records, the edited originals matched their preserved copies, and the scored records matched the pre-repair snapshot. No export conflicts or pending writes remained. Simultaneous writes from multiple devices have not been exercised end to end.
 
 # Automatic Mood History 2.2.1 default analysis scope
 
