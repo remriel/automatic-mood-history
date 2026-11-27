@@ -1,7 +1,8 @@
 // The bundled Morning Pages module supplies its built-in word lists and matcher.
 const { analyzeWriting, GROUPS } = require("./vendor/morning-pages-analysis");
+const { moodToValence } = require("./sentiment-core");
 
-const MORNING_PAGES_ANALYZER_VERSION = "morning-pages-feelings-topics-v1";
+const MORNING_PAGES_ANALYZER_VERSION = "morning-pages-feelings-topics-v2";
 
 function morningPagesSentiment(text, topic = "") {
   // Pass explicit empty customizations so this copy always uses the published
@@ -9,16 +10,13 @@ function morningPagesSentiment(text, topic = "") {
   const { feelings, topics } = analyzeWriting(text, {}, {});
   const positive = feelings.love + feelings.joy + feelings.pride;
   const negative = feelings.anxiety + feelings.anger + feelings.sadness;
-  const balancedScore = (up, down) => {
-    const difference = up - down;
-    return 3 + Math.sign(difference) * (Math.abs(difference) >= 3 ? 2 : Math.abs(difference) ? 1 : 0);
-  };
+  const balancedScore = (up, down) => Math.max(1, Math.min(10, Math.round(5.5 + 1.5 * (up - down))));
   const moodScore = balancedScore(positive, negative);
   const energyScore = balancedScore(feelings.joy + feelings.pride, feelings.sadness);
   const connections = feelings.love + topics.people + topics.intimacy;
-  const connectionScore = connections >= 3 ? 5 : connections ? 4 : 3;
+  const connectionScore = Math.min(10, 6 + connections);
   const totalFeelings = Object.values(feelings).reduce((sum, value) => sum + value, 0);
-  const intensityScore = totalFeelings >= 10 ? 5 : totalFeelings >= 6 ? 4 : totalFeelings >= 3 ? 3 : totalFeelings ? 2 : 1;
+  const intensityScore = Math.min(10, 1 + totalFeelings);
   const ranked = (group, counts) => GROUPS[group]
     .map(item => ({ label: item.label.toLowerCase(), count: counts[item.key] }))
     .filter(item => item.count > 0).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
@@ -30,7 +28,7 @@ function morningPagesSentiment(text, topic = "") {
   ];
   return {
     moodScore, energyScore, connectionScore, intensityScore,
-    valence: ["", "very_negative", "negative", "mixed", "positive", "very_positive"][moodScore],
+    valence: moodToValence(moodScore),
     emotions,
     summary: topic || `Morning Pages word-list estimate${topicLabels.length ? `; topics: ${topicLabels.join(", ")}` : ""}.`,
     drivers,

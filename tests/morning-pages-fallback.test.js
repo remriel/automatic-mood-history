@@ -13,10 +13,13 @@ async function run() {
   assert.equal(morningPages.topics.people, 2);
   assert.equal(morningPages.topics.work, 2);
   const expected = morningPagesSentiment(text);
-  assert.equal(expected.moodScore, 5);
+  assert.equal(expected.moodScore, 10);
   assert(expected.emotions.includes("joy") && expected.emotions.includes("affection"));
   assert(expected.drivers.some(line => line.includes("work & learning")));
   assert.equal(morningPagesSentiment("I am anxious sad angry and afraid.").moodScore, 1);
+  const positiveSteps = ["I am writing.", "I am happy.", "I am happy and proud.", "I am happy and proud and full of joy."];
+  assert.equal(new Set(positiveSteps.map(sample => morningPagesSentiment(sample).moodScore)).size, positiveSteps.length,
+    "different strengths produce distinct scores on the new scale");
   assert.deepEqual(morningPagesSentiment("A sentence with no matching category terms.").emotions, []);
 
   let f = fixture(); f.p.settings.enableGroq = false; f.disk.files.set(f.source.path, text);
@@ -111,7 +114,7 @@ async function run() {
   assert.equal(await f.p.analyzeDate(date, { background: true }), true, "a changed note is rescored while Groq is paused");
   assert.equal(attempts, 1, "background edits do not bypass provider backoff");
   assert.equal(f.p.records[date].analysisSource, "morning-pages-fallback");
-  assert(f.p.records[date].moodScore < 3);
+  assert(f.p.records[date].moodScore < 5);
   assert.equal(f.p.runtime.pendingDates[date].retryAt, retryAt, "edits do not extend provider backoff");
   f.disk.files.set(f.source.path, "I feel happy and proud about my friend and the work project we finished today.");
   f.p.lastAutomaticReconcileAt = 0;

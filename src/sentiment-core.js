@@ -44,14 +44,28 @@ const ALLOWED_EMOTIONS = [
   "worried"
 ];
 
+const SCORE_MAX = 10;
+const SCORE_FIELDS = ["moodScore", "energyScore", "connectionScore", "intensityScore"];
+
+function displayScores(record) {
+  if (record.scoreScale === SCORE_MAX) return record;
+  const scaled = { ...record, scoreScale: SCORE_MAX };
+  for (const field of SCORE_FIELDS) {
+    const value = record[field];
+    scaled[field] = Number.isInteger(value) && value >= 1 && value <= 5
+      ? Math.round(1 + (value - 1) * (SCORE_MAX - 1) / 4) : null;
+  }
+  return scaled;
+}
+
 const ANALYSIS_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    moodScore: { type: "integer", minimum: 1, maximum: 5 },
-    energyScore: { type: "integer", minimum: 1, maximum: 5 },
-    connectionScore: { type: "integer", minimum: 1, maximum: 5 },
-    intensityScore: { type: "integer", minimum: 1, maximum: 5 },
+    moodScore: { type: "integer", minimum: 1, maximum: SCORE_MAX },
+    energyScore: { type: "integer", minimum: 1, maximum: SCORE_MAX },
+    connectionScore: { type: "integer", minimum: 1, maximum: SCORE_MAX },
+    intensityScore: { type: "integer", minimum: 1, maximum: SCORE_MAX },
     valence: {
       type: "string",
       enum: ["very_negative", "negative", "mixed", "positive", "very_positive"]
@@ -270,11 +284,11 @@ function sha256(text) {
 }
 
 function clampScore(value) {
-  return Math.max(1, Math.min(5, Math.round(Number(value) || 3)));
+  return Math.max(1, Math.min(SCORE_MAX, Math.round(Number(value) || 6)));
 }
 
 function moodToValence(score) {
-  return ["", "very_negative", "negative", "mixed", "positive", "very_positive"][clampScore(score)];
+  return ["very_negative", "negative", "mixed", "positive", "very_positive"][Math.floor((clampScore(score) - 1) / 2)];
 }
 
 
@@ -312,7 +326,7 @@ function validateAnalysis(input) {
     valence: ["very_negative", "negative", "mixed", "positive", "very_positive"].includes(input.valence)
       ? input.valence
       : moodToValence(moodScore),
-    emotions: emotions.length ? emotions : [moodScore < 3 ? "sad" : moodScore > 3 ? "hopeful" : "confused"],
+    emotions: emotions.length ? emotions : [moodScore < 5 ? "sad" : moodScore > 6 ? "hopeful" : "confused"],
     summary: String(input.summary || "Sentiment inferred from the notes created that day.").slice(0, 500),
     drivers: (input.drivers || []).map(value => String(value).slice(0, 250)).filter(Boolean).slice(0, 4),
     confidence: ["low", "medium", "high"].includes(input.confidence) ? input.confidence : "low",
@@ -332,28 +346,20 @@ function localSentiment(text, topic = "") {
   // VADER handles negation and emphasis, but does not know who owns the feelings.
   const vader = SentimentIntensityAnalyzer.polarity_scores(text);
   const compound = Number.isFinite(vader.compound) ? vader.compound : 0;
-  let moodScore = 3;
-  if (compound <= -0.75) moodScore = 1;
-  else if (compound <= -0.05) moodScore = 2;
-  else if (compound >= 0.75) moodScore = 5;
-  else if (compound >= 0.05) moodScore = 4;
+  const moodScore = clampScore(5.5 + 4.5 * compound);
 
   const energyUp = count(ENERGY_UP);
   const energyDown = count(ENERGY_DOWN);
-  let energyScore = 3;
-  if (energyDown > energyUp * 1.5) energyScore = energyDown >= 6 ? 1 : 2;
-  else if (energyUp > energyDown * 1.5) energyScore = energyUp >= 6 ? 5 : 4;
+  const energyScore = clampScore(5.5 + (energyUp - energyDown) * 0.75);
 
   const connected = count(CONNECTION_UP);
   const disconnected = count(CONNECTION_DOWN);
-  let connectionScore = 3;
-  if (disconnected > connected * 1.4) connectionScore = disconnected >= 5 ? 1 : 2;
-  else if (connected > disconnected * 1.4) connectionScore = connected >= 5 ? 5 : 4;
+  const connectionScore = clampScore(5.5 + (connected - disconnected) * 1.3);
 
   const profanity = (normalized.match(/\b(fuck|fucking|bitch|shit|damn)\b/g) || []).length;
   const exclamations = (text.match(/!/g) || []).length;
   const emotionDensity = Math.min(20, total + profanity + exclamations);
-  const intensityScore = emotionDensity >= 12 ? 5 : emotionDensity >= 7 ? 4 : emotionDensity >= 3 ? 3 : emotionDensity >= 1 ? 2 : 1;
+  const intensityScore = clampScore(1 + emotionDensity * 0.75);
 
   const ranked = Object.entries(EMOTION_LEXICON)
     .map(([emotion, terms]) => [emotion, count(terms)])
@@ -396,6 +402,8 @@ function plainNarrative(value, maximum = 500) {
 }
 
 function buildEntryMarkdown(record) {
+  const scale = record.scoreScale === SCORE_MAX ? SCORE_MAX : 5;
+  const shownScore = value => scale === SCORE_MAX && !Number.isFinite(value) ? "—" : `${value}/${scale}`;
   const lines = [
     "---",
     'type: "automatic-mood-entry"',
@@ -405,6 +413,7 @@ function buildEntryMarkdown(record) {
     `status: ${escapeYaml(record.status)}`,
     `analysis_source: ${escapeYaml(record.analysisSource)}`,
     `confidence: ${escapeYaml(record.confidence || "none")}`,
+    ...(scale === SCORE_MAX ? [`score_scale: ${scale}`] : []),
     `mood: ${record.moodScore ?? "null"}`,
     `energy: ${record.energyScore ?? "null"}`,
     `connection: ${record.connectionScore ?? "null"}`,
@@ -438,10 +447,10 @@ function buildEntryMarkdown(record) {
     lines.push("There was not enough written text to infer a mood reliably.");
   } else {
     lines.push(
-      `- **Mood:** ${record.moodScore}/5`,
-      `- **Energy:** ${record.energyScore}/5`,
-      `- **Connection:** ${record.connectionScore}/5`,
-      `- **Intensity:** ${record.intensityScore}/5`,
+      `- **Mood:** ${shownScore(record.moodScore)}`,
+      `- **Energy:** ${shownScore(record.energyScore)}`,
+      `- **Connection:** ${shownScore(record.connectionScore)}`,
+      `- **Intensity:** ${shownScore(record.intensityScore)}`,
       `- **Emotions:** ${plainNarrative((record.emotions || []).join(", ") || "none")}`,
       `- **Confidence:** ${plainNarrative(record.confidence)}`,
       "",
@@ -494,7 +503,7 @@ function readMonthlyRecords(markdown, month) {
   }
 }
 
-function buildMonthlyMarkdown(month, records) {
+function buildMonthlyMarkdown(month, records, { originalScale = false } = {}) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Invalid export month.");
   const selected = Object.fromEntries(Object.entries(records)
     .filter(([, record]) => record.date?.slice(0, 7) === month)
@@ -504,7 +513,7 @@ function buildMonthlyMarkdown(month, records) {
     "This export is maintained automatically. Keep personal additions in a separate note; edited exports are preserved rather than overwritten.", ""];
   for (const record of Object.values(selected)) {
     lines.push(`## ${record.date} (${record.dateBasis || "legacy-note-date"})`, "");
-    const body = buildEntryMarkdown(record).replace(/^---\n[\s\S]*?\n---\n/, "").replace(/^# Mood[^\n]*\n/m, "");
+    const body = buildEntryMarkdown(originalScale ? record : displayScores(record)).replace(/^---\n[\s\S]*?\n---\n/, "").replace(/^# Mood[^\n]*\n/m, "");
     lines.push(body.replace(/^## /gm, "### "), "");
   }
   lines.push(monthlyRecoveryHeading + JSON.stringify({ format: "automatic-mood-history-month", version: 1, month, records: selected }, null, 2), "```", "");
@@ -514,9 +523,12 @@ function buildMonthlyMarkdown(month, records) {
 module.exports = {
   ALLOWED_EMOTIONS,
   ANALYSIS_SCHEMA,
+  SCORE_FIELDS,
+  SCORE_MAX,
   buildEntryMarkdown,
   buildMonthlyMarkdown,
   deduplicateParagraphs,
+  displayScores,
   exemptUnscorableAssessment,
   hasNoEmotionalEvidence,
   localSentiment,

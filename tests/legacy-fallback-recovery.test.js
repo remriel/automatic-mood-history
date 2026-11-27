@@ -92,6 +92,13 @@ async function fixture() {
   f.plugin.settings.enableGroq = true; f.plugin.apiKey = () => "";
   await f.plugin.recoverFallbacksWithGroq();
   assert.strictEqual(f.calls.length, 0, "missing key does not relabel or overwrite history");
+  await f.plugin.retryAllWithGroq();
+  assert.strictEqual(f.writes.length, 0, "a keyless full retry must not reanalyze locally");
+  f = await fixture();
+  await f.plugin.analyzeDate(legacyDate, { legacySources: true, deferProvider: true });
+  assert.strictEqual(f.calls.length, 0);
+  assert.strictEqual(f.writes.length, 0, "a deferred legacy retry never replaces the saved score with a local fallback");
+  assert.strictEqual(f.plugin.records[legacyDate], f.legacy);
   f = await fixture(); f.plugin.runtime.lastGroqSuccessAt = "2035-03-14T12:00:00Z"; f.plugin.runtime.lastGroqModel = "fictional-model";
   assert(f.plugin.groqStatus().text.includes("1 saved fallback entries"), "connected status distinguishes availability from pending history");
   console.log("legacy fallback recovery: saved source scoping, focused retries, entry provenance, existing results, consent, missing text, and rate-limit preservation passed");

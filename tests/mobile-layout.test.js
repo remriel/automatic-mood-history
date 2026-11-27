@@ -103,7 +103,8 @@ async function run() {
         await page.waitForFunction(() => !fixture.plugin.savingChartVisibility);
         assert.equal(await button.getAttribute("aria-pressed"), "true");
       }
-      for (const [label, key] of [["Analyze changed", "analyze"], ["Retry all with Groq", "retry"], ["Check Groq", "check"], ["Retry fallback entries", "recover"]]) {
+      assert.equal(await page.getByRole("button", { name: "Retry all with Groq", exact: true }).count(), 0);
+      for (const [label, key] of [["Analyze changed", "analyze"], ["Check Groq", "check"], ["Retry fallback entries", "recover"]]) {
         await page.getByRole("button", { name: label, exact: true }).tap();
         await page.waitForFunction(() => !fixture.plugin.activeScan && !fixture.plugin.checkingGroq);
         assert.equal(await page.evaluate(key => fixture.calls[key], key), 1);
