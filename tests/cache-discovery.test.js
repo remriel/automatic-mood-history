@@ -24,7 +24,7 @@ async function run() {
     const f = fixture(); const index = f.p.buildDateIndex();
     if (operation === "delete") f.files.delete(f.source.path);
     if (operation === "rename") f.source.path = "Journal/Moved.md";
-    if (operation === "scope") f.p.settings.includeFolders = ["Other"];
+    if (operation === "scope") f.p.settings.excludeFolders = ["Journal"];
     await assert.rejects(f.p.gatherDate(date, index), error => error.code === "analysis_cancelled");
     assert.equal(f.p.providerCalls, 0);
   }

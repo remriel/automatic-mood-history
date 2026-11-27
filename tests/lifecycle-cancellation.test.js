@@ -48,7 +48,7 @@ async function run() {
   p.settings.enableGroq = false; p.records = {};
   const read = deferred(), reading = deferred(); p.app.vault.cachedRead = async () => { reading.resolve(); await read.promise; return "Fictional supportive calm writing."; };
   const scan = p.analyzeAll({ silent: true }); await reading.promise;
-  p.settings.includeFolders = ["Other"]; read.resolve(); const stats = await scan;
+  p.settings.excludeFolders = ["Journal"]; read.resolve(); const stats = await scan;
   assert(stats.cancelled > 0); assert.equal(stats.updated, 0);
 
   f = fixture(); p = f.p; p.watchSettings(); const barrier = deferred(); p.analysisQueue = barrier.promise;

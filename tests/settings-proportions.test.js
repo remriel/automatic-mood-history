@@ -7,13 +7,19 @@ const { fixtureHTML } = require("./layout-fixture");
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     await page.setContent(fixtureHTML());
-    for (const width of [280, 390, 640, 900, 1200]) for (const largeText of [false, true]) {
+    for (const width of [280, 390, 640, 900, 1200]) for (const largeText of [false, true]) for (const scope of ["include", "all"]) {
       await page.evaluate(({ width, largeText }) => fixture.configure({ settingsView: true, paneWidth: width, largeText }), { width, largeText });
+      const picker = page.getByRole("combobox", { name: "Analysis scope" });
+      await picker.selectOption(scope);
+      const activeEditor = scope === "all" ? "Exclude folders" : "Include folders";
+      const inactiveEditor = scope === "all" ? "Include folders" : "Exclude folders";
+      await page.getByRole("textbox", { name: activeEditor }).waitFor();
+      assert.equal(await page.getByRole("textbox", { name: inactiveEditor }).count(), 0);
       const coffee = page.getByRole("link", { name: "Buy Me a Coffee" });
       assert.equal(await page.locator("#settings > footer:last-child a").count(), 1);
       assert.equal(await coffee.getAttribute("href"), "https://buymeacoffee.com/remriel");
       assert(await coffee.evaluate(link => getComputedStyle(link).backgroundImage.startsWith('url("data:image/png;base64,')));
-      const rows = await page.evaluate(() => [...document.querySelectorAll("#settings .setting-item")].map(row => {
+      const rows = await page.evaluate(() => [...document.querySelectorAll("#settings .setting-item:not([hidden])")].map(row => {
         const info = row.querySelector(".setting-item-info");
         const control = row.querySelector(".setting-item-control");
         const bounds = element => {
@@ -40,7 +46,8 @@ const { fixtureHTML } = require("./layout-fixture");
         }
         for (const target of row.targets) assert(target.height >= 43, `${label}: ${target.tag} has a small touch target`);
       }
-      for (const label of ["Include folders", "Exclude folders"]) {
+      {
+        const label = activeEditor;
         const row = rows.find(row => row.name === label);
         assert.equal(row.direction, "column", `${label} stays stacked at ${width}px`);
         assert(row.control.width >= row.info.width - 2, `${label} editor uses the available width`);

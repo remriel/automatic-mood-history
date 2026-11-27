@@ -957,3 +957,7 @@ body:not(.is-phone) .modal.mod-settings .vertical-tab-content.auto-mood-settings
     font-size: 1rem;
   }
 }
+
+.auto-mood-settings .auto-mood-setting-stacked[hidden] {
+  display: none;
+}

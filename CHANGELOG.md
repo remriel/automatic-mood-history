@@ -1,3 +1,7 @@
+# 2.1.4
+
+- Default note analysis to explicitly included folders, with a separate opt-in mode for vault-wide scanning and exclusions.
+
 # 2.1.3
 
 - Add a support message and a Buy Me a Coffee button at the bottom of Settings.

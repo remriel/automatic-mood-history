@@ -58,7 +58,7 @@ Module._load = function patched(request, parent, isMain) {
 process.env.GROQ_API_KEY = "test-only-placeholder";
 const LoadedPlugin = require("../main.js");
 const instance = new LoadedPlugin();
-instance.settings = {
+instance.settings = { folderScope: "all",
   enableGroq: true,
   model: "openai/gpt-oss-20b"
 };

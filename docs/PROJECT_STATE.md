@@ -1,3 +1,11 @@
+# Automatic Mood History 2.1.4 analysis scope
+
+Owner is Codex. The goal is to publish separate Include specific folders (default) and Scan all except excluded folders modes on GitHub. No subagents were used.
+
+The Analysis scope selector in src/main.js shows the active folder editor and persists both lists independently. Source filtering applies consistently to discovery and analysis. Changes to the mode invalidate in-flight analysis through the settings epoch and signature. The migration keeps old exclusion rules for scan-all mode. An overlapping legacy include is set aside for review so switching defaults cannot expose previously excluded notes. Blank default scope pauses source analysis and saved history stays available.
+
+RESUME HERE. Verify the candidate in GitHub CI, merge it, and verify the release workflow and downloadable assets. Native Obsidian has not been tested.
+
 # Automatic Mood History 2.1.3 support footer
 
 RESUME HERE. Automatic Mood History 2.1.3 is published at https://github.com/remriel/automatic-mood-history/releases/tag/2.1.3 from commit 8360cffb5eafcdf7017cf1e537ce546f74d82ce1. Codex completed the release. No subagents were used.
