@@ -1260,9 +1260,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
     if (typeof saved.model === "string" && /^[a-zA-Z0-9][a-zA-Z0-9/_.-]{0,199}$/.test(saved.model.trim())) settings.model = saved.model.trim();
     if (saved.folderScope === "all") settings.folderScope = "all";
+    let legacyExclusionsChecked = false;
     try {
-      settings.includeFolders = checkedFolderList(saved.includeFolders);
       settings.excludeFolders = checkedFolderList(saved.excludeFolders);
+      legacyExclusionsChecked = true;
+      settings.includeFolders = checkedFolderList(saved.includeFolders);
       if (saved.folderScope === undefined) {
         // An old exclusion within an included tree cannot be represented by a single include rule.
         // Set aside that tree until the user can review their scope.
@@ -1279,7 +1281,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       this.settingsValidationError = `${error.message} Fix folder settings before analyzing.`;
       settings.includeFolders = Array.isArray(saved.includeFolders) ? saved.includeFolders.filter(value => typeof value === "string") : typeof saved.includeFolders === "string" ? saved.includeFolders.split(/\r?\n/) : [];
       settings.excludeFolders = Array.isArray(saved.excludeFolders) ? saved.excludeFolders.filter(value => typeof value === "string") : typeof saved.excludeFolders === "string" ? saved.excludeFolders.split(/\r?\n/) : [];
-      if (saved.folderScope === undefined && settings.excludeFolders.some(value => value.trim())) settings.includeFolders = [];
+      if (saved.folderScope === undefined && (!legacyExclusionsChecked || settings.excludeFolders.some(value => value.trim()))) settings.includeFolders = [];
     }
     try {
       settings.outputFolder = saved.outputFolder === undefined ? DEFAULT_SETTINGS.outputFolder : vaultPath(saved.outputFolder);
