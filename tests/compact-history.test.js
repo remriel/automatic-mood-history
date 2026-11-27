@@ -79,12 +79,14 @@ async function run() {
   disk.files.set(path, disk.files.get(path) + "\nPersonal addition.\n");
   const edited = disk.files.get(path);
   p.records["2031-03-01"] = { ...original, date: "2031-03-01" };
-  await assert.rejects(p.exportMonthlyHistory(), /Preserved edited files: 2031-02/);
+  await p.exportMonthlyHistory();
   assert(disk.files.has("Mood History/Months/2031-03.md"));
-  assert.equal(disk.files.get(path), edited);
+  assert.equal(disk.files.get(path), buildMonthlyMarkdown("2031-02", p.records));
+  assert([...disk.files.entries()].some(([name, content]) => name.includes("/Preserved monthly notes/") && content === edited));
   assert.equal(await p.analyzeDate(date, { force: true }), true);
-  assert.equal(disk.files.get(path), edited);
-  assert.equal(disk.json.runtime.monthlyExportConflicts[path], sha256(edited));
+  assert.equal(disk.files.get(path), buildMonthlyMarkdown("2031-02", p.records));
+  assert([...disk.files.entries()].some(([name, content]) => name.includes("/Preserved monthly notes/") && content === edited));
+  assert.equal(disk.json.runtime.monthlyExportConflicts?.[path], undefined);
   assert.deepEqual(disk.json.records, p.records);
   assert.equal(Object.keys(p.runtime.pendingWrites).length, 0);
   disk.files.delete(path); files.delete(path);
@@ -92,6 +94,22 @@ async function run() {
   await p.exportMonthlyHistory();
   assert.equal(p.providerCalls, requests);
   assert.equal(disk.files.get(path), buildMonthlyMarkdown("2031-02", p.records));
+
+  // Even when scoring has nothing new, reconcile a stale generated snapshot.
+  disk.files.set(path, buildMonthlyMarkdown("2031-02", before, { originalScale: true }));
+  delete p.runtime.monthlyExportHashes;
+  const savedTargets = p.getAnalysisTargets;
+  p.getAnalysisTargets = () => [];
+  await p.analyzeAll({ silent: true });
+  p.getAnalysisTargets = savedTargets;
+  assert.equal(p.providerCalls, requests);
+  assert.equal(disk.files.get(path), buildMonthlyMarkdown("2031-02", p.records));
+  const newerExport = clone(p.records);
+  newerExport[date].analyzedAt = "2099-01-01T00:00:00Z";
+  const future = buildMonthlyMarkdown("2031-02", newerExport);
+  disk.files.set(path, future);
+  await assert.rejects(p.exportMonthlyHistory(), /needing review/);
+  assert.equal(disk.files.get(path), future, "preserve a newer synced result");
 
   // Recover all persisted boundaries without replaying a provider request.
   for (const boundary of ["prepare-after", "export-before", "export-after", "commit-before", "commit-after"]) {
