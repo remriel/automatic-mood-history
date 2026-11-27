@@ -423,3 +423,5 @@ Progress: 100%.
 - [x] Publish and verify the release.
 
 Functional, desktop and mobile layout, mobile runtime and release audit passed. Synthetic previews were checked with icon shapes from the installed Obsidian bundle. Release 1.9.13 and workflow 45231239621 succeeded. All three assets match their GitHub digests and the tagged files. No further publication steps remain.
+## Monthly export feedback, November 26
+Progress: 90% [#########-]. Diagnosis, implementation, bundle build, and npm test complete. Regression verifies an edited February survives and March still exports. No implementation blocker. Next: 1. Verify settings notices in Obsidian. 2. Merge and release after review.

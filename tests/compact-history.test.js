@@ -72,7 +72,9 @@ async function run() {
   // A user-owned or modified document must never be silently replaced.
   disk.files.set(path, disk.files.get(path) + "\nPersonal addition.\n");
   const edited = disk.files.get(path);
-  await assert.rejects(p.exportMonthlyHistory(), /edited/);
+  p.records["2031-03-01"] = { ...original, date: "2031-03-01" };
+  await assert.rejects(p.exportMonthlyHistory(), /Preserved edited files: 2031-02/);
+  assert(disk.files.has("Mood History/Months/2031-03.md"));
   assert.equal(disk.files.get(path), edited);
   assert.equal(await p.analyzeDate(date, { force: true }), true);
   assert.equal(disk.files.get(path), edited);
