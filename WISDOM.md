@@ -205,3 +205,7 @@ Confidence is lowest in native mobile behavior. A full-suite pass covers modeled
 2. Biggest consideration: the panel shows emotions already saved for the selected day; choosing a date does not rerun analysis. Days without saved emotions show an explicit empty message.
 3. Key assumption: the requested 30% reduction refers to a wide desktop pane; narrower panes and larger text may reflow to keep labels readable. Adjust if the user wants different sizing.
 4. Linux CI exposed a label break that did not occur with the local Windows font. Leave extra room around the widest labels and verify the compact layout on both platforms before release.
+## Monthly exports, November 26
+1. The cause of an individual file mismatch needs a comparison with a known generated copy.
+2. Saved records can be newer than exported Markdown. Check both before rerunning analysis.
+3. Automatic analysis is opt-in and may use the configured provider. Confirm provider preferences before enabling it.

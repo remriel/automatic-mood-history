@@ -668,12 +668,25 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       assertCurrent();
       if (this.entryOutput !== "monthly") throw new Error("Select monthly Markdown output first.");
       if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before exporting history.");
+      let completed = 0;
+      const edited = [];
       for (const month of [...new Set(Object.values(this.records).map(record => record.date.slice(0, 7)))].sort()) {
-        await this.writeMonthlyNote(month, this.records, assertCurrent);
+        try {
+          await this.writeMonthlyNote(month, this.records, assertCurrent);
+          completed++;
+        } catch (error) {
+          if (error.code !== "monthly_export_edited") throw error;
+          const path = this.monthlyPath(month);
+          (this.runtime.monthlyExportConflicts ||= {})[path] = error.currentHash;
+          edited.push(month);
+        }
       }
       await this.savePluginData();
       await this.ensureSupportFiles();
       this.refreshRenderers();
+      const result = completed ? `Months up to date in ${this.settings.outputFolder}/Months: ${completed}.` : "No months exported.";
+      if (edited.length) throw new Error(`${result} Preserved edited files: ${edited.join(", ")}. Move those files aside and export again to regenerate them.`);
+      return completed ? result : "No saved history yet. Run Analyze changed notes now first.";
     });
     this.analysisQueue = task.catch(() => {});
     return task;
@@ -2633,7 +2646,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
           const saved = await this.plugin.updateSetting("entryOutput", value);
           dropdown.setValue(this.plugin.entryOutput);
           if (saved && value === "monthly") {
-            try { await this.plugin.exportMonthlyHistory(); new Notice("Automatic Mood History: monthly history exported. Existing daily notes were preserved."); }
+            try { new Notice(await this.plugin.exportMonthlyHistory()); }
             catch (error) { new Notice(`Automatic Mood History: ${error.message}`, 9000); }
           }
           if (saved && value === "daily") {
@@ -2647,10 +2660,12 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         }));
     new Setting(containerEl)
       .setName("Refresh monthly exports")
-      .setDesc("Export saved records without reanalyzing notes or contacting a provider. Include the Months folder and plugin data in your backups; verify your sync service includes both.")
+      .setDesc("Write already analyzed days to the Months folder. To add recent days, run Analyze changed notes now. Include the Months folder and plugin data in your backups; verify your sync service includes both.")
       .addButton(button => button.setButtonText("Export months").onClick(async () => {
-        try { await this.plugin.exportMonthlyHistory(); new Notice("Automatic Mood History: monthly exports are up to date."); }
-        catch (error) { new Notice(`Automatic Mood History: ${error.message}`, 9000); }
+        button.setDisabled(true).setButtonText("Exporting...");
+        try { new Notice(await this.plugin.exportMonthlyHistory(), 9000); }
+        catch (error) { new Notice(error.message, 12000); }
+        finally { button.setDisabled(false).setButtonText("Export months"); }
       }));
     new Setting(containerEl)
       .setName("Ambiguous numeric dates")

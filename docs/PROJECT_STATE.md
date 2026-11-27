@@ -1,3 +1,15 @@
+# Current state — Automatic Mood History 2.1.2 release
+
+Owner: Codex, no subagents. The user requested publishing the fix for monthly history exports.
+
+PR #38 changes src/main.js and generated main.js so monthly export preserves edited monthly files, continues through unaffected months, and reports a clear result. The settings description explains that export only writes existing analyzed records. tests/compact-history.test.js verifies preserving an edited February while exporting March. PR CI passed for implementation commit 1ec5b5a1ea9a95b81e5023ca018fac39821d7496; the automated review reported no findings. The branch uses patch version 2.1.2 with matching manifest, versions entry, changelog and release notes. Release automation runs on main when manifest.json changes and publishes the three plugin assets.
+
+Native Obsidian settings interaction is unverified. The user's personal vault was not modified. The patch should not alter records or initiate analysis.
+
+RESUME HERE: Recheck PR #38 after version metadata changes. Merge it, then follow the manifest-triggered release workflow through tag and asset verification. Update progress and this state with final evidence.
+
+---
+
 # Current state — 2.1.1 explorer padding reduction and UI polish (2026-11-24)
 
 Owner: the primary agent; no subagents. After `2.1.0` was published, the user requested reducing padding in "Explore a recorded day", polishing the UI, and publishing a release.
@@ -522,3 +534,7 @@ RESUME HERE: Stable 1.9.12 is published at https://github.com/remriel/automatic-
 The supplied reference calls for a yellow date card, charcoal metric cards with colored stripes and icons, a yellow outlined date selector, and an olive square-edged panel. The user explicitly removed the slider. The native select and chart share the existing selected-record redraw path. The picker shows a fixed prompt while the selected date appears in the first card. Finish verification and publication.
 
 RESUME HERE: Stable 1.9.13 is published from commit 77b34c5ed08129df38d21a8c391273ebe11a8d9c. The reference design uses a yellow date card and no slider. Date selection stays synchronized between the native dropdown and chart. Local desktop, Android and iPhone browser tests and the release workflow passed. All three assets matched their GitHub digests and tagged source. The shared AI Brain vault was unavailable.
+## Monthly export feedback, November 26
+Owner: Codex. Explicit monthly exports continue after an edited-file conflict, save conflict hashes, and report completed and preserved months. Other errors still stop the export. Automatic analysis remains opt-in. Source and regression coverage are in src/main.js and tests/compact-history.test.js.
+
+RESUME HERE: Review the monthly export feedback branch and smoke-test its notices in native Obsidian before release.

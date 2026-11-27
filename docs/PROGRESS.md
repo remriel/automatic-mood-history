@@ -1,12 +1,18 @@
-# Current objective — reduce explorer padding and polish UI (2.1.1)
+# Current objective — publish the monthly export fix as 2.1.2
 
-**Progress: 90%** — Local `2.1.1` build, functional, mobile, layout, mobile-layout, and privacy checks pass; ready to merge to `main` and publish via GitHub Release workflow.
+**Progress: 80%** — PR #38 has green CI and a clean review. Release metadata and notes now target 2.1.2.
 
-- [x] Inspect the "Explore a recorded day" panel in desktop and narrow panes.
-- [x] Reduce outer/inner explorer padding, header bottom spacing, and card/emotion vertical gaps while preserving `width: 70%` desktop cards, `10px` grid gap, and `44px` mobile touch targets.
-- [x] Polish explorer heading scale, accent bar alignment, subtitle contrast, and date picker hover state.
-- [x] Pass `npm test`, `npm run test:mobile`, `npm run audit:release`, `npm run test:layout`, and `npm run test:mobile-layout`.
-- [ ] Merge to `main` and verify the `2.1.1` GitHub Release workflow and assets.
+- [x] Diagnose why monthly history can lag saved records and why Export months gives unclear feedback.
+- [x] Preserve edited monthly notes while allowing unaffected months to export.
+- [x] Improve export progress, outcome and no-history messages.
+- [x] Pass PR CI on commit 1ec5b5a.
+- [x] Prepare 2.1.2 manifest, versions and release notes.
+- [ ] Confirm CI for the release metadata update, merge PR #38 and verify the GitHub Release workflow.
+- [ ] Verify published assets against GitHub digests and tagged source.
+
+Current implementation is in src/main.js and generated main.js; regression coverage is in tests/compact-history.test.js. Native Obsidian settings interaction has not been smoke-tested.
+
+Exact next steps: check PR CI after the version update; merge PR #38; wait for the release workflow; verify tag, release notes and three downloadable assets; update this handoff.
 
 ---
 
@@ -423,3 +429,5 @@ Progress: 100%.
 - [x] Publish and verify the release.
 
 Functional, desktop and mobile layout, mobile runtime and release audit passed. Synthetic previews were checked with icon shapes from the installed Obsidian bundle. Release 1.9.13 and workflow 45231239621 succeeded. All three assets match their GitHub digests and the tagged files. No further publication steps remain.
+## Monthly export feedback, November 26
+Progress: 90% [#########-]. Diagnosis, implementation, bundle build, and npm test complete. Regression verifies an edited February survives and March still exports. No implementation blocker. Next: 1. Verify settings notices in Obsidian. 2. Merge and release after review.

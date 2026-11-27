@@ -1,3 +1,8 @@
+# 2.1.2
+
+- Explain that monthly export writes already analyzed history, show progress and export results, and continue past edited months while preserving those files.
+- Make the settings action clearer when no history has been analyzed yet.
+
 # 2.1.0
 
 - Show the emotions saved for the selected day in Explore a Recorded Day, updating with the date picker and chart selection.
