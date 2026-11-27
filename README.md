@@ -1,6 +1,6 @@
 ﻿# Automatic Mood History
 
-Explore mood, energy, connection, and intensity across your dated Obsidian notes. The plugin runs offline on desktop, Android, and iPhone. Groq analysis is optional.
+Explore mood, energy, connection, and intensity across your dated Obsidian notes. The plugin runs offline on desktop, Android, and iPhone. Optional cloud analysis supports Groq, OpenAI, Anthropic Claude, Google Gemini, and DeepSeek.
 
 ![Earlier screenshot of the plugin's 14-day trend view in Obsidian, with four score charts and a day selector](assets/plugin-trend.png)
 
@@ -24,8 +24,20 @@ On mobile, you can also install through [BRAT](https://github.com/TfTHacker/obsi
 
 With **Monthly notes** selected, each saved analysis updates its month. A completed scan also checks every month against saved history, even if the analysis found no changed notes. If a generated monthly note contains edits, the plugin saves and verifies an exact copy in **Preserved monthly notes** before refreshing the regular month. An unrelated file, an unreadable recovery block, or an export with newer or missing history stays in place for review.
 
-## Optional Groq analysis
+## Choose an API provider
 
-Offline analysis uses Morning Pages word lists. Enabling Groq sends cleaned text from eligible notes to Groq. On Obsidian 1.11.4 or later, save a key in the plugin settings, enable Groq, and select **Check Groq**. Desktop also supports `GROQ_API_KEY`. Use **Retry fallback entries** to revisit locally scored days. For a deliberate full rescan, run **Automatic Mood History: Reanalyze all notes with Groq** from the command palette.
+In **Settings → Automatic Mood History**, choose **API provider**. Save the matching API key (Obsidian 1.11.4+), confirm the model ID available to your account, and enable analysis for that provider. On the dashboard, **Check** followed by the provider name sends a fictional sample. **Analyze changed** sends eligible journal text.
+
+| Provider | Default model | Desktop environment key |
+| --- | --- | --- |
+| Groq | `openai/gpt-oss-20b` | `GROQ_API_KEY` |
+| OpenAI | `gpt-5.4-mini` | `OPENAI_API_KEY` |
+| Anthropic Claude | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
+| Google Gemini | `gemini-3.5-flash-lite` | `GEMINI_API_KEY` |
+| DeepSeek | `deepseek-flash` | `DEEPSEEK_API_KEY` |
+
+Switching providers turns cloud analysis off. Each provider remembers its model and uses its own key. Existing Groq installations keep their configuration. Offline analysis uses Morning Pages word lists. If a cloud request fails, the plugin uses its existing local fallback and retry rules. It only contacts the selected service.
+
+Past results keep their original analyzer. Use **Retry fallback entries** to revisit locally scored days or **Reanalyze all notes with selected provider** for a deliberate full rescan.
 
 [Privacy and data handling](PRIVACY.md) · [Release history](https://github.com/remriel/automatic-mood-history/releases) · [MIT license](LICENSE)

@@ -1,3 +1,16 @@
+# Provider selection, 2.3.0
+
+[██████████] 100% toward a verified, publishable build.
+
+- [x] Implement provider selection, isolated credentials and per-provider models.
+- [x] Preserve Groq consent on upgrade and require explicit consent on switches.
+- [x] Run the functional suite, mobile bundle tests, browser settings checks and the release audit.
+- [x] Pass Android Chromium and iPhone WebKit layout checks, including the secret input and 200% text.
+
+The repository build is ready for review on the feature/mood-analysis-providers branch. The next release step is merging the reviewed change into main, which triggers the existing release workflow.
+
+All provider responses in this verification used fictional test data. No live API billing or vault installation is required to build the plugin.
+
 # Monthly export catch-up, 2.2.2
 
 [██████████] 100% verified and published.

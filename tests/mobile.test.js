@@ -5,7 +5,7 @@ const { TextEncoder, TextDecoder } = require("node:util");
 const manifest = require("../manifest.json");
 
 // Run the actual release bundle without process, Buffer, Node imports or disk APIs.
-function fixture() {
+function fixture(interceptRequest) {
   class TFile {
     constructor(path) {
       this.path = path;
@@ -31,6 +31,7 @@ function fixture() {
         requestUrl: async options => {
           requests.push(options);
           if (requestError) throw requestError;
+          if (interceptRequest) return interceptRequest(options);
           return { status: 200, json: { choices: [{ message: { content: JSON.stringify({
             moodScore: 4, energyScore: 3, connectionScore: 4, intensityScore: 2,
             valence: "positive", emotions: ["joy"], summary: "A fictional calm afternoon.",
@@ -82,7 +83,87 @@ function fixture() {
   };
 }
 
+async function verifyProviders() {
+  const { PROVIDERS } = require("../src/providers");
+  const { buildEntryMarkdown } = require("../src/sentiment-core");
+  const content = JSON.stringify({
+    moodScore: 6, energyScore: 4, connectionScore: 8, intensityScore: 3,
+    valence: "positive", emotions: ["joy"], summary: "A fictional writer feels happy.",
+    drivers: ["A friendly conversation."], confidence: "medium", confidenceReason: "The writer describes support."
+  });
+  const hosts = { groq: "api.groq.com", openai: "api.openai.com", anthropic: "api.anthropic.com",
+    gemini: "generativelanguage.googleapis.com", deepseek: "api.deepseek.com" };
+  let id, onReply;
+  const f = fixture(async request => {
+    const body = JSON.parse(request.body);
+    assert.equal(new URL(request.url).hostname, hosts[id]);
+    assert.equal(body.model, PROVIDERS.get(id).model);
+    assert.equal(request.headers[id === "anthropic" ? "x-api-key" : "Authorization"],
+      (id === "anthropic" ? "" : "Bearer ") + "test-key-" + id);
+    if (onReply) return onReply();
+    if (id === "anthropic") {
+      assert(body.system.includes("JSON"));
+      assert.equal(body.messages[0].role, "user");
+      assert.equal(body.output_config.format.schema.properties.moodScore.minimum, undefined);
+      assert.equal(body.max_tokens, 4096);
+      return { status: 200, json: { stop_reason: "end_turn", content: [
+        { type: "thinking", thinking: "ignore" }, { type: "text", text: content }
+      ] } };
+    }
+    assert.equal(body.messages[0].role, "system");
+    assert.equal(body.response_format.type, id === "deepseek" ? "json_object" : "json_schema");
+    if (id === "openai") assert.equal(body.store, false);
+    if (id === "gemini" || id === "deepseek") assert.equal(body.max_tokens, 4096);
+    return { status: 200, json: { choices: [{ message: { content } }] } };
+  });
+  const p = f.p;
+  await p.onload();
+  for (id of PROVIDERS.keys()) {
+    const count = f.requests.length;
+    await p.updateSetting("provider", id);
+    assert.equal(p.settings.enableGroq, false);
+    assert.equal(p.apiKey(), "");
+    assert.equal(p.setGroqKey("test-key-" + id), true);
+    assert.equal(await p.checkGroqConnection(), false);
+    assert.equal(f.requests.length, count);
+    await p.updateSetting("enableGroq", true);
+    assert.equal(await p.checkGroqConnection(), true);
+    assert.equal(f.requests.length, count + 1);
+    assert(f.requests.at(-1).body.includes("fictional connection-check sample"));
+    await p.analyzeAll({ force: true, silent: true });
+    assert.equal(f.requests.length, count + 2);
+    const record = Object.values(p.records)[0];
+    assert.equal(record.analysisSource, id);
+    assert.equal(record.model, PROVIDERS.get(id).model);
+    assert(buildEntryMarkdown(record).includes(PROVIDERS.get(id).name + " analyzed"));
+    assert.equal(f.saved.settings.enableGroq, id === "groq", "older plugins only inherit Groq consent");
+    assert.equal(p.validateSettings(f.saved.settings).enableGroq, true);
+    assert(!JSON.stringify(f.saved).includes("test-key-"));
+  }
+  await p.updateSetting("model", "my-deepseek-model");
+  await p.updateSetting("provider", "openai");
+  assert.equal(p.apiKey(), "test-key-openai");
+  await p.updateSetting("provider", "deepseek");
+  assert.equal(p.settings.model, "my-deepseek-model");
+  assert.equal(p.validateSettings({ provider: "openai", enableGroq: true }).enableGroq, false);
+  assert.equal(p.validateSettings({ provider: "unknown", enableGroq: true }).enableGroq, false);
+  await p.updateSetting("model", PROVIDERS.get("deepseek").model);
+  await p.updateSetting("enableGroq", true);
+  id = "deepseek";
+  const before = f.requests.length;
+  onReply = async () => {
+    await p.updateSetting("provider", "gemini");
+    return { status: 400, json: {} };
+  };
+  assert.equal(await p.checkGroqConnection(), false);
+  assert.equal(f.requests.length, before + 1, "switching invalidates in-flight format retries");
+  assert.equal(p.runtime.lastGroqIssue, undefined);
+  p.onunload();
+  console.log("All five bundled provider routes, consent, key isolation, exports and cancellation passed");
+}
+
 async function run() {
+  await verifyProviders();
   assert.equal(manifest.isDesktopOnly, false, "Android and iOS can enable the plugin");
   const f = fixture(), { p } = f;
   assert.equal(vm.runInContext("typeof process + '/' + typeof Buffer", f.context), "undefined/undefined");

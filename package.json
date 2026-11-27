@@ -1,8 +1,8 @@
 {
   "name": "automatic-mood-history",
-  "version": "2.2.2",
+  "version": "2.3.0",
   "private": true,
-  "description": "Local-first mood history for dated Obsidian notes, with optional Groq analysis.",
+  "description": "Local-first mood history for dated Obsidian notes, with optional cloud analysis.",
   "scripts": {
     "build": "node scripts/build.js",
     "check": "node --check src/main.js && node --check src/sentiment-core.js && node --check main.js && node --check src/morning-pages-fallback.js && node --check src/vendor/morning-pages-analysis.js && node --check scripts/build.js",

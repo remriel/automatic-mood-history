@@ -1,0 +1,1 @@
+Choose Groq, OpenAI, Anthropic Claude, Google Gemini, or DeepSeek in **Settings → Automatic Mood History → API provider**. Each has its own key and model. Switching providers turns off cloud analysis until you enable the selected service. Existing Groq configurations and saved scores carry forward.

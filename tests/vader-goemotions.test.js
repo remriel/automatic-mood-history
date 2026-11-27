@@ -23,7 +23,7 @@ assert(main.includes("author's evidenced emotions"));
 assert(main.includes("not a separate classifier"));
 assert(main.includes("No assessable emotional evidence"));
 assert(main.includes('enableGroq: false'));
-assert(main.includes('model: "openai/gpt-oss-20b"'));
+assert.equal(require("../src/providers").PROVIDERS.get("groq").model, "openai/gpt-oss-20b");
 assert(read("main.js").includes("SentimentIntensityAnalyzer"));
 assert(read("main.js").includes("VADER Sentiment JS third-party Apache-2.0 license"));
 console.log("VADER and GoEmotions integration tests passed");
