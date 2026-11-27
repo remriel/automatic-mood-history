@@ -1,3 +1,15 @@
+# Current state — Automatic Mood History 2.1.2 release
+
+Owner: Codex, no subagents. The user requested publishing the fix for monthly history exports.
+
+PR #38 changes src/main.js and generated main.js so monthly export preserves edited monthly files, continues through unaffected months, and reports a clear result. The settings description explains that export only writes existing analyzed records. tests/compact-history.test.js verifies preserving an edited February while exporting March. PR CI passed for implementation commit 1ec5b5a1ea9a95b81e5023ca018fac39821d7496; the automated review reported no findings. The branch uses patch version 2.1.2 with matching manifest, versions entry, changelog and release notes. Release automation runs on main when manifest.json changes and publishes the three plugin assets.
+
+Native Obsidian settings interaction is unverified. The user's personal vault was not modified. The patch should not alter records or initiate analysis.
+
+RESUME HERE: Recheck PR #38 after version metadata changes. Merge it, then follow the manifest-triggered release workflow through tag and asset verification. Update progress and this state with final evidence.
+
+---
+
 # Current state — 2.1.1 explorer padding reduction and UI polish (2026-11-24)
 
 Owner: the primary agent; no subagents. After `2.1.0` was published, the user requested reducing padding in "Explore a recorded day", polishing the UI, and publishing a release.
