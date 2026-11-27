@@ -1,10 +1,10 @@
 # Automatic Mood History 2.2.1 default analysis scope
 
-Owner is Codex. After 2.2.0 published, the user requested Scan all except excluded folders as the default, including for automatic runs. No subagents were used.
+Owner is Codex. The user requested Scan all except excluded folders as the default for manual and automatic runs, with the change made after 2.2.0 published. No subagents were used.
 
 src/main.js uses the same source filter for manual and automatic analysis. Fresh installs use scan-all. Upgrades keep their explicit scope and both lists. Older settings without an explicit mode use scan-all only when they contain no include rules and both lists validate. Corrupt exclusions fail closed. Automatic analysis, startup analysis, and Groq opt-in settings keep their existing behavior.
 
-RESUME HERE. Run candidate CI, merge, then verify Release and all three assets. No other changes are pending.
+RESUME HERE. [2.2.1 is published](https://github.com/remriel/automatic-mood-history/releases/tag/2.2.1) from 204cb2bd0545aa85a734081b45836a0048e21ccc. PR #42, main CI, and the release workflow passed. The three downloads match the tag, published digests, and signed workflow provenance. Existing installations retain their saved scope. Native Obsidian and live Groq were not tested. No publication work remains.
 
 # Automatic Mood History 2.2.0 scoring and retry controls
 

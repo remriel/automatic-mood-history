@@ -1,3 +1,9 @@
+# 2026-11-27 — Automatic Mood History 2.2.1
+
+1. I’m least confident about how consistently Groq distinguishes adjacent scores on real writing. I’d compare repeated scores on a small set of representative samples.
+2. Older entries still have five levels of detail on the new chart. I’d use newly analyzed entries when comparing fine differences.
+3. I treated “default” as a preference for new setups. If you meant to change your existing vault, I’d switch that vault’s Analysis scope directly.
+
 # 2026-11-27 — Automatic Mood History 2.2.0
 
 1. **Least confident:** How consistently Groq distinguishes adjacent scores on real writing. I’d compare repeated scores on a small set of representative samples.

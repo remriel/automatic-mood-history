@@ -1,12 +1,13 @@
 # Automatic Mood History 2.2.1
 
-[███████░░░] 70% toward verified publication.
+[██████████] 100% toward verified publication.
 
-- [x] Publish and verify 2.2.0 first.
-- [x] Change the scope default and cover stored preferences, malformed lists, and fresh mobile installs.
-- [ ] Pass candidate CI, merge, publish, and verify all release assets.
+- [x] Publish and verify 2.2.0 before changing the scope default.
+- [x] Change the scope default and verify fresh, existing, and malformed settings.
+- [x] Pass local functional, mobile, browser layout, and release audit checks. PR #42 passed CI 46061465253.
+- [x] Merge and publish. Main CI 46061653019 and release workflow 46061652883 passed. All three downloads match Git blob hashes, GitHub SHA-256 digests, and source-bound attestations.
 
-Next steps are candidate CI, merge, Release workflow, and file verification. Native Obsidian and live Groq remain untested.
+No release blockers. Verification used test environments and mocked Groq responses.
 
 # Automatic Mood History 2.2.0
 
