@@ -11,13 +11,17 @@ const morningPagesLicensePath = path.join(root, "src", "vendor", "MORNING-PAGES-
 const fallbackPath = path.join(root, "src", "morning-pages-fallback.js");
 const outputPath = path.join(root, "main.js");
 
-let core = fs.readFileSync(corePath, "utf8");
+// Both source modules import the same registry. Inline it once for mobile.
+const providers = fs.readFileSync(path.join(root, "src/providers.js"), "utf8")
+  .split("module.exports =")[0];
+const providerImport = /^const .* = require\("\.\/providers"\);\r?\n/m;
+let core = fs.readFileSync(corePath, "utf8").replace(providerImport, "");
 const vader = fs.readFileSync(vaderPath, "utf8");
 const apache = fs.readFileSync(apachePath, "utf8");
 const vaderImportPattern = /^const \{ SentimentIntensityAnalyzer \} = require\("\.\/vendor\/vaderSentiment\.bundle"\);\r?\n/;
 if (!vaderImportPattern.test(core)) throw new Error("Could not find VADER import block.");
 core = core.replace(vaderImportPattern, "");
-let source = fs.readFileSync(sourcePath, "utf8");
+let source = fs.readFileSync(sourcePath, "utf8").replace(providerImport, "");
 const fallbackImport = /^const \{ morningPagesSentiment, MORNING_PAGES_ANALYZER_VERSION \} = require\("\.\/morning-pages-fallback"\);\r?\n/m;
 if (!fallbackImport.test(source)) throw new Error("Could not find Morning Pages fallback import.");
 source = source.replace(fallbackImport, "const { morningPagesSentiment, MORNING_PAGES_ANALYZER_VERSION } = morningPagesFallback;\n");
@@ -51,5 +55,5 @@ const morningPagesModule = "const morningPagesAnalysis = (() => {\nconst module 
 const fallback = fs.readFileSync(fallbackPath, "utf8")
   .replace(/^const \{ moodToValence \} = require\("\.\/sentiment-core"\);\r?\n/m, "");
 const fallbackModule = "const morningPagesFallback = (() => {\nconst module = { exports: {} };\nconst require = () => morningPagesAnalysis;\n" + fallback + "\nreturn module.exports;\n})();\n";
-fs.writeFileSync(outputPath, banner + licenseComment + morningPagesLicense + vaderModule + core + "\n" + morningPagesModule + fallbackModule + source, "utf8");
+fs.writeFileSync(outputPath, banner + licenseComment + morningPagesLicense + vaderModule + providers + core + "\n" + morningPagesModule + fallbackModule + source, "utf8");
 console.log(`Built ${path.relative(root, outputPath)} (${fs.statSync(outputPath).size} bytes)`);

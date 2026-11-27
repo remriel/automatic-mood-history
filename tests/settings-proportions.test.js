@@ -7,6 +7,13 @@ const { fixtureHTML } = require("./layout-fixture");
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     await page.setContent(fixtureHTML());
+    await page.evaluate(() => fixture.configure({ settingsView: true }));
+    const providers = page.getByRole("combobox", { name: "API provider" });
+    for (const [id, name] of [["openai", "OpenAI"], ["anthropic", "Anthropic Claude"], ["gemini", "Google Gemini"], ["deepseek", "DeepSeek"], ["groq", "Groq"]]) {
+      await providers.selectOption(id);
+      assert.equal(await page.getByLabel(name + " API key", { exact: true }).getAttribute("type"), "password");
+      assert.equal(await page.getByRole("switch", { name: "Enable " + name + " analysis" }).getAttribute("aria-checked"), "false");
+    }
     for (const width of [280, 390, 640, 900, 1200]) for (const largeText of [false, true]) for (const scope of ["include", "all"]) {
       await page.evaluate(({ width, largeText }) => fixture.configure({ settingsView: true, paneWidth: width, largeText }), { width, largeText });
       const picker = page.getByRole("combobox", { name: "Analysis scope" });

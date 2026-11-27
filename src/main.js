@@ -1,3 +1,4 @@
+const { PROVIDERS, providerRequest, providerResponse } = require("./providers");
 const {
   Component,
   Notice,
@@ -29,8 +30,7 @@ const {
 } = require("./sentiment-core");
 const { morningPagesSentiment, MORNING_PAGES_ANALYZER_VERSION } = require("./morning-pages-fallback");
 
-const GROQ_API_KEY_ENV = "GROQ_API_KEY";
-const GROQ_API_KEY_SECRET = "automatic-mood-history-groq";
+const validModel = value => typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9/_.-]{0,199}$/.test(value.trim());
 const AUTO_DATE_FORMATS = ["YYYY-MM-DD", "YYYY.MM.DD", "YYYY_MM_DD", "YYYYMMDD", "DD-MM-YYYY", "MM-DD-YYYY", "D MMM YYYY", "MMMM D, YYYY", "MMMM D YYYY", "D MMMM YYYY", "MMM D YYYY", "MMM D, YYYY"];
 
 const CURRENT_DATE_BASIS = "detected-note-date";
@@ -61,9 +61,10 @@ const DASHBOARD_RANGES = [["7 days", 7], ["14 days", 14], ["30 days", 30], ["60 
 const DASHBOARD_RANGE_DAYS = DASHBOARD_RANGES.map(([, days]) => days);
 
 const DEFAULT_SETTINGS = {
+  provider: "groq",
   enableGroq: false,
   defaultRange: null,
-  model: "openai/gpt-oss-20b",
+  model: PROVIDERS.get("groq").model,
   outputFolder: "Mood History",
   entryOutput: "monthly",
   numericDateOrder: "skip",
@@ -120,6 +121,9 @@ function folderContainsPath(folder, path) {
 }
 
 class AutomaticMoodHistoryPlugin extends Plugin {
+  get providerId() { return this.settings.provider ?? "groq"; }
+  get provider() { return PROVIDERS.get(this.providerId); }
+
   async onload() {
     this.unloaded = false;
     let loaded;
@@ -127,9 +131,6 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     loaded = isObject(loaded) ? loaded : {};
     if (this.unloaded) return;
     this.settings = this.validateSettings(loaded.settings);
-    // Version 1.1.0 let synced vault data choose any process variable. Keep
-    // reading only the one documented provider key after upgrading.
-    this.settings.apiKeyEnvironmentVariable = GROQ_API_KEY_ENV;
     delete this.settings.dailyFolder;
     delete this.settings.includeOutsideDailyFolder;
     this.watchSettings();
@@ -192,17 +193,17 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     });
     this.addCommand({
       id: "reanalyze-all-with-groq",
-      name: "Reanalyze all notes with Groq",
+      name: "Reanalyze all notes with selected provider",
       callback: () => this.retryAllWithGroq()
     });
     this.addCommand({
       id: "check-groq-connection",
-      name: "Check Groq connection with sample text",
+      name: "Check selected provider connection with sample text",
       callback: () => this.checkGroqConnection()
     });
     this.addCommand({
       id: "recover-fallback-entries",
-      name: "Retry fallback entries with Groq",
+      name: "Retry fallback entries with selected provider",
       callback: () => this.recoverFallbacksWithGroq()
     });
     this.addCommand({
@@ -287,7 +288,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   watchSettings() {
-    const analysisKeys = new Set(["folderScope", "includeFolders", "excludeFolders", "outputFolder", "entryOutput", "numericDateOrder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
+    const analysisKeys = new Set(["folderScope", "includeFolders", "excludeFolders", "outputFolder", "entryOutput", "numericDateOrder", "provider", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
     this.analysisEpoch ||= 0;
     this.settings = new Proxy(this.settings, { set: (target, key, value) => {
       if (analysisKeys.has(key) && JSON.stringify(target[key]) !== JSON.stringify(value)) this.analysisEpoch++;
@@ -297,7 +298,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   validateSettings(saved) {
-    const settings = { ...DEFAULT_SETTINGS, includeFolders: [], excludeFolders: [] };
+    const settings = { ...DEFAULT_SETTINGS, providerModels: {}, includeFolders: [], excludeFolders: [] };
     if (!isObject(saved)) return settings;
     if (["daily", "monthly", "none"].includes(saved.entryOutput)) settings.entryOutput = saved.entryOutput;
     if (saved.defaultRange === null || DASHBOARD_RANGE_DAYS.includes(saved.defaultRange)) settings.defaultRange = saved.defaultRange;
@@ -306,7 +307,15 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     for (const [key, minimum, maximum] of [["debounceMilliseconds", 250, 60000], ["minimumCharacters", 1, 10000], ["maxCharactersPerDay", 100, 200000]]) {
       if (typeof saved[key] === "number" && Number.isFinite(saved[key])) settings[key] = Math.max(minimum, Math.min(maximum, Math.round(saved[key])));
     }
-    if (typeof saved.model === "string" && /^[a-zA-Z0-9][a-zA-Z0-9/_.-]{0,199}$/.test(saved.model.trim())) settings.model = saved.model.trim();
+    if (PROVIDERS.has(saved.provider)) settings.provider = saved.provider;
+    if (saved.provider !== undefined && saved.provider !== "groq") {
+      settings.enableGroq = PROVIDERS.has(saved.provider) && saved.enabledProvider === saved.provider;
+    }
+    for (const id of PROVIDERS.keys()) {
+      const model = saved.providerModels?.[id];
+      if (validModel(model)) settings.providerModels[id] = model.trim();
+    }
+    settings.model = validModel(saved.model) ? saved.model.trim() : PROVIDERS.get(settings.provider).model;
     // Validate any stored rules before falling back to the vault-wide default.
     // Explicit modes from earlier installs always take precedence.
     settings.folderScope = saved.folderScope === "all" ? "all" : "include";
@@ -406,6 +415,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (this.storageReadFailed) throw new Error("Plugin storage could not be read; reload after restoring storage access.");
       const settings = Object.assign({}, this.settings);
       delete settings.apiKeyEnvironmentVariable;
+      // An older plugin must never interpret consent to a different host as Groq consent.
+      settings.enabledProvider = settings.enableGroq ? this.providerId : null;
+      settings.enableGroq = settings.enableGroq && this.providerId === "groq";
       const snapshot = JSON.parse(JSON.stringify({ settings, records: this.records, runtime: this.runtime }));
       if (restored) Object.assign(snapshot.records, JSON.parse(JSON.stringify(restored)));
       for (const commit of commits) {
@@ -803,6 +815,8 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async updateSetting(key, value) {
     try {
+      if (key === "provider" && !PROVIDERS.has(value)) throw new Error("Choose a supported API provider.");
+      if (key === "model" && !validModel(value)) throw new Error("Enter a valid model ID.");
       if (key === "entryOutput") {
         if (!["daily", "monthly", "none"].includes(value)) throw new Error("Choose a valid Markdown output mode.");
         if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before changing Markdown output.");
@@ -816,9 +830,18 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       new Notice(`Automatic Mood History: ${error.message} The previous source scope is still active.`, 9000);
       return false;
     }
+    const switching = key === "provider" && this.providerId !== value;
+    if (switching) {
+      this.settings.providerModels = { ...this.settings.providerModels, [this.providerId]: this.settings.model };
+      this.settings.enableGroq = false;
+      this.settings.model = this.settings.providerModels[value] || PROVIDERS.get(value).model;
+      delete this.runtime.lastGroqSuccessAt;
+      delete this.runtime.lastGroqModel;
+      delete this.runtime.lastGroqFailureAt;
+    }
     this.settings[key] = value;
-    if (["enableGroq", "model"].includes(key)) this.clearGroqPause();
-    if (key === "enableGroq" && !value) {
+    if (switching || ["enableGroq", "model"].includes(key)) this.clearGroqPause();
+    if (switching || key === "enableGroq" && !value) {
       for (const [date, pending] of Object.entries(this.runtime.pendingDates || {})) {
         if (!["source", "storage"].includes(pending.kind)) delete this.runtime.pendingDates[date];
       }
@@ -981,7 +1004,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (!files.length || files.some(file => !Number.isFinite(file.stat?.mtime) || !Number.isFinite(file.stat?.size))) return null;
     return sha256(JSON.stringify({ version: 1, pipeline: TEXT_PIPELINE_VERSION,
       settings: [this.settings.minimumCharacters, this.settings.maxCharactersPerDay, this.settings.enableGroq,
-        this.settings.model, MORNING_PAGES_ANALYZER_VERSION],
+        this.settings.model, MORNING_PAGES_ANALYZER_VERSION, ...(this.providerId === "groq" ? [] : [this.providerId])],
       files: files.map(file => [file.path, file.stat.ctime, file.stat.mtime, file.stat.size, this.topicForFile(file)]) }));
   }
 
@@ -1041,7 +1064,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const insufficient = gathered.analysisText.length < this.settings.minimumCharacters;
     return sha256(JSON.stringify({ version: 1, sourceHash: gathered.contentHash, dateBasis,
       textPipeline: TEXT_PIPELINE_VERSION, minimumCharacters: this.settings.minimumCharacters,
-      maxCharactersPerDay: this.settings.maxCharactersPerDay, analyzer: insufficient ? "none" : enableGroq ? "groq" : MORNING_PAGES_ANALYZER_VERSION,
+      maxCharactersPerDay: this.settings.maxCharactersPerDay, analyzer: insufficient ? "none" : enableGroq ? this.providerId : MORNING_PAGES_ANALYZER_VERSION,
       model: enableGroq && !insufficient ? this.settings.model : null,
       prompt: enableGroq && !insufficient ? GROQ_PROMPT_VERSION : null,
       topic: enableGroq || insufficient ? null : gathered.topic || "" }));
@@ -1058,7 +1081,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // source reads or provider replies. Never retry with stale consent/scope.
     const signature = () => JSON.stringify([
       this.settings.folderScope, this.settings.includeFolders, this.settings.excludeFolders,
-      this.settings.outputFolder, this.settings.entryOutput, this.settings.numericDateOrder, this.settings.enableGroq, this.settings.model,
+      this.settings.outputFolder, this.settings.entryOutput, this.settings.numericDateOrder, this.settings.provider, this.settings.enableGroq, this.settings.model,
       this.settings.minimumCharacters, this.settings.maxCharactersPerDay,
       ...(options.background ? [this.settings.autoAnalyze, this.settings.analyzeOnStartup] : [])
     ]);
@@ -1137,11 +1160,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   apiKey() {
-    const value = globalThis.process?.env?.[GROQ_API_KEY_ENV];
+    const value = globalThis.process?.env?.[this.provider.env];
     if (typeof value === "string" && value.trim()) return value.trim();
     // A fixed secret ID prevents synced settings from selecting unrelated secrets.
     try {
-      const secret = this.app?.secretStorage?.getSecret(GROQ_API_KEY_SECRET);
+      const secret = this.app?.secretStorage?.getSecret(`automatic-mood-history-${this.providerId}`);
       return typeof secret === "string" ? secret.trim() : "";
     } catch { return ""; }
   }
@@ -1150,13 +1173,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (this.unloaded) return false;
     const storage = this.app?.secretStorage;
     if (typeof storage?.setSecret !== "function") {
-      new Notice("Automatic Mood History: update to Obsidian 1.11.4 or newer to save a Groq key on this device. Local analysis remains available.", 9000);
+      new Notice(`Automatic Mood History: update to Obsidian 1.11.4 or newer to save a ${this.provider.name} key on this device. Local analysis remains available.`, 9000);
       return false;
     }
     try {
-      storage.setSecret(GROQ_API_KEY_SECRET, value.trim());
+      storage.setSecret(`automatic-mood-history-${this.providerId}`, value.trim());
     } catch {
-      new Notice("Automatic Mood History: Obsidian could not save the Groq key. The key was not added to plugin settings.", 9000);
+      new Notice(`Automatic Mood History: Obsidian could not save the ${this.provider.name} key. The key was not added to plugin settings.`, 9000);
       return false;
     }
     this.analysisEpoch = (this.analysisEpoch || 0) + 1;
@@ -1167,21 +1190,13 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   async requestGroq(payload) {
+    const id = this.providerId;
     let response;
     try {
-      response = await requestUrl({
-        url: "https://api.groq.com/openai/v1/chat/completions",
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey()}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload),
-        throw: false
-      });
+      response = await requestUrl(providerRequest(id, this.apiKey(), payload));
     } catch {
       // A phone losing connectivity is a transport failure, not malformed JSON.
-      const error = new Error("Groq could not be reached.");
+      const error = new Error(`${this.provider.name} could not be reached.`);
       error.code = "connection";
       throw error;
     }
@@ -1191,7 +1206,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       // Error bodies can include generated note text or account identifiers.
       // Keep provider status and safe error codes, never the response body.
       const code = String(json?.error?.code || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 80);
-      const error = new Error(`Groq HTTP ${response.status}${code ? ` (${code})` : ""}.`);
+      const error = new Error(`${this.provider.name} HTTP ${response.status}${code ? ` (${code})` : ""}.`);
       error.status = response.status;
       error.code = code || "http_error";
       const headers = Object.fromEntries(Object.entries(response.headers || {}).map(([key, value]) => [key.toLowerCase(), value]));
@@ -1201,7 +1216,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (retryAfter && Number.isFinite(delay) && delay > 0) error.retryAfterMilliseconds = delay;
       throw error;
     }
-    return json;
+    return providerResponse(id, json);
   }
 
   clearGroqPause() {
@@ -1221,34 +1236,34 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   recordGroqFailure(error) {
     const status = error.status;
     let kind = "connection";
-    let message = "Groq could not be reached.";
+    let message = `${this.provider.name} could not be reached.`;
     let delay = 60 * 1000;
     if (error.code === "missing_key") {
       kind = "configuration";
-      message = "No Groq API key is available. Add a key in Automatic Mood History settings.";
+      message = `No ${this.provider.name} API key is available. Add a key in Automatic Mood History settings.`;
       delay = 5 * 60 * 1000;
     } else if (status === 401 || status === 403) {
       kind = "authentication";
-      message = `Groq rejected the API key or access (HTTP ${status}).`;
+      message = `${this.provider.name} rejected the API key or access (HTTP ${status}).`;
       delay = 5 * 60 * 1000;
     } else if (status === 429) {
       kind = "rate-limit";
       const retryDelay = error.retryAfterMilliseconds;
       if (retryDelay > 0 && Number.isFinite(new Date(Date.now() + retryDelay).getTime())) delay = retryDelay;
-      message = "Groq reached its rate limit (HTTP 429). Retry after the pause.";
+      message = `${this.provider.name} reached its rate limit (HTTP 429). Retry after the pause.`;
     } else if (status === 400 || status === 404 || status === 413) {
       kind = "request";
-      message = `Groq rejected this model or request (HTTP ${status}). Check the selected model.`;
+      message = `${this.provider.name} rejected this model or request (HTTP ${status}). Check the selected model.`;
       delay = 5 * 60 * 1000;
     } else if (status === 422) {
       kind = "output";
-      message = "Groq returned incomplete or invalid analysis.";
+      message = `${this.provider.name} returned incomplete or invalid analysis.`;
     } else if (status >= 500) {
       kind = "service";
-      message = `Groq returned a service error (HTTP ${status}).`;
+      message = `${this.provider.name} returned a service error (HTTP ${status}).`;
     }
     const retryAt = new Date(Date.now() + delay).toISOString();
-    const issue = { kind, message, retryAt };
+    const issue = { kind, message, retryAt, provider: this.providerId };
     // Invalid output or a date-specific oversized request must not block other dates.
     this.groqBlockedUntil = ["output", "request"].includes(kind) && status !== 404 ? 0 : Date.parse(retryAt);
     this.lastGroqError = message;
@@ -1263,24 +1278,24 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   parseGroqAnalysis(response) {
     const choice = response?.choices?.[0];
     if (choice?.finish_reason === "length") {
-      const error = new Error("Groq reached the completion limit before finishing the analysis.");
+      const error = new Error(`${this.provider.name} reached the completion limit before finishing the analysis.`);
       error.code = "completion_limit";
       throw error;
     }
     const raw = choice?.message?.content;
-    if (typeof raw !== "string" || !raw.trim()) throw new Error("Groq returned no analysis content.");
-    if (raw.length > 100000) throw new Error("Groq returned an oversized analysis response.");
+    if (typeof raw !== "string" || !raw.trim()) throw new Error(`${this.provider.name} returned no analysis content.`);
+    if (raw.length > 100000) throw new Error(`${this.provider.name} returned an oversized analysis response.`);
     // Do not accept JSON in a reasoning section as a final answer.
     const finalText = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     const start = finalText.indexOf("{");
     const end = finalText.lastIndexOf("}");
-    if (start < 0 || end <= start) throw new Error("Groq returned no JSON object.");
+    if (start < 0 || end <= start) throw new Error(`${this.provider.name} returned no JSON object.`);
     let parsed;
     try { parsed = JSON.parse(finalText.slice(start, end + 1)); } catch {
-      throw new Error("Groq returned malformed JSON.");
+      throw new Error(`${this.provider.name} returned malformed JSON.`);
     }
     if (!parsed || Array.isArray(parsed) || ANALYSIS_SCHEMA.required.some((key) => !Object.hasOwn(parsed, key))) {
-      throw new Error("Groq omitted required analysis fields.");
+      throw new Error(`${this.provider.name} omitted required analysis fields.`);
     }
     // An explicit abstention has no scores or valence to validate. Keep
     // only the final narratives and construct the canonical unscored record.
@@ -1290,7 +1305,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (hasNoEmotionalEvidence(narrative)) return exemptUnscorableAssessment(narrative);
     }
     for (const key of SCORE_FIELDS) {
-      if (!Number.isInteger(parsed[key]) || parsed[key] < 1 || parsed[key] > SCORE_MAX) throw new Error("Groq returned an invalid score.");
+      if (!Number.isInteger(parsed[key]) || parsed[key] < 1 || parsed[key] > SCORE_MAX) throw new Error(`${this.provider.name} returned an invalid score.`);
     }
     if (!Array.isArray(parsed.emotions) || !parsed.emotions.length ||
       parsed.emotions.length > 6 || parsed.emotions.some((value) => typeof value !== "string" || !/^[\p{L}][\p{L}\p{M} -]{0,47}$/u.test(value.trim())) ||
@@ -1299,7 +1314,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       typeof parsed.confidenceReason !== "string" || !parsed.confidenceReason.trim() ||
       !ANALYSIS_SCHEMA.properties.valence.enum.includes(parsed.valence) ||
       !ANALYSIS_SCHEMA.properties.confidence.enum.includes(parsed.confidence)) {
-      throw new Error("Groq returned invalid analysis fields.");
+      throw new Error(`${this.provider.name} returned invalid analysis fields.`);
     }
     return exemptUnscorableAssessment(validateAnalysis(parsed));
   }
@@ -1331,11 +1346,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return this.requestGroq(payload);
     };
     if (!this.apiKey()) {
-      const error = new Error("No Groq API key is available. Add a key in Automatic Mood History settings.");
+      const error = new Error(`No ${this.provider.name} API key is available. Add a key in Automatic Mood History settings.`);
       error.code = "missing_key";
       throw error;
     }
-    if (!options.forceGroq && Date.now() < this.groqBlockedUntil) throw new Error(this.lastGroqError || "Groq retry is temporarily paused.");
+    if (!options.forceGroq && Date.now() < this.groqBlockedUntil) throw new Error(this.lastGroqError || `${this.provider.name} retry is temporarily paused.`);
 
     const schemaInstruction = `Return one JSON object matching this schema exactly: ${JSON.stringify(ANALYSIS_SCHEMA)}. Use distinct emotions. Output raw JSON only, with no Markdown fence, preface, or explanation.`;
     const base = {
@@ -1347,10 +1362,10 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         },
         { role: "user", content: this.groqPrompt(date, text) }
       ],
-      temperature: 0.1,
       max_completion_tokens: 4096
     };
-    if (/^openai\/gpt-oss-(20b|120b)$/.test(this.settings.model)) {
+    if (this.providerId === "groq") base.temperature = 0.1;
+    if (this.providerId === "groq" && /^openai\/gpt-oss-(20b|120b)$/.test(this.settings.model)) {
       base.reasoning_effort = "low";
       base.include_reasoning = false;
     }
@@ -1388,6 +1403,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     let lastFailure;
     let retriedCompletionLimit = false;
     for (const attempt of attempts) {
+      const format = attempt.payload.response_format?.type;
+      if (this.providerId === "deepseek" && format === "json_schema") continue;
+      if (this.providerId === "anthropic" && format === "json_object") continue;
       try {
         try {
           return this.parseGroqAnalysis(await request(attempt.payload));
@@ -1403,7 +1421,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         if (error.code === "connection" || error.status && ![400, 422].includes(error.status)) throw error;
       }
     }
-    const error = new Error("Groq could not produce a complete valid analysis after structured-output retries.");
+    const error = new Error(`${this.provider.name} could not produce a complete valid analysis after structured-output retries.`);
     error.status = lastFailure?.status === 400 && lastFailure.code !== "json_validate_failed" ? 400 : 422;
     error.code = lastFailure?.code || "invalid_output";
     error.attempts = failures;
@@ -1510,7 +1528,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return false;
     };
     if (recovering && (!this.settings.enableGroq || !this.apiKey() || options.providerDeferred || !options.forceGroq && Date.now() < this.groqBlockedUntil)) {
-      const needsGroq = options.force || !previous || previous.status === "complete" && previous.analysisSource !== "groq";
+      const needsGroq = options.force || !previous || previous.status === "complete" && !PROVIDERS.has(previous.analysisSource);
       return skipRecovery(Boolean(this.settings.enableGroq && needsGroq && (!this.apiKey() || options.providerDeferred || !options.forceGroq && Date.now() < this.groqBlockedUntil)));
     }
     const gathered = options.legacySources ? await this.gatherLegacyDate(date, key) : await this.gatherDate(date, options.dateIndex);
@@ -1523,17 +1541,17 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       return skipRecovery();
     }
     if (!gathered || recovering && gathered.analysisText.length < this.settings.minimumCharacters) {
-      return skipRecovery(Boolean(recovering && this.settings.enableGroq && previous?.status === "complete" && previous.analysisSource !== "groq"));
+      return skipRecovery(Boolean(recovering && this.settings.enableGroq && previous?.status === "complete" && !PROVIDERS.has(previous.analysisSource)));
     }
     const fingerprint = this.analysisFingerprint(gathered, dateBasis);
-    // Changing the default analyzer or disabling Groq must not silently
+    // Changing the default analyzer or disabling cloud analysis must not silently
     // replace an unchanged, previously saved score. Re-evaluate the current
     // local analyzer (and too-short inputs) when its settings change.
     const localSemanticsChanged = previous?.analysisFingerprint && previous.analysisFingerprint !== fingerprint && (
       previous.analysisSource === "none" ||
       !this.settings.enableGroq && previous.scoreScale === SCORE_MAX && previous.analysisSource === "morning-pages-fallback" &&
       previous.analysisFingerprint !== this.analysisFingerprint(gathered, dateBasis, true));
-    const retryNonGroqResult = (options.force || options.forceGroq || options.onlyFallbacks || this.runtime.pendingDates?.[key]) && this.settings.enableGroq && previous?.status === "complete" && previous?.analysisSource !== "groq" &&
+    const retryNonGroqResult = (options.force || options.forceGroq || options.onlyFallbacks || this.runtime.pendingDates?.[key]) && this.settings.enableGroq && previous?.status === "complete" && !PROVIDERS.has(previous?.analysisSource) &&
       (dateBasis === LEGACY_DATE_BASIS || ["local", "local-fallback", "morning-pages-fallback"].includes(previous?.analysisSource)) &&
       !options.providerDeferred && (options.forceGroq || Date.now() >= this.groqBlockedUntil);
     if (!options.force && !retryNonGroqResult && !localSemanticsChanged && previous?.contentHash === gathered.contentHash) {
@@ -1580,7 +1598,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         try {
           analysis = await this.analyzeWithGroq(date, gathered.analysisText, { ...options, assertCurrent: assertGatheredCurrent });
           assertGatheredCurrent();
-          analysisSource = "groq";
+          analysisSource = this.providerId;
           model = this.settings.model;
           this.recordGroqSuccess();
         } catch (error) {
@@ -1604,7 +1622,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       }
       if (!analysis) {
         if (this.settings.enableGroq && !providerIssue) {
-          providerIssue = this.runtime.lastGroqIssue || { kind: "paused", message: "Groq retry is temporarily paused." };
+          providerIssue = this.runtime.lastGroqIssue || { kind: "paused", provider: this.providerId, message: `${this.provider.name} retry is temporarily paused.` };
           if (!this.runtime.pendingDates?.[key]) this.markDatePending(date, options, "paused");
           if (options.runStats) options.runStats.pending += 1;
         }
@@ -1639,7 +1657,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     await this.commitPreparedRecord(key, pending, assertGatheredCurrent);
     this.refreshRenderers();
     if (options.runStats) {
-      options.runStats[record.status === "insufficient" ? "insufficient" : record.analysisSource === "groq" ? "groq" : record.analysisSource === "local" ? "local" : "fallback"] += 1;
+      options.runStats[record.status === "insufficient" ? "insufficient" : PROVIDERS.has(record.analysisSource) ? "groq" : record.analysisSource === "local" ? "local" : "fallback"] += 1;
     }
     return true;
   }
@@ -1647,7 +1665,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async analyzeAll(options = {}) {
     if (this.unloaded) return;
     if (this.checkingGroq) {
-      new Notice("Automatic Mood History: wait for the Groq connection check to finish.");
+      new Notice(`Automatic Mood History: wait for the ${this.provider.name} connection check to finish.`);
       return;
     }
     if (this.activeScan) {
@@ -1695,9 +1713,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       assertCurrent();
       await this.savePluginData();
     } catch (error) { if (error.code !== "analysis_cancelled") throw error; }
-    const suffix = runStats.pending ? ` ${runStats.pending} groups await recovery; available fallback scores are shown on the dashboard.` : runStats.groq ? ` ${runStats.groq} used Groq.` : "";
+    const suffix = runStats.pending ? ` ${runStats.pending} groups await recovery; available fallback scores are shown on the dashboard.` : runStats.groq ? ` ${runStats.groq} used ${this.provider.name}.` : "";
     const pendingFallbacks = this.fallbackRecords().length;
-    const pending = this.settings.enableGroq && pendingFallbacks ? ` ${pendingFallbacks} saved fallback entries still await a successful Groq result.` : "";
+    const pending = this.settings.enableGroq && pendingFallbacks ? ` ${pendingFallbacks} saved fallback entries still await a successful ${this.provider.name} result.` : "";
     if (!options.silent && !this.unloaded && !targets.length && !options.onlyFallbacks &&
         !this.settingsValidationError && !this.settingsSaveFailed && !this.storageReadFailed) {
       const message = this.settings.folderScope === "include" && !this.settings.includeFolders?.length
@@ -1711,7 +1729,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   async checkGroqConnection() {
     if (this.unloaded) return false;
     if (!this.settings.enableGroq || !this.apiKey()) {
-      new Notice("Automatic Mood History: enable Groq analysis and add a Groq API key before checking the connection.");
+      new Notice(`Automatic Mood History: enable ${this.provider.name} analysis and add a ${this.provider.name} API key before checking the connection.`);
       return false;
     }
     if (this.activeScan || this.checkingGroq) {
@@ -1722,7 +1740,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const assertCurrent = this.analysisGuard();
     const initialPause = this.groqBlockedUntil;
     this.refreshRenderers();
-    new Notice("Automatic Mood History: checking Groq with sample text…");
+    new Notice(`Automatic Mood History: checking ${this.provider.name} with sample text…`);
     const task = (this.analysisQueue || Promise.resolve()).then(async () => {
       try {
       assertCurrent();
@@ -1730,7 +1748,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       await this.analyzeWithGroq("2030-03-14", "This is a fictional connection-check sample. The writer feels calm, hopeful, and supported after a friendly conversation.", { forceGroq: true, assertCurrent });
       assertCurrent();
       this.recordGroqSuccess();
-      new Notice("Automatic Mood History: Groq connection works. No vault notes were sent.");
+      new Notice(`Automatic Mood History: ${this.provider.name} connection works. No vault notes were sent.`);
       return true;
     } catch (error) {
       if (this.unloaded || error.code === "analysis_cancelled") return false;
@@ -1752,7 +1770,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async retryAllWithGroq() {
     if (!this.settings.enableGroq || !this.apiKey()) {
-      new Notice("Automatic Mood History: enable Groq analysis and add a Groq API key before reanalyzing history.");
+      new Notice(`Automatic Mood History: enable ${this.provider.name} analysis and add a ${this.provider.name} API key before reanalyzing history.`);
       return;
     }
     await this.analyzeAll({ force: true, forceGroq: true });
@@ -1760,7 +1778,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
 
   async recoverFallbacksWithGroq() {
     if (!this.settings.enableGroq || !this.apiKey()) {
-      new Notice("Automatic Mood History: enable Groq analysis and add a Groq API key in settings before retrying fallbacks.");
+      new Notice(`Automatic Mood History: enable ${this.provider.name} analysis and add a ${this.provider.name} API key in settings before retrying fallbacks.`);
       return;
     }
     return this.analyzeAll({ onlyFallbacks: true, forceGroq: true });
@@ -1772,20 +1790,20 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     if (conflictCount) return { kind: "warning", text: `${conflictCount} monthly export(s) need review. Check for newer or unreadable recovery data before refreshing from saved history.` };
     const pendingCount = Object.keys(this.runtime.pendingDates || {}).length;
     if (pendingCount) return { kind: "warning", text: `${pendingCount} date groups await recovery. Available Morning Pages fallback scores are shown. ${this.settings.autoAnalyze ? "Automatic recovery is enabled with retry backoff." : "Automatic analysis is off; use Analyze changed to retry."} ${Object.values(this.runtime.pendingDates).some(p => p.kind === "source") ? "Some source notes are unreadable; make cloud files available locally and check vault sync." : ""}` };
-    if (!this.settings.enableGroq) return { kind: "local", text: "MORNING PAGES FALLBACK · Groq is disabled. Analysis stays on this device." };
-    if (!this.apiKey()) return { kind: "warning", text: "GROQ KEY MISSING · Add a Groq API key in Automatic Mood History settings (Obsidian 1.11.4+), or set GROQ_API_KEY on desktop." };
-    if (this.checkingGroq) return { kind: "ready", text: "CHECKING GROQ · Sending fictional sample text." };
+    if (!this.settings.enableGroq) return { kind: "local", text: `MORNING PAGES FALLBACK · ${this.provider.name} is disabled. Analysis stays on this device.` };
+    if (!this.apiKey()) return { kind: "warning", text: `${this.provider.name.toUpperCase()} KEY MISSING · Add a ${this.provider.name} API key in Automatic Mood History settings (Obsidian 1.11.4+), or set ${this.provider.env} on desktop.` };
+    if (this.checkingGroq) return { kind: "ready", text: `CHECKING ${this.provider.name.toUpperCase()} · Sending fictional sample text.` };
     if (this.activeScan) return { kind: "ready", text: "ANALYZING · Notes are grouped by detected filename date or creation date." };
     const issue = this.runtime.lastGroqIssue;
     if (issue) {
       const remaining = Math.max(0, Math.ceil((this.groqBlockedUntil - Date.now()) / 1000));
-      return { kind: "warning", text: `${issue.message}${remaining ? ` Retry pause: ${remaining}s; Morning Pages fallback is used for new or changed writing.` : " Run Analyze changed to retry with Groq."}` };
+      return { kind: "warning", text: `${issue.message}${remaining ? ` Retry pause: ${remaining}s; Morning Pages fallback is used for new or changed writing.` : ` Run Analyze changed to retry with ${this.provider.name}.`}` };
     }
     if (this.runtime.lastGroqSuccessAt && this.runtime.lastGroqModel === this.settings.model) {
       const pending = this.fallbackRecords().length;
-      return { kind: "ready", text: `GROQ CONNECTED · ${this.settings.model} · Last valid response ${new Date(this.runtime.lastGroqSuccessAt).toLocaleString()}.${pending ? ` ${pending} saved fallback entries await reanalysis. Use Retry fallback entries.` : ""}` };
+      return { kind: "ready", text: `${this.provider.name.toUpperCase()} CONNECTED · ${this.settings.model} · Last valid response ${new Date(this.runtime.lastGroqSuccessAt).toLocaleString()}.${pending ? ` ${pending} saved fallback entries await reanalysis. Use Retry fallback entries.` : ""}` };
     }
-    return { kind: "ready", text: `GROQ READY TO CHECK · ${this.settings.model} · Use Check Groq to test with sample text.` };
+    return { kind: "ready", text: `${this.provider.name.toUpperCase()} READY TO CHECK · ${this.settings.model} · Use Check ${this.provider.name} to test with sample text.` };
   }
 
   async ensureFolder(path) {
@@ -1941,11 +1959,11 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     assertCurrent();
     if (this.entryOutput === "daily") await this.ensureFolder(this.entriesFolder);
     assertCurrent();
-    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by their detected filename date, or by their local creation date when the name has no recognized date. The Analysis scope setting controls which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every date group.\n`;
+    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by their detected filename date, or by their local creation date when the name has no recognized date. The Analysis scope setting controls which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with selected provider** to retry cloud analysis or refresh every date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  score_scale:\n    displayName: Score scale\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - score_scale\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
     const legacyScoreGuide = `- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.`;
     const scoreGuide = `- **Mood:** 1 strongly negative or severe distress, 5–6 mixed or neutral, 10 strongly positive.\n- **Energy:** 1 depleted or inert to 10 highly activated.\n- **Connection:** 1 isolated or unseen to 10 deeply connected or supported.\n- **Intensity:** 1 emotionally muted to 10 extremely forceful or emotionally charged.\n\nThe dashboard converts older 1–5 results for comparison without reanalysis. Older daily exports keep their original values. In daily note properties, a missing score_scale indicates 1–5.`;
-    const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes use an unambiguous date detected in their filename, using the Daily Notes format and common date formats. Undated names use the local calendar day of their Obsidian creation timestamp. Ambiguous dates are skipped. Include/exclude folder settings determine eligibility; frontmatter dates and aliases do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Undated notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n${scoreGuide}\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes assigned to the same date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is disabled, unavailable, paused, or returns an unusable response, new or changed writing is scored locally with Morning Pages Analytics built-in feelings and topics word lists and marked Morning Pages fallback. Counts determine mood, energy, connection, and intensity; the result is a low-confidence approximation that does not interpret context or negation. Groq retries respect the existing retry pause; an unchanged saved result is preserved if its retry fails. The API key comes from the desktop GROQ_API_KEY environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
+    const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes use an unambiguous date detected in their filename, using the Daily Notes format and common date formats. Undated names use the local calendar day of their Obsidian creation timestamp. Ambiguous dates are skipped. Include/exclude folder settings determine eligibility; frontmatter dates and aliases do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Undated notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n${scoreGuide}\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes assigned to the same date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Cloud analysis and fallback\n\nWhen cloud analysis is disabled, unavailable, paused, or returns an unusable response, new or changed writing is scored locally with Morning Pages Analytics built-in feelings and topics word lists and marked Morning Pages fallback. Counts determine mood, energy, connection, and intensity; the result is a low-confidence approximation that does not interpret context or negation. Provider retries respect the existing retry pause; an unchanged saved result is preserved if its retry fails. The API key comes from the selected provider’s desktop environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, this.entryOutput === "daily" ? dashboard : this.compactDashboardText(dashboard), false);
     assertCurrent();
     await this.upgradeDashboardLayout();
@@ -2093,7 +2111,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const actions = toolbar.createDiv({ cls: "auto-mood-actions" });
     const changedButton = actions.createEl("button", { text: "Analyze changed" });
     changedButton.addEventListener("click", () => void this.analyzeAll({ force: false, forceGroq: false }));
-    const checkButton = actions.createEl("button", { text: "Check Groq" });
+    const checkButton = actions.createEl("button", { text: `Check ${this.provider.name}` });
     checkButton.addEventListener("click", () => void this.checkGroqConnection());
     const fallbackButton = actions.createEl("button", { text: "Retry fallback entries" });
     fallbackButton.addEventListener("click", () => void this.recoverFallbacksWithGroq());
@@ -2167,13 +2185,16 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     }
 
     const provenance = wrapper.createDiv({ cls: "auto-mood-provenance" });
-    const groqCount = complete.filter((record) => record.analysisSource === "groq").length;
+    const providerCounts = [...PROVIDERS].map(([id, provider]) => {
+      const count = complete.filter(record => record.analysisSource === id).length;
+      return count ? `${count} ${provider.name}` : null;
+    }).filter(Boolean);
     const reviewedCount = complete.filter((record) => record.analysisSource === "reviewed-backfill").length;
     const fallbackCount = complete.filter((record) => record.analysisSource === "local-fallback").length;
     const morningPagesCount = complete.filter((record) => record.analysisSource === "morning-pages-fallback").length;
     const localCount = complete.filter((record) => record.analysisSource === "local").length;
     const legacyFallbackCount = records.filter((record) => record.dateBasis === LEGACY_DATE_BASIS && record.analysisSource === "local-fallback").length;
-    provenance.setText(`Detected date groups: ${timestampRecords.length} · ${groqCount} Groq · ${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${morningPagesCount} Morning Pages fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-grouping or legacy records appear in history outside the charts.${legacyFallbackCount ? ` ${legacyFallbackCount} legacy fallback entries can be recovered with Retry fallback entries.` : ""}`);
+    provenance.setText(`Detected date groups: ${timestampRecords.length} · ${providerCounts.length ? providerCounts.join(" · ") + " · " : ""}${localCount} local · ${reviewedCount} reviewed backfill · ${fallbackCount} local fallback · ${morningPagesCount} Morning Pages fallback · ${timestampRecords.length - complete.length} insufficient evidence. ${records.length - timestampRecords.length} previous-grouping or legacy records appear in history outside the charts.${legacyFallbackCount ? ` ${legacyFallbackCount} legacy fallback entries can be recovered with Retry fallback entries.` : ""}`);
   }
 
   installChartSeriesControls(svg, legend, series) {
@@ -2669,7 +2690,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       } else heading.setText(record.date);
       const badges = header.createDiv({ cls: "auto-mood-day-badges" });
       badges.createEl("span", { cls: "auto-mood-badge", text: record.dateBasis === CURRENT_DATE_BASIS ? "Detected date" : record.dateBasis === HISTORICAL_DATE_BASIS ? "Previous creation date" : "Legacy date" });
-      const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource === "morning-pages-fallback" ? "Morning Pages fallback" : record.analysisSource || "none" });
+      const analyzer = badges.createEl("span", { cls: "auto-mood-badge", text: record.analysisSource === "morning-pages-fallback" ? "Morning Pages fallback" : PROVIDERS.get(record.analysisSource)?.name || record.analysisSource || "none" });
       if (record.providerIssue?.message) analyzer.setAttribute("title", record.providerIssue.message);
       if (record.status === "insufficient" || hasNoEmotionalEvidence(record)) {
         card.createEl("p", { cls: "auto-mood-insufficient", text: "Insufficient evidence · no scores assigned" });
@@ -2722,7 +2743,7 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
     containerEl.classList.add("auto-mood-settings");
     containerEl.createEl("h2", { text: "Automatic Mood History" });
     containerEl.createEl("p", {
-      text: "Markdown notes use detected filename dates, or their creation date when undated. Choose which folders to analyze. New setups scan all eligible notes except in excluded folders. Local analysis works offline on desktop, Android and iPhone. Groq analysis is optional."
+      text: "Markdown notes use detected filename dates, or their creation date when undated. Choose which folders to analyze. New setups scan all eligible notes except in excluded folders. Local analysis works offline on desktop, Android and iPhone. Cloud analysis is optional."
     });
     new Setting(containerEl)
       .setName("Default dashboard range")
@@ -2766,53 +2787,63 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .setDesc("For filenames such as 03-04-2024. Unambiguous dates and written month names work in either order. After changing this, run Analyze changed notes to regroup affected days.")
       .addDropdown(dropdown => dropdown.addOptions({ skip: "Skip ambiguous dates", mdy: "Month–day–year", dmy: "Day–month–year" })
         .setValue(this.plugin.settings.numericDateOrder || "skip").onChange(async value => { await this.plugin.updateSetting("numericDateOrder", value); }));
+    const provider = this.plugin.provider;
+    new Setting(containerEl)
+      .setName("API provider")
+      .setDesc("Switching providers turns off cloud analysis until you enable it for the selected service.")
+      .addDropdown(dropdown => dropdown.addOptions(Object.fromEntries([...PROVIDERS].map(([id, item]) => [id, item.name])))
+        .setValue(this.plugin.providerId).onChange(async value => {
+          const saving = this.plugin.updateSetting("provider", value);
+          this.display();
+          await saving;
+        }));
     let keyInput;
     const keySetting = new Setting(containerEl)
-      .setName("Groq API key")
-      .setDesc("Save to Obsidian secret storage (requires Obsidian 1.11.4+). The key is never saved in plugin data or notes. Desktop GROQ_API_KEY takes precedence. Saving a key does not enable Groq or send notes.")
+      .setName(`${provider.name} API key`)
+      .setDesc(`Save to Obsidian secret storage (requires Obsidian 1.11.4+). The key is never saved in plugin data or notes. Desktop ${provider.env} takes precedence. Saving a key does not enable ${provider.name} or send notes.`)
       .addText(text => {
         keyInput = text;
         text.inputEl.type = "password";
         text.inputEl.autocomplete = "off";
         text.inputEl.spellcheck = false;
         text.inputEl.setAttribute("autocapitalize", "none");
-        text.inputEl.setAttribute("aria-label", "Groq API key");
-        text.inputEl.placeholder = "Paste a Groq API key";
+        text.inputEl.setAttribute("aria-label", `${provider.name} API key`);
+        text.inputEl.placeholder = `Paste a ${provider.name} API key`;
       })
       .addButton(button => button.setButtonText("Save key").onClick(() => {
         if (!keyInput.getValue().trim()) {
-          new Notice("Automatic Mood History: enter a Groq API key first.");
+          new Notice(`Automatic Mood History: enter a ${provider.name} API key first.`);
           return;
         }
         if (this.plugin.setGroqKey(keyInput.getValue())) {
           keyInput.setValue("");
-          new Notice("Automatic Mood History: Groq key saved in Obsidian secret storage. Enable Groq analysis when you want to use it.");
+          new Notice(`Automatic Mood History: ${provider.name} key saved in Obsidian secret storage. Enable ${provider.name} analysis when you want to use it.`);
         }
       }))
       .addButton(button => button.setButtonText("Clear saved key").onClick(() => {
         if (this.plugin.setGroqKey("")) {
           keyInput.setValue("");
-          new Notice("Automatic Mood History: saved Groq key cleared. Any desktop GROQ_API_KEY remains active.");
+          new Notice(`Automatic Mood History: saved ${provider.name} key cleared. Any desktop ${provider.env} remains active.`);
         }
       }));
     if (typeof this.plugin.app?.secretStorage?.setSecret !== "function") {
-      keySetting.setDesc("Update to Obsidian 1.11.4 or newer to save a Groq key on Android or iPhone. Local analysis works without a key. Desktop can also use GROQ_API_KEY.");
+      keySetting.setDesc(`Update to Obsidian 1.11.4 or newer to save a ${provider.name} key on Android or iPhone. Local analysis works without a key. Desktop can also use ${provider.env}.`);
     }
     new Setting(containerEl)
-      .setName("Enable Groq analysis")
-      .setDesc("Only text from notes allowed by folder rules is sent to Groq. When Groq is off, fails or is paused, Morning Pages fallback scores new or changed writing. This setting is off by default.")
+      .setName(`Enable ${provider.name} analysis`)
+      .setDesc(`Only text from notes allowed by folder rules is sent to ${provider.name}. When ${provider.name} is off, fails or is paused, Morning Pages fallback scores new or changed writing. This setting is off by default.`)
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.enableGroq)
         .onChange(async (value) => {
           await this.plugin.updateSetting("enableGroq", value);
         }));
     new Setting(containerEl)
-      .setName("Groq model")
-      .setDesc("A production model that supports chat completions.")
+      .setName(`${provider.name} model`)
+      .setDesc("Enter a model ID available to your API account.")
       .addText((text) => text
         .setValue(this.plugin.settings.model)
         .onChange(async (value) => {
-          await this.plugin.updateSetting("model", value.trim() || DEFAULT_SETTINGS.model);
+          await this.plugin.updateSetting("model", value.trim() || provider.model);
         }));
     new Setting(containerEl)
       .setName("Output folder")
@@ -2879,8 +2910,8 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
         void this.plugin.analyzeAll({ force: false, forceGroq: false });
       }));
     new Setting(containerEl)
-      .setName("Retry fallback entries with Groq")
-      .setDesc("Retry saved fallback results, including legacy entries using their original source notes. Successful Groq results are not rerun; missing sources and failed retries keep the existing result.")
+      .setName(`Retry fallback entries with ${provider.name}`)
+      .setDesc(`Retry saved fallback results, including legacy entries using their original source notes. Successful cloud results are not rerun; missing sources and failed retries keep the existing result.`)
       .addButton((button) => button.setButtonText("Retry fallbacks").onClick(() => {
         void this.plugin.recoverFallbacksWithGroq();
       }));

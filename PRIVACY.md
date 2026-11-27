@@ -6,22 +6,21 @@ Automatic Mood History operates in two modes.
 
 Local mode uses deterministic word-pattern scoring inside Obsidian. No note text is intentionally transmitted by this plugin. Local results are directional and marked low confidence.
 
-## Optional Groq mode
+## Optional cloud analysis
 
-Groq mode is disabled by default. When a user explicitly enables it, the plugin sends the following to `https://api.groq.com/openai/v1/chat/completions`:
+Cloud analysis starts disabled. Selecting a different provider turns it off again. Once you enable the selected provider, analysis sends the detected date, cleaned text from eligible notes for that day up to the character limit, scoring instructions, and the expected JSON format. The fictional connection check uses sample text.
 
-- detected entry date;
-- cleaned, consolidated text from all Markdown notes created on that day, across folders, up to the configured character limit;
-- scoring instructions;
-- a JSON response schema.
+The plugin contacts only the selected endpoint:
 
-Notes are grouped by an unambiguous filename date; undated names use the local creation timestamp. The plugin excludes its generated `Mood History/` files and `.trash/` notes. It does not include vault paths or filenames in the prompt.
+- Groq — `https://api.groq.com/openai/v1/chat/completions`
+- OpenAI — `https://api.openai.com/v1/chat/completions`
+- Anthropic Claude — `https://api.anthropic.com/v1/messages`
+- Google Gemini — `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`
+- DeepSeek — `https://api.deepseek.com/chat/completions`
 
-On desktop, `GROQ_API_KEY` in the Obsidian process environment takes precedence. On Android, iPhone and desktop with Obsidian 1.11.4+, you can save a key using Obsidian's native secret storage. The fixed secret ID is `automatic-mood-history-groq`. Keys entered in the masked settings field are passed only to Obsidian secret storage and are never written to plugin `data.json`, generated notes or logs. The plugin does not implement its own encryption or control Obsidian's secret-storage and sync behavior. Configure the key on each device where needed. Clearing the saved key does not remove a desktop environment variable.
+Folder rules determine which notes are eligible. The plugin excludes generated history and trash, and sends no filename or vault-path metadata. Your selected provider controls its processing and retention.
 
-Saving a key does not enable Groq or initiate analysis. Automatic analysis remains opt-in. Android and iOS may suspend the app in the background; automatic catch-up runs when Obsidian returns to the foreground, subject to existing consent, source filters and retry pauses.
-
-Groq controls its own processing and retention. Review [Groq's data-handling documentation](https://console.groq.com/docs/your-data) before enabling remote analysis.
+On desktop the selected provider's fixed environment variable takes precedence. On Obsidian 1.11.4+ the masked key field uses Obsidian secret storage with a separate fixed ID for each provider. Saving a key sends no request. Clearing it only affects that provider's saved key. Keys are excluded from plugin settings, generated notes and logs. Automatic analysis requires a separate opt-in.
 
 ## Locally stored data
 
@@ -36,4 +35,4 @@ These records may be sensitive even though they do not contain the full original
 
 ## Telemetry
 
-The plugin contains no analytics or telemetry service. Network access is used only for optional Groq requests initiated by enabled analysis behavior.
+The plugin contains no analytics or telemetry service. Network access is used only for optional requests to the selected provider initiated by enabled analysis behavior.

@@ -1,3 +1,11 @@
+# Provider selection, 2.3.0
+
+Codex owns the implementation. The requested common alternatives are OpenAI, Anthropic Claude, Google Gemini and DeepSeek alongside Groq. The registry and request/response adapters live in `src/providers.js`. Claude uses Messages with a reduced wire schema. DeepSeek starts in JSON object mode. The original scoring constraints are in the prompt and enforced locally. The build inlines the same registry into the mobile bundle and the Markdown renderer.
+
+RESUME HERE. Each provider has a fixed host, separate secret and environment key, and remembered model. Selecting a provider cancels stale work, clears provider cooldowns and requires a fresh opt-in. Legacy Groq installs retain their consent and model. On disk, `enabledProvider` binds consent to the service, and `enableGroq` is true only for Groq so older clients cannot misinterpret another service’s consent. Existing hotkey IDs and saved record identities are preserved. Result provenance uses the stable provider ID. Failed requests follow the existing local fallback path.
+
+Verification uses fictional notes and mocked transport in the bundled mobile runtime, plus browser interaction with the actual Settings tab. Live account/model entitlement and physical devices remain unverified.
+
 # Monthly export catch-up, 2.2.2
 
 Owner is Codex. The live journal had more recent analysis than the monthly Markdown. The writer classified stale generated snapshots as personal edits because newer live records differed. The previous conflict branch committed the result without updating the note, and unchanged scans skipped the writer. The fix compares generated files with their own recovery data, reconciles months from saved records, and verifies an exact backup for edited generated files. Newer or missing recovered identities block replacement.

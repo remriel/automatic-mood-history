@@ -1,3 +1,4 @@
+const { PROVIDERS } = require("./providers");
 const { SentimentIntensityAnalyzer } = require("./vendor/vaderSentiment.bundle");
 
 const ALLOWED_EMOTIONS = [
@@ -438,7 +439,7 @@ function buildEntryMarkdown(record) {
     `# Mood — ${record.date}`,
     "",
     "> [!info] Automatic inference",
-    `> ${record.analysisSource === "groq" ? "Groq analyzed" : record.analysisSource === "reviewed-backfill" ? "A reviewed backfill analyzed" : record.analysisSource === "local" ? "Local scoring analyzed" : record.analysisSource === "morning-pages-fallback" ? "Morning Pages fallback analyzed" : "A local fallback analyzed"} this day’s writing. This is a reading of the text, not a diagnosis or a statement of objective truth.`,
+    `> ${PROVIDERS.has(record.analysisSource) ? `${PROVIDERS.get(record.analysisSource).name} analyzed` : record.analysisSource === "reviewed-backfill" ? "A reviewed backfill analyzed" : record.analysisSource === "local" ? "Local scoring analyzed" : record.analysisSource === "morning-pages-fallback" ? "Morning Pages fallback analyzed" : "A local fallback analyzed"} this day’s writing. This is a reading of the text, not a diagnosis or a statement of objective truth.`,
     "",
     "## Snapshot",
     ""
@@ -462,7 +463,7 @@ function buildEntryMarkdown(record) {
     for (const driver of record.drivers.slice(0, 4)) lines.push(`- ${plainNarrative(driver, 250)}`);
   }
   if (record.providerIssue?.message) {
-    lines.push("", "## Groq status", "", plainNarrative(record.providerIssue.message));
+    lines.push("", record.providerIssue.provider ? `## ${PROVIDERS.get(record.providerIssue.provider)?.name || "Provider"} status` : "## Groq status", "", plainNarrative(record.providerIssue.message));
   }
   lines.push("", "## Sources", "");
   for (const path of record.sourcePaths || []) {

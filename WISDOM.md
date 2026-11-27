@@ -1,3 +1,9 @@
+# Automatic Mood History 2.3.0 provider selection
+
+1. **Least confident:** Model access varies by API account. I would run the built-in fictional connection check with the intended account before a journal scan.
+2. **Easy to miss:** A timeline can contain scores from several providers. I would check the saved analyzer and model when interpreting a change in scores.
+3. **Main assumption:** “Most common” meant hosted APIs with direct API keys. If local inference matters more, I would prioritize an Ollama integration.
+
 # 2026-11-27 — Automatic Mood History 2.2.2
 
 1. I’m least confident about simultaneous edits from two synced devices. I’d test that race in a disposable vault.
