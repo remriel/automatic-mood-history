@@ -1,3 +1,9 @@
+# 2026-11-26 — Automatic Mood History 2.1.3
+
+1. Least confident about the button in a custom native Obsidian theme. I would check the installed plugin with the active theme.
+2. Automatic Mood History has a single, long Settings pane. The footer follows the last action. I would check by scrolling to the bottom in a narrow native pane.
+3. I assumed both plugins should use the same creator page. If they need different recipients, I would change only the Automatic Mood History link.
+
 # 2026-11-19 — 1.9.10 composition chart
 
 1. **Least confident:** How easily closely related colors can be distinguished in the user's Obsidian theme. I would check the busiest range in that theme, including how readable the period details are.

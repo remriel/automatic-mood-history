@@ -1,6 +1,6 @@
 # Automatic Mood History 2.1.3 support footer
 
-Progress 70%. The footer, test, bundle metadata and release notes are ready. Next run the checks, open and merge the release PR, then verify the release and its three assets.
+Progress 100%. The support footer, browser test, generated bundle, and version files are complete. Local functional, release-audit, mobile, desktop-layout and mobile-layout suites passed. PR #39 passed CI 45928727632 and merged as 8360cff. Main CI 45928873919 and release workflow 45928873931 passed. Verified the published 2.1.3 assets against their checksums, Git tag blobs and signed provenance. No release work remains. Native Obsidian styling and navigation remain unverified.
 
 # Current objective — publish the monthly export fix as 2.1.2
 

@@ -1,6 +1,8 @@
 # Automatic Mood History 2.1.3 support footer
 
-RESUME HERE. Codex is preparing 2.1.3 for publication. The settings tab in src/main.js appends a support footer using the creator destination from Morning Pages Analytics. The official button artwork is bundled in styles.css, so opening Settings makes no request to the image host.
+RESUME HERE. Automatic Mood History 2.1.3 is published at https://github.com/remriel/automatic-mood-history/releases/tag/2.1.3 from commit 8360cffb5eafcdf7017cf1e537ce546f74d82ce1. Codex completed the release. No subagents were used.
+
+The settings tab in src/main.js appends the support footer after the last control. It uses the creator link from Morning Pages Analytics and the same official yellow artwork embedded in styles.css. Opening Settings makes no request to the image host. The settings proportions fixture exercises placement, link count, destination and embedded artwork at five widths with two text scales.
 
 # Current state — Automatic Mood History 2.1.2 published
 
