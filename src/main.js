@@ -64,6 +64,7 @@ const DEFAULT_SETTINGS = {
   outputFolder: "Mood History",
   entryOutput: "monthly",
   numericDateOrder: "skip",
+  folderScope: "include",
   includeFolders: [],
   excludeFolders: [],
   autoAnalyze: false,
@@ -172,6 +173,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       new Notice("Automatic Mood History: settings storage is unavailable; commands remain available. Check vault sync.");
     }
     if (this.unloaded) return;
+    if (this.folderScopeNeedsReview) new Notice("Automatic Mood History: review Analysis scope to choose which notes can be analyzed.", 9000);
     if (this.settingsValidationError) new Notice(`Automatic Mood History: ${this.settingsValidationError}`, 9000);
 
     this.addRibbonIcon("activity", "Open Automatic Mood History", () => this.openDashboard());
@@ -279,7 +281,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
   }
 
   watchSettings() {
-    const analysisKeys = new Set(["includeFolders", "excludeFolders", "outputFolder", "entryOutput", "numericDateOrder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
+    const analysisKeys = new Set(["folderScope", "includeFolders", "excludeFolders", "outputFolder", "entryOutput", "numericDateOrder", "enableGroq", "model", "minimumCharacters", "maxCharactersPerDay", "autoAnalyze", "analyzeOnStartup"]);
     this.analysisEpoch ||= 0;
     this.settings = new Proxy(this.settings, { set: (target, key, value) => {
       if (analysisKeys.has(key) && JSON.stringify(target[key]) !== JSON.stringify(value)) this.analysisEpoch++;
@@ -299,17 +301,34 @@ class AutomaticMoodHistoryPlugin extends Plugin {
       if (typeof saved[key] === "number" && Number.isFinite(saved[key])) settings[key] = Math.max(minimum, Math.min(maximum, Math.round(saved[key])));
     }
     if (typeof saved.model === "string" && /^[a-zA-Z0-9][a-zA-Z0-9/_.-]{0,199}$/.test(saved.model.trim())) settings.model = saved.model.trim();
+    if (saved.folderScope === "all") settings.folderScope = "all";
     try {
-      settings.outputFolder = saved.outputFolder === undefined ? DEFAULT_SETTINGS.outputFolder : vaultPath(saved.outputFolder);
-      if (settings.outputFolder === ".obsidian" || settings.outputFolder.startsWith(".obsidian/") || settings.outputFolder === ".trash" || settings.outputFolder.startsWith(".trash/")) throw new Error("Choose an output folder outside Obsidian configuration and trash.");
       settings.includeFolders = checkedFolderList(saved.includeFolders);
       settings.excludeFolders = checkedFolderList(saved.excludeFolders);
+      if (saved.folderScope === undefined) {
+        // An old exclusion within an included tree cannot be represented by a single include rule.
+        // Set aside that tree until the user can review their scope.
+        const includes = settings.includeFolders;
+        settings.includeFolders = includes.filter(folder => !settings.excludeFolders.some(excluded => {
+          if (folder === "/" || excluded === "/") return folder === excluded;
+          return folder === excluded || folderContainsPath(folder, excluded) || folderContainsPath(excluded, folder);
+        }));
+        this.folderScopeNeedsReview = settings.includeFolders.length !== includes.length ||
+          (!includes.length && (settings.autoAnalyze || settings.analyzeOnStartup || settings.excludeFolders.length > 0));
+      }
     } catch (error) {
       // Keep invalid raw rules visible and block analysis until explicitly fixed.
       this.settingsValidationError = `${error.message} Fix folder settings before analyzing.`;
       settings.includeFolders = Array.isArray(saved.includeFolders) ? saved.includeFolders.filter(value => typeof value === "string") : typeof saved.includeFolders === "string" ? saved.includeFolders.split(/\r?\n/) : [];
       settings.excludeFolders = Array.isArray(saved.excludeFolders) ? saved.excludeFolders.filter(value => typeof value === "string") : typeof saved.excludeFolders === "string" ? saved.excludeFolders.split(/\r?\n/) : [];
-      if (saved.outputFolder !== undefined) settings.outputFolder = saved.outputFolder;
+      if (saved.folderScope === undefined && settings.excludeFolders.some(value => value.trim())) settings.includeFolders = [];
+    }
+    try {
+      settings.outputFolder = saved.outputFolder === undefined ? DEFAULT_SETTINGS.outputFolder : vaultPath(saved.outputFolder);
+      if (settings.outputFolder === ".obsidian" || settings.outputFolder.startsWith(".obsidian/") || settings.outputFolder === ".trash" || settings.outputFolder.startsWith(".trash/")) throw new Error("Choose an output folder outside Obsidian configuration and trash.");
+    } catch (error) {
+      this.settingsValidationError = `${error.message} Fix folder settings before analyzing.`;
+      settings.outputFolder = saved.outputFolder;
     }
     settings.hiddenChartSeries = Array.isArray(saved.hiddenChartSeries) ? Array.from(new Set(saved.hiddenChartSeries.filter(value => ["moodScore", "energyScore", "connectionScore", "intensityScore"].includes(value)))) : [];
     return settings;
@@ -715,8 +734,9 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     const normalizedPath = String(path || "").replace(/\\/g, "/").replace(/^\/+/, "");
     let includes, excludes;
     try { ({ includes, excludes } = this.sourceScope()); } catch { return false; }
-    return (!includes.length || includes.some((folder) => folderContainsPath(folder, normalizedPath))) &&
-      !excludes.some((folder) => folderContainsPath(folder, normalizedPath));
+    return this.settings.folderScope === "all"
+      ? !excludes.some((folder) => folderContainsPath(folder, normalizedPath))
+      : includes.some((folder) => folderContainsPath(folder, normalizedPath));
   }
 
   sourceScope() {
@@ -737,6 +757,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
         if (!["daily", "monthly", "none"].includes(value)) throw new Error("Choose a valid Markdown output mode.");
         if (Object.keys(this.runtime.pendingWrites || {}).length) throw new Error("Finish pending result recovery before changing Markdown output.");
       }
+      if (key === "folderScope" && !["include", "all"].includes(value)) throw new Error("Choose a valid analysis scope.");
       if (key === "numericDateOrder" && !["skip", "mdy", "dmy"].includes(value)) throw new Error("Choose a valid numeric date order.");
       if (key === "defaultRange" && value !== null && !DASHBOARD_RANGE_DAYS.includes(value)) throw new Error("Choose a valid dashboard range.");
       if (["includeFolders", "excludeFolders"].includes(key)) value = checkedFolderList(value);
@@ -986,7 +1007,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     // Compare values, not array identity: settings can change while awaiting
     // source reads or provider replies. Never retry with stale consent/scope.
     const signature = () => JSON.stringify([
-      this.settings.includeFolders, this.settings.excludeFolders,
+      this.settings.folderScope, this.settings.includeFolders, this.settings.excludeFolders,
       this.settings.outputFolder, this.settings.entryOutput, this.settings.numericDateOrder, this.settings.enableGroq, this.settings.model,
       this.settings.minimumCharacters, this.settings.maxCharactersPerDay,
       ...(options.background ? [this.settings.autoAnalyze, this.settings.analyzeOnStartup] : [])
@@ -1861,7 +1882,7 @@ class AutomaticMoodHistoryPlugin extends Plugin {
     assertCurrent();
     if (this.entryOutput === "daily") await this.ensureFolder(this.entriesFolder);
     assertCurrent();
-    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by their detected filename date, or by their local creation date when the name has no recognized date. Include/exclude folder settings control which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every date group.\n`;
+    const dashboard = `---\ntype: "mood-history-dashboard"\naliases:\n  - "Mood Tracker"\n---\n\n# Mood History\n\nThis dashboard groups eligible Markdown notes by their detected filename date, or by their local creation date when the name has no recognized date. The Analysis scope setting controls which notes are analyzed. Generated Mood History files and the Obsidian trash folder are excluded. Scores are text inferences, not diagnoses.\n\n\`\`\`automatic-mood-history\n\`\`\`\n\n## Optional Base view\n\n[[${this.outputFolder}/Mood History.base|Open the optional Base table]]\n\nThe complete history is shown above without horizontal scrolling. The separate native Base is available for custom table views.\n\n## How it works\n\n- [[${this.outputFolder}/Methodology|Methodology and scoring]]\n- Use the command **Automatic Mood History: Reanalyze all notes with Groq** to retry Groq or refresh every date group.\n`;
     const base = `filters:\n  and:\n    - file.inFolder("${this.entriesFolder}")\n    - type == "automatic-mood-entry"\nproperties:\n  mood:\n    displayName: Mood\n  energy:\n    displayName: Energy\n  connection:\n    displayName: Connection\n  intensity:\n    displayName: Intensity\n  analysis_source:\n    displayName: Analyzer\nviews:\n  - type: table\n    name: Mood history\n    order:\n      - date\n      - mood\n      - energy\n      - connection\n      - intensity\n      - emotions\n      - confidence\n      - analysis_source\n      - source_notes\n`;
 const methodology = `---\ntype: "guide"\n---\n\n# Mood History methodology\n\n[[${this.outputFolder}/Mood History|Back to Mood History]]\n\n## Date grouping\n\nEligible Markdown notes use an unambiguous date detected in their filename, using the Daily Notes format and common date formats. Undated names use the local calendar day of their Obsidian creation timestamp. Ambiguous dates are skipped. Include/exclude folder settings determine eligibility; frontmatter dates and aliases do not change the group. Generated Mood History files and notes in the Obsidian trash folder are excluded. Undated notes without a valid creation timestamp are skipped. Records created by earlier filename/frontmatter-based versions are preserved and labeled as legacy in the dashboard. Legacy records are retried with their original saved source notes, while keeping their legacy date.\n\n## Scores\n\n- **Mood:** 1 strongly negative or severe distress; 3 mixed or neutral; 5 strongly positive.\n- **Energy:** 1 depleted or inert; 5 highly activated.\n- **Connection:** 1 isolated or unseen; 5 deeply connected or supported.\n- **Intensity:** 1 emotionally muted; 5 extremely forceful or emotionally charged.\n\n## Evidence rules\n\nThe analyzer consolidates allowed Markdown notes assigned to the same date, removes duplicate paragraphs, and hashes the result. It runs again only when that day's source changes. Empty and image-only dates are recorded as insufficient evidence.\n\nThe prompt distinguishes the author's feelings from quoted text, abstract analysis, negation, and feelings attributed to other people. The result is still an inference. It is not a medical assessment or an objective fact.\n\n## Groq and fallback\n\nWhen Groq is disabled, unavailable, paused, or returns an unusable response, new or changed writing is scored locally with Morning Pages Analytics built-in feelings and topics word lists and marked Morning Pages fallback. Counts determine mood, energy, connection, and intensity; the result is a low-confidence approximation that does not interpret context or negation. Groq retries respect the existing retry pause; an unchanged saved result is preserved if its retry fails. The API key comes from the desktop GROQ_API_KEY environment variable or Obsidian secret storage (1.11.4+). It is never written to plugin data or generated notes. Every completed entry records its analyzer.\n`;
     await this.writeTextFile(this.dashboardPath, this.entryOutput === "daily" ? dashboard : this.compactDashboardText(dashboard), false);
@@ -2725,26 +2746,41 @@ class AutomaticMoodHistorySettingTab extends PluginSettingTab {
       .setDesc("A nonempty vault-relative folder for generated history files.")
       .addText((text) => text.setValue(typeof this.plugin.settings.outputFolder === "string" ? this.plugin.settings.outputFolder : "")
         .onChange(async value => { await this.plugin.updateSetting("outputFolder", value); }));
+    const updateScopeEditors = () => {
+      const scanAll = this.plugin.settings.folderScope === "all";
+      includeEditor.settingEl.hidden = scanAll;
+      excludeEditor.settingEl.hidden = !scanAll;
+    };
     new Setting(containerEl)
+      .setName("Analysis scope")
+      .addDropdown(dropdown => dropdown
+        .addOptions({ include: "Include specific folders", all: "Scan all except excluded folders" })
+        .setValue(this.plugin.settings.folderScope)
+        .onChange(async value => {
+          await this.plugin.updateSetting("folderScope", value);
+          updateScopeEditors();
+        }));
+    const includeEditor = new Setting(containerEl)
       .setClass("auto-mood-setting-stacked")
       .setName("Include folders")
-      .setDesc("Optional allowlist. One vault-relative folder per line. Empty includes all folders; subfolders are included automatically. / means root-level notes.")
+      .setDesc("Enter one vault-relative folder per line. Subfolders are included automatically. Use / for notes directly at the vault root. A blank list pauses note analysis.")
       .addTextArea((area) => area
         .setPlaceholder("Journal\nDaily Notes")
         .setValue(this.plugin.settings.includeFolders.join("\n"))
         .onChange(async (value) => {
           await this.plugin.updateFolderFilter("includeFolders", value);
         }));
-    new Setting(containerEl)
+    const excludeEditor = new Setting(containerEl)
       .setClass("auto-mood-setting-stacked")
       .setName("Exclude folders")
-      .setDesc("One vault-relative folder per line. Excludes subfolders and overrides the include list. / means root-level notes.")
+      .setDesc("Enter one vault-relative folder per line. Exclusions include subfolders. Use / for notes directly at the vault root. A blank list scans every eligible folder.")
       .addTextArea((area) => area
         .setPlaceholder("Work\nPrivate")
         .setValue(this.plugin.settings.excludeFolders.join("\n"))
         .onChange(async (value) => {
           await this.plugin.updateFolderFilter("excludeFolders", value);
         }));
+    updateScopeEditors();
     containerEl.createEl("p", {
       text: "Folder changes apply to future scans and reanalysis. Saved history is preserved; Analyze changed recalculates eligible dates. Remove older entries manually if you want to delete their previous results."
     });

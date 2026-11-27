@@ -24,7 +24,7 @@ function fixtureHTML() {
     HTMLElement.prototype.createEl=function(tag,options={}){const el=document.createElement(tag);if(options.cls)el.className=options.cls;if(options.text!==undefined)el.textContent=options.text;for(const[k,v]of Object.entries(options.attr||{}))el.setAttribute(k,v);this.appendChild(el);return el;};
     HTMLElement.prototype.createDiv=function(options){return this.createEl('div',options);};
     class FixtureSetting {
-      constructor(container){this.item=container.createDiv({cls:'setting-item'});this.info=this.item.createDiv({cls:'setting-item-info'});this.control=this.item.createDiv({cls:'setting-item-control'});}
+      constructor(container){this.item=container.createDiv({cls:'setting-item'});this.settingEl=this.item;this.info=this.item.createDiv({cls:'setting-item-info'});this.control=this.item.createDiv({cls:'setting-item-control'});}
       setClass(cls){this.item.classList.add(cls);return this;}
       setName(text){this.name=text;this.info.createDiv({cls:'setting-item-name',text});return this;}
       setDesc(text){this.info.createDiv({cls:'setting-item-description',text});return this;}
@@ -39,7 +39,7 @@ function fixtureHTML() {
     ${bundle}
     const plugin=new module.exports();const dashboard=document.getElementById('dashboard');
     const secrets=new Map();plugin.app={secretStorage:{getSecret:id=>secrets.get(id)||null,setSecret:(id,value)=>secrets.set(id,value)}};
-    plugin.settings={outputFolder:'Mood History',entryOutput:'daily',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
+    plugin.settings={outputFolder:'Mood History',entryOutput:'daily',folderScope:'include',includeFolders:[],excludeFolders:[],enableGroq:true,model:'synthetic-model',autoAnalyze:false,analyzeOnStartup:false};plugin.runtime={};plugin.renderContainers=new Set([dashboard]);plugin.chartObservers=new Map();plugin.debounceTimers=new Map();
     const calls={analyze:0,retry:0,check:0,recover:0,save:0};plugin.savePluginData=async()=>{calls.save+=1;};plugin.clearGroqPause=()=>{};plugin.ensureSupportFiles=async()=>{};
     let statusText='SYNTHETIC PREVIEW · Local-only fixture. These examples are not personal mood records.';
     plugin.groqStatus=()=>({kind:plugin.settings.enableGroq?'ready':'local',text:plugin.activeScan?'Analyzing fictional fixture records':plugin.checkingGroq?'Checking with fictional fixture text':statusText});

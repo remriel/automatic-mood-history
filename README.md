@@ -14,7 +14,7 @@ On mobile, you can also install through [BRAT](https://github.com/TfTHacker/obsi
 
 ## Explore your history
 
-1. Choose the folders to include in the plugin settings. Notes with the same detected date contribute to one daily result. Undated filenames use the local creation date.
+1. Choose **Analysis scope** in the plugin settings. The default, **Include specific folders**, scans only listed folders. Leave the list blank to pause note analysis. Choose **Scan all except excluded folders** to scan the vault with optional exclusions. Each mode remembers its own list. Use one vault-relative folder per line. Rules include subfolders, and / matches only root-level notes. Notes with the same detected date contribute to one daily result. Undated filenames use the local creation date.
 2. Open **Automatic Mood History: Open mood history dashboard** from the command palette and select **Analyze changed**. Enable automatic analysis in settings if you want future changes picked up.
 3. Select a chart range or explore a day. Expand a month under **Day by day** to see summaries, scores, and source notes. Days with insufficient evidence can appear in history without a plotted score.
 
