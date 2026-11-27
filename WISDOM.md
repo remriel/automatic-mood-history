@@ -2,7 +2,7 @@
 
 1. **Least confident:** The README says keys should be configured on each device. I matched that to Obsidian secret storage and per-device environment setup. I would recheck if Obsidian sync semantics change.
 2. **Biggest thing to notice:** Saving a provider key alone does not enable analysis or transmit journal text. I made the separate opt-in explicit in the setup flow.
-3. **Main assumption:** The user wanted public GitHub documentation updated, so I will push this focused README change to `main` after reviewing the diff.
+3. **Main assumption:** The user wanted the public GitHub README updated, so I pushed this focused documentation change to `main` after checking the local diff.
 
 # Automatic Mood History 2.3.0 published provider selection
 

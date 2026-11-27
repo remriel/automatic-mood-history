@@ -2,7 +2,7 @@
 
 The user requested a README update after the provider release. The README already listed the five supported services and their defaults. This edit clarifies how desktop environment keys and Obsidian secret storage work, device-level setup, and the fact that saving a key does not enable cloud analysis. The provider table remains the single quick reference for the supported environment variable names. No application behavior changed.
 
-RESUME HERE. Review the README diff, confirm the setup wording matches `PRIVACY.md` and the provider registry, then commit and push the documentation update to `main`. No tests are needed for this text-only change.
+RESUME HERE. The README setup clarification was committed and pushed to `main` as `73e045d`. The remote README was verified against the pushed file. This text-only change did not require a test run.
 
 # Provider selection, 2.3.0
 

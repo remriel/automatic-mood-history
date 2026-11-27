@@ -1,10 +1,10 @@
 # README setup guidance
 
-[█████████░] 90% toward a verified documentation update.
+[██████████] 100% toward a verified documentation update.
 
 - [x] Clarify desktop environment keys, secret storage, per-device setup and analysis opt-in.
 - [x] Review wording against the provider table and privacy policy.
-- [ ] Commit, push and verify the README on GitHub.
+- [x] Commit, push and verify the README on GitHub at commit `73e045d`.
 
 Text-only change. No test suite was run.
 
