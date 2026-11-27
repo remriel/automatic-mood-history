@@ -4,7 +4,7 @@ Owner is Codex. The goal is to publish separate Include specific folders (defaul
 
 The Analysis scope selector in src/main.js shows the active folder editor and persists both lists independently. Source filtering applies consistently to discovery and analysis. Changes to the mode invalidate in-flight analysis through the settings epoch and signature. The migration keeps old exclusion rules for scan-all mode. An overlapping legacy include is set aside for review so switching defaults cannot expose previously excluded notes. Blank default scope pauses source analysis and saved history stays available.
 
-RESUME HERE. Verify the candidate in GitHub CI, merge it, and verify the release workflow and downloadable assets. Native Obsidian has not been tested.
+RESUME HERE. [2.1.4 is published](https://github.com/remriel/automatic-mood-history/releases/tag/2.1.4) from merge commit 50e4a0190aaafd6f326fb3a792bc507de173c738. PR #40 and GitHub release checks passed. All three published files were verified against the tag, GitHub SHA-256 digests, and signed workflow provenance. Publication is complete. Native Obsidian settings interaction has not been tested.
 
 # Automatic Mood History 2.1.3 support footer
 

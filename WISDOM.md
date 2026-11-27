@@ -1,3 +1,9 @@
+# 2026-11-27 — Automatic Mood History 2.1.4
+
+1. **Least confident:** How visible the scope selector is in custom Obsidian themes. I’d check the dropdown and active editor on desktop and mobile in native Obsidian.
+2. **Biggest thing to watch:** A parent include covers its subfolders. If one child should stay private, list the intended subfolders individually or choose scan-all mode with explicit exclusions.
+3. **Most consequential assumption:** Upgrades should require fresh opt-in to whole-vault scanning. If existing whole-vault choices should carry forward, I’d migrate only settings that recorded explicit vault-wide consent.
+
 # 2026-11-26 — Automatic Mood History 2.1.3
 
 1. Least confident about the button in a custom native Obsidian theme. I would check the installed plugin with the active theme.

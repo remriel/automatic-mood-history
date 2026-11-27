@@ -1,12 +1,13 @@
 # Automatic Mood History 2.1.4
 
-[███████░░░] 70% toward verified publication.
+[██████████] 100% toward verified publication.
 
-- [x] Implement and document separate folder scopes with safe upgrade behavior.
-- [x] Exercise default empty scope, explicit all, migration, root rules, and mode-change cancellation in functional tests.
-- [ ] Pass GitHub CI, merge, and verify the release and all assets.
+- [x] Publish separate folder scopes with safe upgrade behavior.
+- [x] Verify default empty scope, explicit all, migration, root rules, and mode-change cancellation.
+- [x] Pass local functional, mobile, release audit, desktop and mobile browser checks. PR #40 passed CI 46059292282.
+- [x] Merge and publish through release workflow 46059505656. Verify all three release downloads against the tag, GitHub digests, and signed provenance.
 
-Next steps in order are candidate CI, merge, release workflow, and asset verification. No implementation blockers.
+No release blockers or required next steps. Native Obsidian interaction has not been tested.
 
 # Automatic Mood History 2.1.3 support footer
 
