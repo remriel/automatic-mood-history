@@ -1,4 +1,4 @@
-# Automatic Mood History 2.3.0 provider selection
+# Automatic Mood History 2.3.0 published provider selection
 
 1. **Least confident:** Model access varies by API account. I would run the built-in fictional connection check with the intended account before a journal scan.
 2. **Easy to miss:** A timeline can contain scores from several providers. I would check the saved analyzer and model when interpreting a change in scores.

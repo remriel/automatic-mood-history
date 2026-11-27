@@ -7,7 +7,7 @@
 - [x] Run the functional suite, mobile bundle tests, browser settings checks and the release audit.
 - [x] Pass Android Chromium and iPhone WebKit layout checks, including the secret input and 200% text.
 
-The repository build is ready for review on the feature/mood-analysis-providers branch. The next release step is merging the reviewed change into main, which triggers the existing release workflow.
+Published 2.3.0 from PR #44. Release workflow 46076985788 passed. All three downloads match the merge commit, published hashes and signed attestations. No publication steps remain.
 
 All provider responses in this verification used fictional test data. No live API billing or vault installation is required to build the plugin.
 
